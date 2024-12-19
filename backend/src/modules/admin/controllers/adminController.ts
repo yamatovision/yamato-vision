@@ -1,6 +1,9 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../../shared/types/auth.types';
 import { AdminService } from '../services/adminService';
+import { createLogger } from '../../../config/logger';
+
+const logger = createLogger('AdminController');
 
 export class AdminController {
   // ユーザー一覧取得（ページネーション対応）
@@ -16,7 +19,7 @@ export class AdminController {
         data: usersData
       });
     } catch (error) {
-      console.error('Failed to get users:', error);
+      logger.error('Failed to get users:', error);
       res.status(500).json({
         success: false,
         error: 'ユーザー一覧の取得に失敗しました'
@@ -35,7 +38,7 @@ export class AdminController {
         data: userDetails
       });
     } catch (error) {
-      console.error('Failed to get user details:', error);
+      logger.error('Failed to get user details:', error);
       if (error.message === 'User not found') {
         res.status(404).json({
           success: false,
@@ -53,7 +56,8 @@ export class AdminController {
   // バッジ付与
   static async assignBadge(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { userId, badgeId } = req.params;
+      const { userId } = req.params;
+      const { badgeId } = req.body;
       const result = await AdminService.assignBadgeToUser(userId, badgeId);
 
       res.json({
@@ -62,7 +66,7 @@ export class AdminController {
         message: 'バッジを付与しました'
       });
     } catch (error) {
-      console.error('Failed to assign badge:', error);
+      logger.error('Failed to assign badge:', error);
       if (error.code === 'P2002') {
         res.status(400).json({
           success: false,
@@ -77,53 +81,73 @@ export class AdminController {
     }
   }
 
-  // ニックネーム更新
-  static async updateNickname(req: AuthenticatedRequest, res: Response): Promise<void> {
+  // ジェム付与
+  static async grantGems(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { userId } = req.params;
-      const { nickname } = req.body;
+      const { amount } = req.body;
 
-      const updatedUser = await AdminService.updateUserNickname(userId, nickname);
+      if (!amount || amount <= 0) {
+        res.status(400).json({
+          success: false,
+          error: '有効なジェム数を指定してください'
+        });
+        return;
+      }
+
+      const result = await AdminService.grantGemsToUser(userId, amount);
 
       res.json({
         success: true,
-        data: updatedUser,
-        message: 'ニックネームを更新しました'
+        data: result,
+        message: 'ジェムを付与しました'
       });
     } catch (error) {
-      console.error('Failed to update nickname:', error);
+      logger.error('Failed to grant gems:', error);
       res.status(500).json({
         success: false,
-        error: 'ニックネームの更新に失敗しました'
+        error: 'ジェムの付与に失敗しました'
       });
     }
   }
 
-  // 表示設定更新
-  static async updateVisibility(req: AuthenticatedRequest, res: Response): Promise<void> {
+  // ペナルティステータス更新
+  static async updatePenaltyStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { userId } = req.params;
-      const { isProfileVisible, isRankingVisible } = req.body;
+      const { isPenalty } = req.body;
 
-      const updatedUser = await AdminService.updateUserVisibility(
-        userId,
-        isProfileVisible,
-        isRankingVisible
-      );
+      const result = await AdminService.updateUserPenaltyStatus(userId, isPenalty);
 
       res.json({
         success: true,
-        data: updatedUser,
-        message: '表示設定を更新しました'
+        data: result,
+        message: isPenalty ? 'ペナルティを設定しました' : 'ペナルティを解除しました'
       });
     } catch (error) {
-      console.error('Failed to update visibility:', error);
+      logger.error('Failed to update penalty status:', error);
       res.status(500).json({
         success: false,
-        error: '表示設定の更新に失敗しました'
+        error: 'ペナルティステータスの更新に失敗しました'
+      });
+    }
+  }
+
+  // バッジ一覧取得
+  static async getBadges(_req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const badges = await AdminService.getAllBadges();
+
+      res.json({
+        success: true,
+        data: badges
+      });
+    } catch (error) {
+      logger.error('Failed to get badges:', error);
+      res.status(500).json({
+        success: false,
+        error: 'バッジ一覧の取得に失敗しました'
       });
     }
   }
 }
-
-export default AdminController;

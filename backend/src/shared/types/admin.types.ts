@@ -1,12 +1,14 @@
+import { UserStatus } from '@prisma/client';
+
 export interface UserDetails {
   id: string;
   email: string;
-  nickname: string | null;  // undefinedからnullに変更
+  nickname: string | null;
   rank: string;
   level: number;
   experience: number;
   gems: number;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: UserStatus;  // Prismaの列挙型を使用
   badges: {
     badge: {
       id: string;
@@ -20,4 +22,12 @@ export interface UserDetails {
     lastLoginDate?: Date;
     totalConversations: number;
   };
+}
+
+// ユーザー一覧用の型も追加
+export interface UserListResponse {
+  users: UserDetails[];
+  total: number;
+  pages: number;
+  currentPage: number;
 }

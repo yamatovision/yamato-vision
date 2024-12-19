@@ -1,13 +1,21 @@
+import { UserStatus } from '@prisma/client';
+
+export type SnsLink = {
+  type: 'twitter' | 'line' | 'tiktok';
+  value: string;
+};
+
+export type Badge = {
+  id: string;
+  title: string;
+  iconUrl: string;
+};
+
 export type ProfileUpdateData = {
   nickname?: string;
   message?: string;
-  snsLinks?: {
-    twitter?: string;
-    line?: string;
-    tiktok?: string;
-  };
-  isRankingVisible?: boolean;
-  isProfileVisible?: boolean;
+  snsLinks?: SnsLink[];
+  avatarFile?: Express.Multer.File;
 };
 
 export type ProfileResponse = {
@@ -20,14 +28,18 @@ export type ProfileResponse = {
   rank: string;
   gems: number;
   message: string | null;
-  snsLinks: any | null;
-  isRankingVisible: boolean;
-  isProfileVisible: boolean;
-  status: string;
+  snsLinks: SnsLink[] | null;
+  avatarUrl: string | null;
+  badges: Badge[];
+  status: UserStatus;
+  mongoId: string | null;  // MongoDBとの紐付け用ID
 };
 
 export interface ProfileServiceInterface {
   getProfile(userId: string): Promise<ProfileResponse>;
-  updateProfile(userId: string, data: ProfileUpdateData): Promise<ProfileResponse>;
-  syncWithMongo(userId: string): Promise<void>;
+  updateProfile(
+    userId: string, 
+    data: ProfileUpdateData, 
+    avatarFile?: Express.Multer.File
+  ): Promise<ProfileResponse>;
 }

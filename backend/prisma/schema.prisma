@@ -27,6 +27,7 @@ model User {
   isProfileVisible Boolean @default(true)  // プロフィール表示設定
   message     String?   // 一言メッセージ
   badges      UserBadge[]
+    avatarUrl    String?   // アバター画像のURL
   // リレーション
   courses       UserCourse[]
   submissions   Submission[]
@@ -38,7 +39,8 @@ model User {
 
 enum UserStatus {
   ACTIVE
-  INACTIVE  // 退会状態
+  INACTIVE
+  PENALTY
 }
 
 

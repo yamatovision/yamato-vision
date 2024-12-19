@@ -10,19 +10,17 @@ export const validateProfileUpdate = (
 
   // SNSリンクのバリデーション
   if (data.snsLinks) {
-    const { twitter, line, tiktok } = data.snsLinks;
-    
     // URLの基本的な形式チェック
     const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
 
-    if (twitter && !urlPattern.test(twitter)) {
-      return res.status(400).json({ error: 'Invalid Twitter URL format' });
-    }
-    if (line && !urlPattern.test(line)) {
-      return res.status(400).json({ error: 'Invalid LINE URL format' });
-    }
-    if (tiktok && !urlPattern.test(tiktok)) {
-      return res.status(400).json({ error: 'Invalid TikTok URL format' });
+    for (const link of data.snsLinks) {
+      if (!link.type || !['twitter', 'line', 'tiktok'].includes(link.type)) {
+        return res.status(400).json({ error: 'Invalid SNS type' });
+      }
+
+      if (!link.value || !urlPattern.test(link.value)) {
+        return res.status(400).json({ error: `Invalid ${link.type} URL format` });
+      }
     }
   }
 
@@ -38,15 +36,6 @@ export const validateProfileUpdate = (
     return res.status(400).json({ 
       error: 'Message must not exceed 200 characters' 
     });
-  }
-
-  // boolean値のチェック
-  if (data.isRankingVisible !== undefined && typeof data.isRankingVisible !== 'boolean') {
-    return res.status(400).json({ error: 'Invalid ranking visibility setting' });
-  }
-
-  if (data.isProfileVisible !== undefined && typeof data.isProfileVisible !== 'boolean') {
-    return res.status(400).json({ error: 'Invalid profile visibility setting' });
   }
 
   next();

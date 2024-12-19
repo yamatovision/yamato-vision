@@ -1,8 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserStatus } from '@prisma/client';
 import { MongoSyncService } from './mongoSyncService';
 import { UserDetails } from '../../../shared/types/admin.types';
+import { createLogger } from '../../../config/logger';
 
 const prisma = new PrismaClient();
+const logger = createLogger('AdminService');
 
 export class AdminService {
   // ユーザー一覧を取得（ページネーション対応）
@@ -46,7 +48,7 @@ export class AdminService {
         currentPage: page
       };
     } catch (error) {
-      console.error('Error in getUsers:', error);
+      logger.error('Error in getUsers:', error);
       throw error;
     }
   }
@@ -76,7 +78,7 @@ export class AdminService {
         mongoData: mongoData || undefined
       };
     } catch (error) {
-      console.error('Error in getUserDetails:', error);
+      logger.error('Error in getUserDetails:', error);
       throw error;
     }
   }
@@ -95,41 +97,56 @@ export class AdminService {
         }
       });
     } catch (error) {
-      console.error('Error in assignBadgeToUser:', error);
+      logger.error('Error in assignBadgeToUser:', error);
       throw error;
     }
   }
 
-  // ユーザーのニックネームを更新
-  static async updateUserNickname(userId: string, nickname: string) {
-    try {
-      return await prisma.user.update({
-        where: { id: userId },
-        data: { nickname }
-      });
-    } catch (error) {
-      console.error('Error in updateUserNickname:', error);
-      throw error;
-    }
-  }
-
-  // ユーザーの表示設定を更新
-  static async updateUserVisibility(
-    userId: string, 
-    isProfileVisible: boolean, 
-    isRankingVisible: boolean
-  ) {
+  // ジェム付与
+  static async grantGemsToUser(userId: string, amount: number) {
     try {
       return await prisma.user.update({
         where: { id: userId },
         data: {
-          isProfileVisible,
-          isRankingVisible
+          gems: {
+            increment: amount
+          }
         }
       });
     } catch (error) {
-      console.error('Error in updateUserVisibility:', error);
+      logger.error('Error in grantGemsToUser:', error);
+      throw error;
+    }
+  }
+
+  // ペナルティステータス更新
+  static async updateUserPenaltyStatus(userId: string, isPenalty: boolean) {
+    try {
+      return await prisma.user.update({
+        where: { id: userId },
+        data: {
+          status: isPenalty ? UserStatus.PENALTY : UserStatus.ACTIVE
+        }
+      });
+    } catch (error) {
+      logger.error('Error in updateUserPenaltyStatus:', error);
+      throw error;
+    }
+  }
+
+  // バッジ一覧取得
+  static async getAllBadges() {
+    try {
+      return await prisma.badge.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+    } catch (error) {
+      logger.error('Error in getAllBadges:', error);
       throw error;
     }
   }
 }
+
+export default AdminService;

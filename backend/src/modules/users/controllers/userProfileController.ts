@@ -8,14 +8,14 @@ const logger = createLogger('UserProfileController');
 export class UserProfileController {
   async getProfile(req: AuthenticatedRequest, res: Response): Promise<Response | void> {
     try {
-      const userId = req.user?.userId;  // id を userId に変更
-      if (!userId) {
+      const userEmail = req.user?.email;
+      const postgresId = req.user?.postgresId;
+
+      if (!userEmail || !postgresId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const profile = await userProfileService.getProfile(userId);
-      await userProfileService.syncWithMongo(userId);
-
+      const profile = await userProfileService.getProfile(postgresId);
       return res.json({ success: true, data: profile });
     } catch (error) {
       logger.error('Error getting profile:', error);
@@ -25,13 +25,17 @@ export class UserProfileController {
 
   async updateProfile(req: AuthenticatedRequest, res: Response): Promise<Response | void> {
     try {
-      const userId = req.user?.userId;  // id を userId に変更
-      if (!userId) {
+      const postgresId = req.user?.postgresId;
+      if (!postgresId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
       const updateData = req.body;
-      const updatedProfile = await userProfileService.updateProfile(userId, updateData);
+      const updatedProfile = await userProfileService.updateProfile(
+        postgresId, 
+        updateData,
+        req.file
+      );
 
       return res.json({ success: true, data: updatedProfile });
     } catch (error) {

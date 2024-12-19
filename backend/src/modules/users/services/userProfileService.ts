@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { ProfileUpdateData, ProfileResponse, ProfileServiceInterface } from '../types/profile.types';
-import { MongoSyncService } from '../../admin/services/mongoSyncService';
+import { ProfileUpdateData, ProfileResponse, ProfileServiceInterface, SnsLink } from '../types/profile.types';
 import { createLogger } from '../../../config/logger';
+import { uploadImage } from '../../../config/cloudinary';
 
 const prisma = new PrismaClient();
 const logger = createLogger('UserProfileService');
@@ -10,7 +10,14 @@ export class UserProfileService implements ProfileServiceInterface {
   async getProfile(userId: string): Promise<ProfileResponse> {
     try {
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
+        include: {
+          badges: {
+            include: {
+              badge: true
+            }
+          }
+        }
       });
 
       if (!user) {
@@ -27,10 +34,15 @@ export class UserProfileService implements ProfileServiceInterface {
         rank: user.rank,
         gems: user.gems,
         message: user.message,
-        snsLinks: user.snsLinks,
-        isRankingVisible: user.isRankingVisible,
-        isProfileVisible: user.isProfileVisible,
-        status: user.status
+        snsLinks: user.snsLinks ? (user.snsLinks as any as SnsLink[]) : null,
+        avatarUrl: user.avatarUrl,
+        badges: user.badges.map(ub => ({
+          id: ub.badge.id,
+          title: ub.badge.title,
+          iconUrl: ub.badge.iconUrl
+        })),
+        status: user.status,
+        mongoId: user.mongoId
       };
     } catch (error) {
       logger.error('Error getting user profile:', error);
@@ -38,16 +50,31 @@ export class UserProfileService implements ProfileServiceInterface {
     }
   }
 
-  async updateProfile(userId: string, data: ProfileUpdateData): Promise<ProfileResponse> {
+  async updateProfile(
+    userId: string,
+    data: ProfileUpdateData,
+    avatarFile?: Express.Multer.File
+  ): Promise<ProfileResponse> {
     try {
+      let avatarUrl;
+      if (avatarFile) {
+        avatarUrl = await uploadImage(avatarFile);
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
           nickname: data.nickname,
           message: data.message,
-          snsLinks: data.snsLinks,
-          isRankingVisible: data.isRankingVisible,
-          isProfileVisible: data.isProfileVisible
+          snsLinks: data.snsLinks ? data.snsLinks as any : undefined,
+          ...(avatarUrl && { avatarUrl })
+        },
+        include: {
+          badges: {
+            include: {
+              badge: true
+            }
+          }
         }
       });
 
@@ -61,33 +88,18 @@ export class UserProfileService implements ProfileServiceInterface {
         rank: updatedUser.rank,
         gems: updatedUser.gems,
         message: updatedUser.message,
-        snsLinks: updatedUser.snsLinks,
-        isRankingVisible: updatedUser.isRankingVisible,
-        isProfileVisible: updatedUser.isProfileVisible,
-        status: updatedUser.status
+        snsLinks: updatedUser.snsLinks ? (updatedUser.snsLinks as any as SnsLink[]) : null,
+        avatarUrl: updatedUser.avatarUrl,
+        badges: updatedUser.badges.map(ub => ({
+          id: ub.badge.id,
+          title: ub.badge.title,
+          iconUrl: ub.badge.iconUrl
+        })),
+        status: updatedUser.status,
+        mongoId: updatedUser.mongoId
       };
     } catch (error) {
       logger.error('Error updating user profile:', error);
-      throw error;
-    }
-  }
-
-  async syncWithMongo(userId: string): Promise<void> {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true }
-      });
-
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // MongoDBとの同期
-      await MongoSyncService.syncUserInfo(user.email);
-      await MongoSyncService.syncTokenInfo(user.email);
-    } catch (error) {
-      logger.error('Error syncing with MongoDB:', error);
       throw error;
     }
   }
