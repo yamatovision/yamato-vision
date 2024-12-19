@@ -13,15 +13,16 @@ export default function BottomNavigation() {
     { icon: '📚', href: '/courses', label: 'コース' },
     { icon: '🏆', href: '/ranking', label: 'ランキング' },
     { icon: '💭', href: '/forum', label: 'フォーラム' },
+    { icon: '🛍️', href: '/shop', label: 'ショップ' }
   ];
 
   const baseClasses = theme === 'dark' 
     ? 'fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700'
-    : 'fixed bottom-0 left-0 right-0 bg-white border-t border-[#DBEAFE]';
+    : 'fixed bottom-0 left-0 right-0 bg-white border-t border-[#DBEAFE] shadow-lg';
 
   return (
     <nav className={baseClasses}>
-      <div className="max-w-md mx-auto flex justify-between items-center p-4">
+      <div className="max-w-2xl mx-auto flex justify-between items-center p-4">
         {navItems.map((item) => (
           <Link
             key={item.href}
@@ -30,7 +31,7 @@ export default function BottomNavigation() {
               pathname === item.href
                 ? theme === 'dark' ? 'text-blue-400' : 'text-[#3B82F6]'
                 : theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}
+            } hover:opacity-80 transition-opacity`}
           >
             <span role="img" aria-label={item.label}>{item.icon}</span>
           </Link>
