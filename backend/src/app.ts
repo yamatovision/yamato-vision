@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { requestLogger, errorLogger } from './config/logger';
 import userRoutes from './routes/userRoutes';
 import missionRoutes from './modules/missions/routes/missionRoutes';
+import shopRoutes from './modules/shop/routes/shopRoutes';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -17,12 +18,12 @@ app.use(requestLogger);
 // ルーティング
 app.use('/api/users', userRoutes);
 app.use('/api', missionRoutes);
+app.use('/api/shop', shopRoutes);  // この行を追加
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {
   res.json({ status: 'OK' });
 });
-
 
 // エラーロギング
 app.use(errorLogger);
@@ -36,14 +37,32 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
+// Prismaクライアントのグローバルインスタンス
+export const db = prisma;
+
 // サーバー起動
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
 
 // Prisma Client のシャットダウンを適切に処理
 process.on('beforeExit', async () => {
   await prisma.$disconnect();
+});
+
+// GracefulShutdownの処理を追加
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received. Closing HTTP server...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received. Closing HTTP server...');
+  await prisma.$disconnect();
+  process.exit(0);
 });
 
 export default app;

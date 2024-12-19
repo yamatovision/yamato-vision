@@ -25,6 +25,7 @@ model User {
   submissions   Submission[]
   forumPosts    ForumPost[]
   comments      Comment[]
+  purchases     Purchase[]    // 追加
 }
 
 // コースモデル
@@ -42,6 +43,7 @@ model Course {
   // リレーション
   tasks       Task[]
   users       UserCourse[]
+  products    Product[]    // 追加
 }
 
 // ユーザーとコースの中間テーブル
