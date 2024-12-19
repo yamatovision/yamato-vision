@@ -1,19 +1,21 @@
-import { Router } from 'express';
+import express from 'express';
+import { auth, requireAdmin } from '../../../shared/middleware/auth';
 import { ShopController } from '../controllers/shopController';
-import { authenticateJWT, requireAdmin } from '../../../shared/middleware/auth';
 
-const router = Router();
-const shopController = new ShopController();
+const router = express.Router();
 
-// 商品関連のエンドポイント
-router.get('/products', authenticateJWT, shopController.getProducts);
-router.get('/products/:id', authenticateJWT, shopController.getProductById);
-router.post('/products', authenticateJWT, requireAdmin, shopController.createProduct);
-router.put('/products/:id', authenticateJWT, requireAdmin, shopController.updateProduct);
-router.delete('/products/:id', authenticateJWT, requireAdmin, shopController.deleteProduct);
+// 認証が必要なルート
+router.use(auth);
 
-// 購入関連のエンドポイント
-router.post('/purchases', authenticateJWT, shopController.createPurchase);
-router.get('/purchases/history', authenticateJWT, shopController.getPurchaseHistory);
+// ユーザー向けルート
+router.get('/products', ShopController.getProducts);
+router.get('/products/:productId', ShopController.getProductById);
+router.post('/purchase', ShopController.createPurchase);
+router.get('/purchases/history', ShopController.getPurchaseHistory);
+
+// 管理者向けルート
+router.post('/admin/products', requireAdmin, ShopController.createProduct);
+router.put('/admin/products/:productId', requireAdmin, ShopController.updateProduct);
+router.delete('/admin/products/:productId', requireAdmin, ShopController.deleteProduct);
 
 export default router;

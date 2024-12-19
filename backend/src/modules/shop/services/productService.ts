@@ -1,132 +1,125 @@
-import { 
-  ProductFilters, 
-  ProductDTO, 
-  CreateProductDTO, 
-  UpdateProductDTO, 
-  ProductListResponse 
+import { PrismaClient, ProductType } from '@prisma/client';
+import type { 
+  ProductFilters,
+  ProductDTO,
+  CreateProductDTO,
+  UpdateProductDTO,
+  ProductListResponse
 } from '../types';
-import { db } from '../../../lib/db';
+
+const prisma = new PrismaClient();
 
 export class ProductService {
-  async getProducts(
-    filters: ProductFilters,
-    page: number = 1,
-    limit: number = 10
-  ): Promise<ProductListResponse> {
+  static async getProducts(filters: ProductFilters): Promise<ProductListResponse> {
     const where = {
-      type: filters.type,
+      type: filters.type as ProductType,
       price: {
         gte: filters.minPrice,
-        lte: filters.maxPrice,
+        lte: filters.maxPrice
       },
       rankRequired: filters.rankRequired,
-      levelRequired: filters.levelRequired,
-      isActive: filters.isActive ?? true,
+      isActive: true
     };
 
     const [products, total] = await Promise.all([
-      db.product.findMany({
+      prisma.product.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc'
+        }
       }),
-      db.product.count({ where }),
+      prisma.product.count({ where })
     ]);
 
     return {
-      products: products as ProductDTO[],
-      total,
-      page,
-      limit
+      products: products.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        type: product.type,
+        isActive: product.isActive,
+        rankRequired: product.rankRequired || undefined,
+        levelRequired: product.levelRequired || undefined
+      })),
+      total
     };
   }
 
-  async getProductById(id: string): Promise<ProductDTO | null> {
-    const product = await db.product.findUnique({
-      where: { id },
+  static async getProductById(id: string): Promise<ProductDTO | null> {
+    const product = await prisma.product.findUnique({
+      where: { id }
     });
 
-    return product as ProductDTO | null;
+    if (!product) return null;
+
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      type: product.type,
+      isActive: product.isActive,
+      rankRequired: product.rankRequired || undefined,
+      levelRequired: product.levelRequired || undefined
+    };
   }
 
-  async createProduct(data: CreateProductDTO): Promise<ProductDTO> {
-    const product = await db.product.create({
+  static async createProduct(input: CreateProductDTO): Promise<ProductDTO> {
+    const product = await prisma.product.create({
       data: {
-        ...data,
-        isActive: true,
-      },
+        name: input.name,
+        description: input.description,
+        price: input.price,
+        type: input.type as ProductType,
+        rankRequired: input.rankRequired || null,
+        levelRequired: input.levelRequired || null,
+        isActive: true
+      }
     });
 
-    return product as ProductDTO;
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      type: product.type,
+      isActive: product.isActive,
+      rankRequired: product.rankRequired || undefined,
+      levelRequired: product.levelRequired || undefined
+    };
   }
 
-  async updateProduct(
-    id: string,
-    data: UpdateProductDTO
-  ): Promise<ProductDTO> {
-    const product = await db.product.update({
+  static async updateProduct(id: string, input: UpdateProductDTO): Promise<ProductDTO> {
+    const product = await prisma.product.update({
       where: { id },
-      data,
+      data: {
+        name: input.name,
+        description: input.description,
+        price: input.price,
+        type: input.type as ProductType,
+        rankRequired: input.rankRequired || null,
+        levelRequired: input.levelRequired || null,
+        isActive: input.isActive
+      }
     });
 
-    return product as ProductDTO;
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      type: product.type,
+      isActive: product.isActive,
+      rankRequired: product.rankRequired || undefined,
+      levelRequired: product.levelRequired || undefined
+    };
   }
 
-  async deleteProduct(id: string): Promise<void> {
-    await db.product.update({
+  static async deleteProduct(id: string): Promise<void> {
+    await prisma.product.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false }
     });
-  }
-
-  async validatePurchaseRequirements(
-    productId: string,
-    userId: string
-  ): Promise<{ canPurchase: boolean; reason?: string }> {
-    const product = await db.product.findUnique({
-      where: { id: productId },
-    });
-
-    if (!product || !product.isActive) {
-      return { 
-        canPurchase: false, 
-        reason: '商品が存在しないか、現在利用できません' 
-      };
-    }
-
-    const user = await db.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return { 
-        canPurchase: false, 
-        reason: 'ユーザーが見つかりません' 
-      };
-    }
-
-    if (product.rankRequired && user.rank !== product.rankRequired) {
-      return { 
-        canPurchase: false, 
-        reason: '必要な階級に達していません' 
-      };
-    }
-
-    if (product.levelRequired && user.level < product.levelRequired) {
-      return { 
-        canPurchase: false, 
-        reason: '必要なレベルに達していません' 
-      };
-    }
-
-    if (user.gems < product.price) {
-      return { 
-        canPurchase: false, 
-        reason: 'ジェムが不足しています' 
-      };
-    }
-
-    return { canPurchase: true };
   }
 }

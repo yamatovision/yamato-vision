@@ -2,13 +2,20 @@ import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import { requestLogger, errorLogger } from './config/logger';
+import { connectMongoDB } from './config/database';
 import userRoutes from './routes/userRoutes';
 import missionRoutes from './modules/missions/routes/missionRoutes';
 import shopRoutes from './modules/shop/routes/shopRoutes';
+import adminRoutes from './modules/admin/routes/adminRoutes';
 
 const app = express();
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
+
+// データベース接続
+connectMongoDB()
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // ミドルウェア
 app.use(cors());
@@ -18,7 +25,8 @@ app.use(requestLogger);
 // ルーティング
 app.use('/api/users', userRoutes);
 app.use('/api', missionRoutes);
-app.use('/api/shop', shopRoutes);  // この行を追加
+app.use('/api/shop', shopRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {

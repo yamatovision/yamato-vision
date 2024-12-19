@@ -19,14 +19,28 @@ model User {
   gems          Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+  status      UserStatus  @default(ACTIVE)
+  mongoId     String?    @unique  // MongoDBとの紐付け用
+  nickname    String?    // ニックネーム用
+    snsLinks    Json?     // SNSリンク用
+  isRankingVisible Boolean @default(true)  // ランキング表示設定
+  isProfileVisible Boolean @default(true)  // プロフィール表示設定
+  message     String?   // 一言メッセージ
+  badges      UserBadge[]
   // リレーション
   courses       UserCourse[]
   submissions   Submission[]
   forumPosts    ForumPost[]
   comments      Comment[]
   purchases     Purchase[]    // 追加
+  
 }
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE  // 退会状態
+}
+
 
 // コースモデル
 model Course {
@@ -104,6 +118,8 @@ model ForumPost {
   likes       Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+    isVisible   Boolean   @default(true)  // 投稿の表示/非表示
+
 
   // リレーション
   user        User      @relation(fields: [userId], references: [id])
@@ -118,7 +134,7 @@ model Comment {
   content     String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
+  isVisible   Boolean   @default(true)  // コメントの表示/非表示
   // リレーション
   post        ForumPost @relation(fields: [postId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
@@ -239,4 +255,36 @@ enum PurchaseStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+
+model Badge {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  iconUrl     String
+  condition   BadgeCondition
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+enum BadgeCondition {
+  LIKES_COUNT      // 良いね数達成
+  COURSE_COMPLETE  // コース完了
+  TASK_COMPLETE    // 課題完了
+  POST_COUNT       // 投稿数達成
+  COMMENT_COUNT    // コメント数達成
+  CUSTOM          // カスタム条件
 }

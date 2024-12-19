@@ -11,8 +11,11 @@ export class PurchaseRepository {
   async create(data: CreatePurchaseDTO): Promise<Purchase> {
     return this.prisma.purchase.create({
       data: {
-        ...data,
         status: 'PENDING' as PurchaseStatus,
+        userId: data.userId,
+        productId: data.productId,
+        amount: data.amount,
+        totalPrice: data.amount * data.unitPrice // 追加: 合計金額の計算
       },
     });
   }

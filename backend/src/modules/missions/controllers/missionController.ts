@@ -1,51 +1,44 @@
-import { Request, Response } from 'express';
-import { MissionService } from '../services/missionService';
-import { RewardService } from '../services/rewardService';
-import { missionSchema } from '../types/mission.types';
-import { RewardSettings } from '../types/reward.types';
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../../../shared/types/auth.types';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class MissionController {
-  private missionService: MissionService;
-  private rewardService: RewardService;
-
-  constructor() {
-    this.missionService = new MissionService();
-    this.rewardService = new RewardService();
-  }
-
-  createMission = async (req: Request, res: Response): Promise<void> => {
+  // ミッション一覧取得
+  static async getMissions(_req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const missionData = missionSchema.parse(req.body.mission);
-      const reward: RewardSettings = {
-        gems: req.body.reward.gems,
-        exp: req.body.reward.exp
-      };
-
-      const mission = await this.missionService.createMission(missionData, reward);
-      res.status(201).json({ success: true, data: mission });
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error instanceof Error ? error.message : '無効なリクエストデータです'
+      const missions = await prisma.mission.findMany({
+        where: { isActive: true },
+        include: {
+          reward: true
+        }
       });
-    }
-  };
 
-  getActiveMissions = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const missions = await this.missionService.getActiveMissions();
-      res.status(200).json({ success: true, data: missions });
+      res.json({
+        success: true,
+        data: missions
+      });
     } catch (error) {
+      console.error('Failed to get missions:', error);
       res.status(500).json({
         success: false,
-        error: '未完了のミッションの取得に失敗しました'
+        error: 'ミッション一覧の取得に失敗しました'
       });
     }
-  };
+  }
 
-  getMissionById = async (req: Request, res: Response): Promise<void> => {
+  // 個別ミッション取得
+  static async getMissionById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const mission = await this.missionService.getMissionById(req.params.id);
+      const { missionId } = req.params;
+      const mission = await prisma.mission.findUnique({
+        where: { id: missionId },
+        include: {
+          reward: true
+        }
+      });
+
       if (!mission) {
         res.status(404).json({
           success: false,
@@ -53,74 +46,164 @@ export class MissionController {
         });
         return;
       }
-      res.status(200).json({ success: true, data: mission });
+
+      res.json({
+        success: true,
+        data: mission
+      });
     } catch (error) {
+      console.error('Failed to get mission:', error);
       res.status(500).json({
         success: false,
         error: 'ミッションの取得に失敗しました'
       });
     }
-  };
+  }
 
-  updateMission = async (req: Request, res: Response): Promise<void> => {
+  // ミッション完了処理
+  static async completeMission(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const missionData = missionSchema.partial().parse(req.body.mission);
-      let reward: RewardSettings | undefined;
-      
-      if (req.body.reward) {
-        reward = {
-          gems: req.body.reward.gems,
-          exp: req.body.reward.exp
-        };
+      const { missionId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: '認証が必要です'
+        });
+        return;
       }
 
-      const mission = await this.missionService.updateMission(
-        req.params.id,
-        missionData,
-        reward
-      );
-      res.status(200).json({ success: true, data: mission });
+      // ミッションの存在確認
+      const mission = await prisma.mission.findUnique({
+        where: { id: missionId },
+        include: { reward: true }
+      });
+
+      if (!mission) {
+        res.status(404).json({
+          success: false,
+          error: 'ミッションが見つかりません'
+        });
+        return;
+      }
+
+      // ユーザー情報の更新（経験値とジェムの付与）
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          experience: { increment: mission.reward?.exp || 0 },
+          gems: { increment: mission.reward?.gems || 0 }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          mission,
+          updatedUser
+        },
+        message: 'ミッションを完了しました'
+      });
     } catch (error) {
-      res.status(400).json({
+      console.error('Failed to complete mission:', error);
+      res.status(500).json({
+        success: false,
+        error: 'ミッション完了処理に失敗しました'
+      });
+    }
+  }
+
+  // ミッション作成（管理者用）
+  static async createMission(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { title, description, missionType, duration, conditions, reward } = req.body;
+
+      const newMission = await prisma.mission.create({
+        data: {
+          title,
+          description,
+          missionType,
+          duration,
+          conditions,
+          startDate: new Date(),
+          reward: {
+            create: reward
+          }
+        },
+        include: {
+          reward: true
+        }
+      });
+
+      res.status(201).json({
+        success: true,
+        data: newMission
+      });
+    } catch (error) {
+      console.error('Failed to create mission:', error);
+      res.status(500).json({
+        success: false,
+        error: 'ミッションの作成に失敗しました'
+      });
+    }
+  }
+
+  // ミッション更新（管理者用）
+  static async updateMission(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { missionId } = req.params;
+      const { title, description, missionType, duration, conditions, reward } = req.body;
+
+      const updatedMission = await prisma.mission.update({
+        where: { id: missionId },
+        data: {
+          title,
+          description,
+          missionType,
+          duration,
+          conditions,
+          reward: reward ? {
+            update: reward
+          } : undefined
+        },
+        include: {
+          reward: true
+        }
+      });
+
+      res.json({
+        success: true,
+        data: updatedMission
+      });
+    } catch (error) {
+      console.error('Failed to update mission:', error);
+      res.status(500).json({
         success: false,
         error: 'ミッションの更新に失敗しました'
       });
     }
-  };
+  }
 
-  deleteMission = async (req: Request, res: Response): Promise<void> => {
+  // ミッション削除（管理者用）
+  static async deleteMission(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      await this.missionService.deleteMission(req.params.id);
-      res.status(204).send();
+      const { missionId } = req.params;
+
+      await prisma.mission.delete({
+        where: { id: missionId }
+      });
+
+      res.json({
+        success: true,
+        message: 'ミッションを削除しました'
+      });
     } catch (error) {
+      console.error('Failed to delete mission:', error);
       res.status(500).json({
         success: false,
         error: 'ミッションの削除に失敗しました'
       });
     }
-  };
-
-  checkMissionCompletion = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { missionId } = req.params;
-      const { userId } = req.params;
-      const progressData = req.body;
-
-      const isCompleted = await this.missionService.checkMissionCompletion(
-        missionId,
-        progressData
-      );
-
-      if (isCompleted) {
-        await this.rewardService.grantReward(userId, missionId);
-      }
-
-      res.status(200).json({ success: true, data: { completed: isCompleted } });
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: 'ミッション達成確認に失敗しました'
-      });
-    }
-  };
+  }
 }

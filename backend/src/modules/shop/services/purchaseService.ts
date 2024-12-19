@@ -1,80 +1,40 @@
 import { PrismaClient } from '@prisma/client';
-import { ProductService } from './productService';
-import { 
-  PurchaseResponse, 
-  PurchaseHistoryResponse 
+import type {
+  CreatePurchaseDTO,
+  PurchaseResponse,
+  PurchaseHistoryResponse
 } from '../types';
-import { db } from '../../../lib/db';
+
+const prisma = new PrismaClient();
 
 export class PurchaseService {
-  private productService: ProductService;
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.productService = new ProductService();
-    this.prisma = db;
-  }
-
-  async createPurchase(
-    userId: string,
-    productId: string,
-    amount: number = 1
-  ): Promise<PurchaseResponse> {
-    const validation = await this.productService.validatePurchaseRequirements(
-      productId,
-      userId
-    );
-
-    if (!validation.canPurchase) {
-      throw new Error(validation.reason);
-    }
-
-    // トランザクションで購入処理を実行
-    const result = await this.prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({
-        where: { id: productId }
-      });
-
-      if (!product) {
-        throw new Error('商品が見つかりません');
+  static async createPurchase(data: CreatePurchaseDTO): Promise<PurchaseResponse> {
+    const purchase = await prisma.purchase.create({
+      data: {
+        userId: data.userId,
+        productId: data.productId,
+        amount: data.amount,
+        totalPrice: data.amount * data.unitPrice,
+        status: 'PENDING'
+      },
+      include: {
+        product: true
       }
-
-      const purchase = await tx.purchase.create({
-        data: {
-          userId,
-          productId,
-          amount,
-          totalPrice: product.price * amount,
-          status: 'COMPLETED'
-        }
-      });
-
-      // ジェムの更新処理
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: {
-          gems: { decrement: product.price * amount }
-        }
-      });
-
-      return { purchase, updatedUser };
     });
 
     return {
-      purchase: {
-        id: result.purchase.id,
-        userId: result.purchase.userId,
-        productId: result.purchase.productId,
-        amount: result.purchase.amount,
-        totalPrice: result.purchase.totalPrice,
-        status: result.purchase.status,
-        createdAt: result.purchase.createdAt
-      },
-      updatedGems: result.updatedUser.gems
+      id: purchase.id,
+      status: purchase.status,
+      amount: purchase.amount,
+      totalPrice: purchase.totalPrice,
+      product: {
+        name: purchase.product.name,
+        description: purchase.product.description
+      }
     };
   }
 
-  async getPurchaseHistory(
+  static async getPurchaseHistory(
     userId: string,
     page: number = 1,
     limit: number = 10
@@ -82,7 +42,7 @@ export class PurchaseService {
     const skip = (page - 1) * limit;
 
     const [purchases, total] = await Promise.all([
-      this.prisma.purchase.findMany({
+      prisma.purchase.findMany({
         where: { userId },
         skip,
         take: limit,
@@ -91,7 +51,7 @@ export class PurchaseService {
           product: true
         }
       }),
-      this.prisma.purchase.count({
+      prisma.purchase.count({
         where: { userId }
       })
     ]);
@@ -99,16 +59,16 @@ export class PurchaseService {
     return {
       purchases: purchases.map(purchase => ({
         id: purchase.id,
-        userId: purchase.userId,
-        productId: purchase.productId,
+        status: purchase.status,
         amount: purchase.amount,
         totalPrice: purchase.totalPrice,
-        status: purchase.status,
-        createdAt: purchase.createdAt
+        createdAt: purchase.createdAt,
+        product: {
+          name: purchase.product.name,
+          description: purchase.product.description
+        }
       })),
-      total,
-      page,
-      limit
+      total
     };
   }
 }

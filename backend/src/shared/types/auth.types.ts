@@ -1,14 +1,14 @@
 import { Request } from 'express';
 
 export interface JWTPayload {
-  id: string;       // idを追加
-  userId: string;
-  email: string;    // emailも追加
-  role: 'USER' | 'ADMIN';
-  iat?: number;
-  exp?: number;
+  id: string;
+  email: string;
+  mongoId?: string;
+  rank: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  role?: 'USER' | 'ADMIN';  // roleを追加
 }
 
-export type AuthenticatedRequest = Request & {
+export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
 }

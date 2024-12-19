@@ -52,7 +52,10 @@ export const userController = {
         { 
           id: user.id, 
           email: user.email,
-          role: 'USER'
+          rank: user.rank,
+          status: 'ACTIVE',
+          role: 'USER',
+          mongoId: user.mongoId
         },
         JWT_SECRET,
         { expiresIn: '24h' }
@@ -102,7 +105,10 @@ export const userController = {
         { 
           id: user.id, 
           email: user.email,
-          role: 'USER'
+          rank: user.rank,
+          status: user.status,
+          role: 'USER',
+          mongoId: user.mongoId
         },
         JWT_SECRET,
         { expiresIn: '24h' }
@@ -126,6 +132,7 @@ export const userController = {
     }
   },
 
+  // getProfileとupdateProfileは変更なし
   async getProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user?.id) {
