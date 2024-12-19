@@ -15,22 +15,23 @@ export default function CoursePage() {
   const { theme } = useTheme();
   const [contentType, setContentType] = useState<'video' | 'audio'>('video');
   
-  const sampleFiles = [
+  const sampleFiles: AttachmentFile[] = [
     {
       id: '1',
       name: 'lesson_guide.pdf',
       size: 1024 * 1024 * 2.5,
-      type: 'pdf',
+      type: 'pdf' as const,  // 型を明示的に指定
       url: '/samples/guide.pdf'
     },
     {
       id: '2',
       name: 'reference_image.png',
       size: 1024 * 500,
-      type: 'image',
+      type: 'image' as const,  // 型を明示的に指定
       url: '/samples/image.png'
     }
   ];
+  
 
   return (
     <div className="max-w-[800px] mx-auto pb-20">

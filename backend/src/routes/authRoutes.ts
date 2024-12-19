@@ -4,7 +4,7 @@ import { auth } from '../middlewares/auth';
 
 const router = express.Router();
 
-// パブリックルート（ログインのみ）
+// パブリックルート
 router.post('/login', userController.login);
 
 // 認証が必要なルート

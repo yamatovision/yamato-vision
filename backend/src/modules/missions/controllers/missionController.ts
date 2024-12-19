@@ -64,7 +64,7 @@ export class MissionController {
   static async completeMission(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { missionId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.userId;  // id を userId に変更
 
       if (!userId) {
         res.status(401).json({
@@ -207,3 +207,5 @@ export class MissionController {
     }
   }
 }
+
+export const missionController = new MissionController();

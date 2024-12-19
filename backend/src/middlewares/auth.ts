@@ -16,9 +16,9 @@ export const auth = async (
 
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     
-    // ステータスチェック
-    if (decoded.status === 'INACTIVE') {
-      throw new Error('このアカウントは現在利用できません');
+    // ユーザーランクによる退会チェック
+    if (decoded.userRank === '退会者') {
+      throw new Error('このアカウントは退会済みです');
     }
 
     // MongoDBとの同期チェック
@@ -30,10 +30,22 @@ export const auth = async (
     req.user = decoded;
     next();
   } catch (error) {
-    if (error.message === 'このアカウントは現在利用できません') {
+    if (error.message === 'このアカウントは退会済みです') {
       res.status(403).json({ error: error.message });
     } else {
       res.status(401).json({ error: '認証が必要です' });
     }
   }
+};
+
+export const requireAdmin = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user?.userRank || req.user.userRank !== '管理者') {
+    res.status(403).json({ error: '管理者権限が必要です' });
+    return;
+  }
+  next();
 };

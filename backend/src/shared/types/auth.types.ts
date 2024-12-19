@@ -1,12 +1,9 @@
 import { Request } from 'express';
 
 export interface JWTPayload {
-  id: string;
+  userId: string;
   email: string;
-  mongoId?: string;
-  rank: string;
-  status: 'ACTIVE' | 'INACTIVE';
-  role?: 'USER' | 'ADMIN';  // roleを追加
+  userRank: string;
 }
 
 export interface AuthenticatedRequest extends Request {

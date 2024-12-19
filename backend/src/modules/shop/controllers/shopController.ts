@@ -49,7 +49,7 @@ export class ShopController {
 
   static async createPurchase(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;  // idをuserIdに変更
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -81,7 +81,7 @@ export class ShopController {
 
   static async getPurchaseHistory(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;  // idをuserIdに変更
       if (!userId) {
         res.status(401).json({
           success: false,

@@ -7,6 +7,8 @@ import userRoutes from './routes/userRoutes';
 import missionRoutes from './modules/missions/routes/missionRoutes';
 import shopRoutes from './modules/shop/routes/shopRoutes';
 import adminRoutes from './modules/admin/routes/adminRoutes';
+import profileRoutes from './modules/users/routes/profileRoutes';
+import authRoutes from './routes/authRoutes';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -17,16 +19,30 @@ connectMongoDB()
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// ミドルウェア
-app.use(cors());
+// CORSの詳細設定
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  credentials: true,
+  maxAge: 86400, // プリフライトリクエストのキャッシュ時間（秒）
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(requestLogger);
 
+// OPTIONSリクエストの明示的なハンドリング
+app.options('*', cors(corsOptions));
+
 // ルーティング
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api', missionRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/users', profileRoutes);
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {
@@ -60,7 +76,7 @@ process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
-// GracefulShutdownの処理を追加
+// GracefulShutdownの処理
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received. Closing HTTP server...');
   await prisma.$disconnect();

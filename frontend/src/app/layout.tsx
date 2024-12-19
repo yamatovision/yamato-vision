@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import BaseLayout from '@/components/layout/BaseLayout';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -19,11 +20,13 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={`${inter.className}`}>
-        <ThemeProvider>
-          <div className="yamato-theme">
-            <BaseLayout>{children}</BaseLayout>
-          </div>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <div className="yamato-theme">
+              <BaseLayout>{children}</BaseLayout>
+            </div>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
