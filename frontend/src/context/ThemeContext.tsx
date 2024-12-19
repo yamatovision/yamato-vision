@@ -12,7 +12,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   device: 'desktop',
   toggleTheme: () => {},
 });
@@ -22,43 +22,41 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
   const [device, setDevice] = useState<Device>('desktop');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // システムのカラーモード設定を検出
-    if (typeof window !== 'undefined') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-      const savedTheme = (localStorage.getItem('theme') as Theme) || systemTheme;
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    if (savedTheme) {
       setTheme(savedTheme);
-
-      // デバイスタイプの検出
-      const handleResize = () => {
-        setDevice(window.innerWidth < 768 ? 'mobile' : 'desktop');
-      };
-
-      handleResize();
-      window.addEventListener('resize', handleResize);
-
-      return () => window.removeEventListener('resize', handleResize);
+      document.documentElement.className = savedTheme;
     }
+
+    const handleResize = () => {
+      setDevice(window.innerWidth < 768 ? 'mobile' : 'desktop');
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', newTheme);
-    }
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.className = newTheme;
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, device, toggleTheme }}>
-      <div className={theme === 'dark' ? 'dark' : ''}>
-        {children}
-      </div>
+      {children}
     </ThemeContext.Provider>
   );
 }

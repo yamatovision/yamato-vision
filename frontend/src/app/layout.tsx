@@ -18,22 +18,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            try {
-              if (localStorage.theme === 'dark') {
-                document.documentElement.classList.add('dark');
-              } else {
-                document.documentElement.classList.remove('dark');
-              }
-            } catch (_) {}
-          `
-        }} />
-      </head>
-      <body className={inter.className}>
+      <body className={`${inter.className}`}>
         <ThemeProvider>
-          <BaseLayout>{children}</BaseLayout>
+          <div className="yamato-theme">
+            <BaseLayout>{children}</BaseLayout>
+          </div>
         </ThemeProvider>
       </body>
     </html>
