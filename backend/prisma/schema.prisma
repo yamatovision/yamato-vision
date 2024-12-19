@@ -181,3 +181,60 @@ model MissionReward {
 
   @@index([missionId])
 }
+
+// 商品モデル
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  description   String
+  type          ProductType
+  price         Int
+  gemAmount     Int?      // トークンパッケージの場合の獲得ジェム数
+  courseId      String?   // コース商品の場合の関連コース
+  rankRequired  String?   // 必要な階級
+  levelRequired Int?      // 必要なレベル
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // リレーション
+  course        Course?   @relation(fields: [courseId], references: [id])
+  purchases     Purchase[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+// 商品タイプの列挙型
+enum ProductType {
+  COURSE
+  GEM_PACKAGE
+  SPECIAL_ITEM
+}
+
+// 購入履歴モデル
+model Purchase {
+  id          String    @id @default(cuid())
+  userId      String
+  productId   String
+  amount      Int
+  totalPrice  Int
+  status      PurchaseStatus
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // リレーション
+  user        User      @relation(fields: [userId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+// 購入ステータスの列挙型
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}

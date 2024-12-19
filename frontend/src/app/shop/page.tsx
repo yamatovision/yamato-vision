@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 import { CourseCard } from '@/components/shop/CourseCard';
 
 const mockCourses = [
@@ -50,34 +51,30 @@ const mockCourses = [
 ];
 
 export default function ShopPage() {
+  const { theme } = useTheme();
   const [filter, setFilter] = useState<'all' | 'available' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleUnlock = (courseId: string) => {
-    console.log('Unlocking course:', courseId);
-    // TODO: 解放処理の実装
-  };
-
   return (
-    <div className="max-w-6xl mx-auto p-4">
+    <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
       {/* ユーザーステータス */}
-      <div className="bg-gray-800 rounded-lg p-4 mb-6">
+      <div className={theme === 'dark' ? 'bg-gray-800 rounded-lg p-4 mb-6' : 'bg-white rounded-lg p-4 mb-6 border border-[#DBEAFE] shadow-sm'}>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="text-sm">
-              <span className="text-gray-400">現在の階級：</span>
-              <span className="text-purple-400 font-bold">Gold</span>
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>現在の階級：</span>
+              <span className={theme === 'dark' ? 'text-purple-400 font-bold' : 'text-[#1E40AF] font-bold'}>Gold</span>
             </div>
             <div className="text-sm">
-              <span className="text-gray-400">レベル：</span>
-              <span className="text-blue-400 font-bold">25</span>
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>レベル：</span>
+              <span className={theme === 'dark' ? 'text-blue-400 font-bold' : 'text-[#3B82F6] font-bold'}>25</span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <span className="text-yellow-400 text-xl">💎</span>
-              <span className="font-bold">1,250</span>
-              <span className="text-gray-400 text-sm">ジェム</span>
+              <span className={theme === 'dark' ? 'font-bold text-white' : 'font-bold text-[#1E40AF]'}>1,250</span>
+              <span className={theme === 'dark' ? 'text-gray-400 text-sm' : 'text-gray-500 text-sm'}>ジェム</span>
             </div>
           </div>
         </div>
@@ -87,19 +84,31 @@ export default function ShopPage() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex space-x-2">
           <button 
-            className={`px-4 py-2 rounded-lg ${filter === 'all' ? 'bg-blue-600' : 'bg-gray-700'}`}
+            className={`px-4 py-2 rounded-lg ${
+              filter === 'all' 
+                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
+                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+            }`}
             onClick={() => setFilter('all')}
           >
             すべて
           </button>
           <button 
-            className={`px-4 py-2 rounded-lg ${filter === 'available' ? 'bg-blue-600' : 'bg-gray-700'}`}
+            className={`px-4 py-2 rounded-lg ${
+              filter === 'available' 
+                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
+                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+            }`}
             onClick={() => setFilter('available')}
           >
             解放可能
           </button>
           <button 
-            className={`px-4 py-2 rounded-lg ${filter === 'new' ? 'bg-blue-600' : 'bg-gray-700'}`}
+            className={`px-4 py-2 rounded-lg ${
+              filter === 'new' 
+                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
+                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+            }`}
             onClick={() => setFilter('new')}
           >
             新着
@@ -109,7 +118,11 @@ export default function ShopPage() {
           <input 
             type="search"
             placeholder="コースを検索..."
-            className="bg-gray-700 rounded-lg px-4 py-2 w-64"
+            className={`rounded-lg px-4 py-2 w-64 ${
+              theme === 'dark' 
+                ? 'bg-gray-700 text-white' 
+                : 'bg-white border border-[#DBEAFE] text-[#1E40AF]'
+            }`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -128,7 +141,7 @@ export default function ShopPage() {
             levelRequired={course.levelRequired}
             rankRequired={course.rankRequired}
             gradient={course.gradient}
-            onUnlock={() => handleUnlock(course.id)}
+            onUnlock={() => console.log('Unlocking course:', course.id)}
           />
         ))}
       </div>
@@ -136,11 +149,35 @@ export default function ShopPage() {
       {/* ページネーション */}
       <div className="flex justify-center mt-8">
         <div className="flex space-x-2">
-          <button className="px-4 py-2 bg-gray-700 rounded-lg">前へ</button>
-          <button className="px-4 py-2 bg-blue-600 rounded-lg">1</button>
-          <button className="px-4 py-2 bg-gray-700 rounded-lg">2</button>
-          <button className="px-4 py-2 bg-gray-700 rounded-lg">3</button>
-          <button className="px-4 py-2 bg-gray-700 rounded-lg">次へ</button>
+          <button className={`px-4 py-2 rounded-lg ${
+            theme === 'dark' 
+              ? 'bg-gray-700' 
+              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+          }`}>
+            前へ
+          </button>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg">1</button>
+          <button className={`px-4 py-2 rounded-lg ${
+            theme === 'dark' 
+              ? 'bg-gray-700' 
+              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+          }`}>
+            2
+          </button>
+          <button className={`px-4 py-2 rounded-lg ${
+            theme === 'dark' 
+              ? 'bg-gray-700' 
+              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+          }`}>
+            3
+          </button>
+          <button className={`px-4 py-2 rounded-lg ${
+            theme === 'dark' 
+              ? 'bg-gray-700' 
+              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
+          }`}>
+            次へ
+          </button>
         </div>
       </div>
     </div>

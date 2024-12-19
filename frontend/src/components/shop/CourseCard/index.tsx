@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useTheme } from '@/context/ThemeContext';
 
 interface CourseCardProps {
   title: string;
@@ -21,6 +24,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   gradient,
   onUnlock,
 }) => {
+  const { theme } = useTheme();
+
   const getStatusBadge = () => {
     const badges = {
       unlocked: { text: '解放済み', color: 'bg-green-500' },
@@ -37,68 +42,74 @@ export const CourseCard: React.FC<CourseCardProps> = ({
     );
   };
 
-  const getButton = () => {
-    switch (status) {
-      case 'unlocked':
-        return (
-          <button 
-            className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg"
-            onClick={onUnlock}
-          >
-            受講開始
-          </button>
-        );
-      case 'available':
-        return (
-          <button 
-            className="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded-lg"
-            onClick={onUnlock}
-          >
-            ジェムで解放
-          </button>
-        );
-      default:
-        return (
-          <button 
-            className="w-full bg-gray-700 py-2 rounded-lg cursor-not-allowed" 
-            disabled
-          >
-            {levelRequired ? `レベル${levelRequired}で解放` : `${rankRequired}にアップグレード`}
-          </button>
-        );
-    }
-  };
-
   return (
-    <div className={`bg-gray-800 rounded-lg overflow-hidden ${status !== 'unlocked' && status !== 'available' ? 'opacity-75' : ''}`}>
+    <div className={`${
+      theme === 'dark' 
+        ? 'bg-gray-800' 
+        : 'bg-white border border-[#DBEAFE] shadow-sm'
+    } rounded-lg overflow-hidden ${
+      status !== 'unlocked' && status !== 'available' ? 'opacity-75' : ''
+    }`}>
       <div className={`h-40 ${gradient} relative`}>
         {getStatusBadge()}
       </div>
       <div className="p-4">
-        <h3 className="font-bold text-lg mb-2 text-white">{title}</h3>
-        <p className="text-sm text-gray-400 mb-4">
+        <h3 className={`font-bold text-lg mb-2 ${
+          theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+        }`}>
+          {title}
+        </h3>
+        <p className={`text-sm mb-4 ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+        }`}>
           {description}
         </p>
         {(gemCost || levelRequired || rankRequired) && (
           <div className="flex justify-between items-center mb-4">
             {levelRequired && (
               <div className="flex items-center space-x-2">
-                <span className="text-blue-400">Lv.{levelRequired}</span>
-                <span className="text-gray-400">必要</span>
+                <span className={theme === 'dark' ? 'text-blue-400' : 'text-[#3B82F6]'}>
+                  Lv.{levelRequired}
+                </span>
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                  必要
+                </span>
               </div>
             )}
             {gemCost && (
               <div className="flex items-center space-x-2">
                 <span className="text-yellow-400">💎</span>
-                <span className="text-white">{gemCost}</span>
+                <span className={theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}>
+                  {gemCost}
+                </span>
               </div>
             )}
             {rankRequired && (
-              <span className="text-sm text-gray-400">または {rankRequired}階級</span>
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                または {rankRequired}階級
+              </span>
             )}
           </div>
         )}
-        {getButton()}
+        <button
+          onClick={onUnlock}
+          className={`w-full py-2 rounded-lg ${
+            status === 'unlocked'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : status === 'available'
+              ? theme === 'dark'
+                ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                : 'bg-[#DBEAFE] hover:bg-[#3B82F6] hover:text-white text-[#3B82F6]'
+              : theme === 'dark'
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          {status === 'unlocked' ? '受講開始'
+            : status === 'available' ? 'ジェムで解放'
+            : levelRequired ? `レベル${levelRequired}で解放`
+            : `${rankRequired}にアップグレード`}
+        </button>
       </div>
     </div>
   );
