@@ -1,29 +1,61 @@
-import { Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
-import { AuthenticatedRequest } from '../shared/types/auth.types';
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { createLogger } from '../config/logger';
+import asyncHandler from 'express-async-handler';
 
-export const adminAuth = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ error: '認証が必要です' });
+const logger = createLogger('AdminAuth');
+
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: string;
+    email: string;
+    userRank: string;
+  };
+}
+
+export const adminAuthMiddleware = asyncHandler(
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader?.startsWith('Bearer ')) {
+      logger.warn('No authorization header or invalid format');
+      res.status(401).json({ 
+        success: false,
+        error: '認証が必要です' 
+      });
       return;
     }
 
-    const mongoUser = await mongoose.model('User').findOne({ 
-      email: req.user.email 
-    });
+    const token = authHeader.split(' ')[1];
+    
+    try {
+      const decoded = jwt.verify(
+        token, 
+        process.env.JWT_SECRET || 'your-secret-key'
+      ) as {
+        userId: string;
+        email: string;
+        userRank: string;
+      };
 
-    if (!mongoUser || mongoUser.userRank !== '管理者') {
-      res.status(403).json({ error: '管理者権限が必要です' });
+      if (decoded.userRank !== '管理者') {
+        logger.warn(`Unauthorized access attempt by user: ${decoded.email}`);
+        res.status(403).json({ 
+          success: false,
+          error: '管理者権限が必要です' 
+        });
+        return;
+      }
+
+      req.user = decoded;
+      next();
+    } catch (error) {
+      logger.error('Authentication error:', error);
+      res.status(401).json({ 
+        success: false,
+        error: 'トークンが無効です' 
+      });
       return;
     }
-
-    next();
-  } catch (error) {
-    res.status(500).json({ error: 'サーバーエラーが発生しました' });
   }
-};
+);

@@ -1,16 +1,6 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import { ToastProvider } from '@/context/ToastContext';
 import { ThemeProvider } from '@/context/ThemeContext';
-import { AuthProvider } from '@/contexts/AuthContext';
-import BaseLayout from '@/components/layout/BaseLayout';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: '大和ViSiON',
-  description: 'AIスキル習得のためのオンライン学習プラットフォーム',
-};
+import './globals.css';
 
 export default function RootLayout({
   children,
@@ -18,15 +8,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja" suppressHydrationWarning>
-      <body className={`${inter.className}`}>
-        <AuthProvider>
-          <ThemeProvider>
-            <div className="yamato-theme">
-              <BaseLayout>{children}</BaseLayout>
-            </div>
-          </ThemeProvider>
-        </AuthProvider>
+    <html lang="ja">
+      <body>
+        <ThemeProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

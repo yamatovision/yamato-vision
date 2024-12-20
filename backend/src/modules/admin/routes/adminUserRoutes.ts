@@ -4,7 +4,7 @@ import { adminAuthMiddleware } from '../../../middlewares/adminAuth';
 
 const router = express.Router();
 
-// 管理者認証ミドルウェアを適用
+// 全てのルートに管理者認証を適用
 router.use(adminAuthMiddleware);
 
 // ユーザー管理のエンドポイント
