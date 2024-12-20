@@ -1,4 +1,4 @@
-import { UserList } from "@/components/admin/users/UserList";
+import { UserList } from './UserList';
 
 export default function UsersPage() {
   return (

@@ -1,4 +1,4 @@
-import { StatGrid } from '@/components/admin/dashboard/StatGrid';
+import { StatGrid } from './dashboard/StatGrid';
 
 export default function AdminDashboard() {
   return (

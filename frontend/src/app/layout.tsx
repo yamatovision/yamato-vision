@@ -1,6 +1,7 @@
-import { ToastProvider } from '@/context/ToastContext';
-import { ThemeProvider } from '@/context/ThemeContext';
-import './globals.css';
+import { AuthProvider } from '@/contexts/auth';
+import { ThemeProvider } from '@/contexts/theme';
+import { ToastProvider } from '@/contexts/toast';
+import '@/styles/globals.css';
 
 export default function RootLayout({
   children,
@@ -10,11 +11,13 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
-        <ThemeProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

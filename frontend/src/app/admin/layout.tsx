@@ -48,12 +48,6 @@ export default function AdminLayout({
 
       {/* メインコンテンツ */}
       <main className="bg-[#F5F7FB] overflow-auto">
-        <div className="h-16 bg-white border-b px-6 flex items-center justify-between">
-          <div className="font-medium">{/* ページタイトル等 */}</div>
-          <button className="px-4 py-2 bg-[#4A90E2] text-white rounded-md hover:bg-[#357ABD]">
-            新規作成
-          </button>
-        </div>
         <div className="p-6">
           {children}
         </div>
