@@ -116,6 +116,14 @@ export default function LoginForm({ redirectUrl }: LoginFormProps) {
             >
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
+<div className="mt-4 text-center">
+  <a
+    href={`${BLUELAMP_URL}/password/reset?source=yamatovision&redirect=${encodeURIComponent(window.location.origin)}`}
+    className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+  >
+    パスワードをお忘れの方はこちら
+  </a>
+</div>
           </div>
         </form>
       </div>
