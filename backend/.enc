@@ -1,0 +1,9 @@
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+MONGODB_URI="mongodb+srv://lisence:FhpQAu5UPwjm0L1J@motherprompt-cluster.np3xp.mongodb.net/motherprompt?retryWrites=true&w=majority&appName=MotherPrompt-Cluster"
+DATABASE_URL="postgresql://yamato_admin:yamatovision2024@localhost:5432/yamato_vision?schema=public"
+JWT_SECRET=your-secure-secret-key-here
+JWT_EXPIRES_IN=344h
+
+
+

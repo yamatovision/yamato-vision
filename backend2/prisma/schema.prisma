@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ユーザーモデル
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  level         Int       @default(1)
+  experience    Int       @default(0)
+  rank          String    @default("お試し")  // お試し、初伝、中伝、奥伝、皆伝、極伝
+  gems          Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  status      UserStatus  @default(ACTIVE)
+  mongoId     String?    @unique  // MongoDBとの紐付け用
+  nickname    String?    // ニックネーム用
+    snsLinks    Json?     // SNSリンク用
+  isRankingVisible Boolean @default(true)  // ランキング表示設定
+  isProfileVisible Boolean @default(true)  // プロフィール表示設定
+  message     String?   // 一言メッセージ
+  badges      UserBadge[]
+    avatarUrl    String?   // アバター画像のURL
+  // リレーション
+  courses       UserCourse[]
+  submissions   Submission[]
+  forumPosts    ForumPost[]
+  comments      Comment[]
+  purchases     Purchase[]    // 追加
+  
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENALTY
+}
+
+
+// コースモデル
+model Course {
+  id          String      @id @default(cuid())
+  title       String
+  description String
+  level       Int         @default(1)
+  gemCost     Int         @default(0)
+  rankRequired String?    // 必要な階級
+  levelRequired Int?      // 必要なレベル
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // リレーション
+  tasks       Task[]
+  users       UserCourse[]
+  products    Product[]    // 追加
+}
+
+// ユーザーとコースの中間テーブル
+model UserCourse {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  progress    Int       @default(0)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  // リレーション
+  user        User      @relation(fields: [userId], references: [id])
+  course      Course    @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+// 課題モデル
+model Task {
+  id          String    @id @default(cuid())
+  courseId    String
+  title       String
+  description String
+  type        String    // text, project, final
+  maxPoints   Int
+  timeLimit   Int?      // 制限時間（分）
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // リレーション
+  course      Course     @relation(fields: [courseId], references: [id])
+  submissions Submission[]
+}
+
+// 提出物モデル
+model Submission {
+  id          String    @id @default(cuid())
+  userId      String
+  taskId      String
+  content     String
+  points      Int?
+  feedback    String?
+  submittedAt DateTime  @default(now())
+  evaluatedAt DateTime?
+
+  // リレーション
+  user        User      @relation(fields: [userId], references: [id])
+  task        Task      @relation(fields: [taskId], references: [id])
+}
+
+// フォーラム投稿モデル
+model ForumPost {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  likes       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+    isVisible   Boolean   @default(true)  // 投稿の表示/非表示
+
+
+  // リレーション
+  user        User      @relation(fields: [userId], references: [id])
+  comments    Comment[]
+}
+
+// コメントモデル
+model Comment {
+  id          String    @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isVisible   Boolean   @default(true)  // コメントの表示/非表示
+  // リレーション
+  post        ForumPost @relation(fields: [postId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+// デイリーミッションモデル
+model DailyMission {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  gemReward   Int
+  expReward   Int
+  type        String    // comment, post, complete_task など
+  requirement Int       // 達成に必要な数
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ミッション関連の列挙型
+enum MissionType {
+  DAILY
+  MONTHLY
+  ACHIEVEMENT
+}
+
+enum MissionConditionType {
+  REPORT
+  COMMENT
+  LIKE
+  TASK_COMPLETE
+  CUSTOM
+}
+
+// ミッションモデル
+model Mission {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  missionType MissionType    // 文字列から列挙型に変更
+  duration    Int?
+  conditions  Json
+  isActive    Boolean        @default(true)
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  reward      MissionReward?
+
+  @@index([missionType])
+  @@index([isActive])
+}
+
+// 報酬モデル
+model MissionReward {
+  id        String   @id @default(cuid())
+  missionId String   @unique
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  gems      Int
+  exp       Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([missionId])
+}
+
+// 商品モデル
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  description   String
+  type          ProductType
+  price         Int
+  gemAmount     Int?      // トークンパッケージの場合の獲得ジェム数
+  courseId      String?   // コース商品の場合の関連コース
+  rankRequired  String?   // 必要な階級
+  levelRequired Int?      // 必要なレベル
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // リレーション
+  course        Course?   @relation(fields: [courseId], references: [id])
+  purchases     Purchase[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+// 商品タイプの列挙型
+enum ProductType {
+  COURSE
+  GEM_PACKAGE
+  SPECIAL_ITEM
+}
+
+// 購入履歴モデル
+model Purchase {
+  id          String    @id @default(cuid())
+  userId      String
+  productId   String
+  amount      Int
+  totalPrice  Int
+  status      PurchaseStatus
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // リレーション
+  user        User      @relation(fields: [userId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+// 購入ステータスの列挙型
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+
+model Badge {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  iconUrl     String
+  condition   BadgeCondition
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+enum BadgeCondition {
+  LIKES_COUNT      // 良いね数達成
+  COURSE_COMPLETE  // コース完了
+  TASK_COMPLETE    // 課題完了
+  POST_COUNT       // 投稿数達成
+  COMMENT_COUNT    // コメント数達成
+  CUSTOM          // カスタム条件
+}

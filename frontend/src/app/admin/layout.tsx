@@ -1,8 +1,28 @@
+'use client';
+
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
 export default function AdminLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // 非認証または管理者以外の場合、ホームページへリダイレクト
+    if (!user || user.rank !== '管理者') {
+      router.push('/');
+    }
+  }, [user, router]);
+
+  // 非認証または管理者以外の場合はレンダリングしない
+  if (!user || user.rank !== '管理者') {
+    return null;
+  }
   return (
     <div className="grid h-screen" style={{ gridTemplateColumns: '280px 1fr' }}>
       {/* サイドバー */}

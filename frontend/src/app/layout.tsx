@@ -1,4 +1,4 @@
-import { AuthProvider } from '@/contexts/auth';
+import { AuthProvider } from '@/contexts/AuthProvider';  // ファイル名を正しく参照
 import { ThemeProvider } from '@/contexts/theme';
 import { ToastProvider } from '@/contexts/toast';
 import '@/styles/globals.css';
