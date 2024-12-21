@@ -2,14 +2,6 @@ import { Request, Response } from 'express';
 import { ProfileService } from './profileService';
 import { ProfileUpdateParams } from './profileTypes';
 
-interface AuthRequest extends Request {
-  user?: {
-    id: string;  // userId から id に変更
-    email: string;
-    rank: string;
-  };
-}
-
 export class ProfileController {
   private profileService: ProfileService;
 
@@ -17,9 +9,12 @@ export class ProfileController {
     this.profileService = new ProfileService();
   }
 
-  async getProfile(req: AuthRequest, res: Response): Promise<void> {
+  async getProfile(req: Request, res: Response): Promise<void> {
     try {
+      console.log('Request user object:', req.user);
+
       if (!req.user?.id) {
+        console.log('No user ID found in request');
         res.status(401).json({
           success: false,
           message: '認証が必要です'
@@ -27,6 +22,7 @@ export class ProfileController {
         return;
       }
 
+      console.log('Attempting to fetch profile for user ID:', req.user.id);
       const profile = await this.profileService.getProfile(req.user.id);
       
       res.json({
@@ -42,7 +38,7 @@ export class ProfileController {
     }
   }
 
-  async updateProfile(req: AuthRequest, res: Response): Promise<void> {
+  async updateProfile(req: Request, res: Response): Promise<void> {
     try {
       if (!req.user?.id) {
         res.status(401).json({
@@ -78,7 +74,7 @@ export class ProfileController {
     }
   }
 
-  async updateAvatar(req: AuthRequest, res: Response): Promise<void> {
+  async updateAvatar(req: Request, res: Response): Promise<void> {
     try {
       if (!req.user?.id) {
         res.status(401).json({

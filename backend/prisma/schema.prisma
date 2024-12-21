@@ -14,7 +14,6 @@ model User {
   name             String?
   level            Int          @default(1)
   experience       Int          @default(0)
-rank          String    @default("お試し")
   gems             Int          @default(0)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
@@ -26,6 +25,7 @@ rank          String    @default("お試し")
   isProfileVisible Boolean      @default(true)
   message          String?
   avatarUrl        String?
+  rank             String       @default("お試し")
   comments         Comment[]
   forumPosts       ForumPost[]
   purchases        Purchase[]
@@ -213,7 +213,6 @@ model UserBadge {
 
   @@unique([userId, badgeId])
 }
-
 
 enum UserStatus {
   ACTIVE
