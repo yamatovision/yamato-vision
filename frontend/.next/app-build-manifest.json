@@ -6,15 +6,20 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/user/layout": [
+    "/admin/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/layout.js"
+      "static/chunks/app/admin/layout.js"
     ],
-    "/user/home/page": [
+    "/admin/users/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/home/page.js"
+      "static/chunks/app/admin/users/page.js"
+    ],
+    "/admin/badges/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/badges/page.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",

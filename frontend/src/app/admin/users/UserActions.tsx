@@ -21,7 +21,7 @@ export function UserActions({ userId, currentStatus, onUpdate }: UserActionsProp
   const fetchBadges = async () => {
     if (activeTab === 'badges' && badges.length === 0) {
       try {
-        const response = await fetch('/api/admin/badges');
+        const response = await fetch('/api/badges');
         const data = await response.json();
         if (data.success) {
           setBadges(data.data);
@@ -43,7 +43,7 @@ export function UserActions({ userId, currentStatus, onUpdate }: UserActionsProp
     if (gemAmount <= 0) return;
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/gems`, {
+      const response = await fetch(`/api/users/admin/users/${userId}/gems`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: gemAmount })
@@ -66,7 +66,7 @@ export function UserActions({ userId, currentStatus, onUpdate }: UserActionsProp
     if (!selectedBadgeId) return;
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/badges`, {
+      const response = await fetch(`/api/users/admin/users/${userId}/badges`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ badgeId: selectedBadgeId })
@@ -88,7 +88,7 @@ export function UserActions({ userId, currentStatus, onUpdate }: UserActionsProp
   const handlePenaltyToggle = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/penalty`, {
+      const response = await fetch(`/api/users/admin/users/${userId}/penalty`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPenalty: currentStatus !== 'PENALTY' })

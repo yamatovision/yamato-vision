@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AdminUser } from '@/types/admin';
 import { UserActions } from './UserActions';
 import { UserSearch } from './UserSearch';
+import api from '@/lib/api/auth';
 
 interface SortConfig {
   field: string;
@@ -31,12 +32,19 @@ export function UserList() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/users?page=${page}&search=${searchParams.query}&searchBy=${searchParams.searchBy}&sortBy=${sortConfig.field}&order=${sortConfig.order}`);
-      const data = await response.json();
+      const response = await api.get(`/users/admin/users`, {
+        params: {
+          page,
+          search: searchParams.query,
+          searchBy: searchParams.searchBy,
+          sortBy: sortConfig.field,
+          order: sortConfig.order
+        }
+      });
       
-      if (data.success) {
-        setUsers(data.data.users);
-        setTotalPages(data.data.pagination.totalPages);
+      if (response.data.success) {
+        setUsers(response.data.data.users);
+        setTotalPages(response.data.data.pagination.totalPages);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
