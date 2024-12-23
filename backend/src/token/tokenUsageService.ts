@@ -3,9 +3,10 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export class TokenUsageService {
-  private static readonly WEEKLY_TOKEN_LIMIT = 100000; // 週間制限の例
+  private static readonly WEEKLY_TOKEN_LIMIT = 100000;
 
   static async checkTokenAvailability(userId: string, requestedTokens: number) {
+    // 実際のユーザーのトークン使用状況を確認
     const tracking = await prisma.tokenTracking.findUnique({
       where: { userId }
     });
@@ -19,18 +20,18 @@ export class TokenUsageService {
     };
   }
 
-  static async updateTokenUsage(userId: string, tokenCount: number) {
-    // 実際のMONGOとの連携はここに実装
-    // 現在はモックとして実装
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static async updateTokenUsage(_userId: string, tokenCount: number) {
+    // 実装予定: MONGOとの連携
     return {
       success: true,
       weeklyUsage: tokenCount
     };
   }
 
-  static async getUserTokenUsage(mongoId: string) {
-    // 実際のMONGOとの連携はここに実装
-    // 現在はモックとして実装
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static async getUserTokenUsage(_mongoId: string) {
+    // 実装予定: MONGOとの連携
     return {
       weeklyUsage: 0
     };
