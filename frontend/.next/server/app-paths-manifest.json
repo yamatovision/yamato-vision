@@ -1,19 +1,5 @@
 {
-  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/login/page": "app/login/page.js",
-  "/test-levelup/page": "app/test-levelup/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/admin/level-messages/page": "app/admin/level-messages/page.js",
-  "/admin/badges/page": "app/admin/badges/page.js",
-  "/admin/notices/page": "app/admin/notices/page.js",
-  "/api/users/profile/route": "app/api/users/profile/route.js",
-  "/admin/users/page": "app/admin/users/page.js",
-  "/user/courses/page": "app/user/courses/page.js",
-  "/user/shop/page": "app/user/shop/page.js",
-  "/user/home/page": "app/user/home/page.js",
-  "/admin/badges/[badgeId]/page": "app/admin/badges/[badgeId]/page.js",
-  "/admin/notices/[noticeId]/page": "app/admin/notices/[noticeId]/page.js",
-  "/user/courses/[courseId]/page": "app/user/courses/[courseId]/page.js",
-  "/user/forum/page": "app/user/forum/page.js",
-  "/user/forum/[postId]/page": "app/user/forum/[postId]/page.js"
+  "/user/home/page": "app/user/home/page.js"
 }
