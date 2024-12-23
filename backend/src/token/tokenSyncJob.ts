@@ -1,5 +1,5 @@
 import { CronJob } from 'cron';
-import { TokenProcessingService } from '../services/token/tokenProcessingService';
+import { TokenProcessingService } from './tokenProcessingService';
 
 // 1時間ごとの同期
 export const tokenSyncJob = new CronJob('0 * * * *', async () => {

@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { TokenUsageService } from './tokenUsageService';
-import { TokenSyncService } from './tokenSyncService';
 
 const prisma = new PrismaClient();
 
