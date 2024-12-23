@@ -8,31 +8,31 @@ datasource db {
 }
 
 model User {
-  id               String       @id @default(cuid())
-  email            String       @unique
+  id               String         @id @default(cuid())
+  email            String         @unique
   password         String
   name             String?
-  level            Int          @default(1)
-  experience       Int          @default(0)
-  gems             Int          @default(0)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  status           UserStatus   @default(ACTIVE)
-  mongoId          String?      @unique
+  level            Int            @default(1)
+  experience       Int            @default(0)
+  gems             Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  status           UserStatus     @default(ACTIVE)
+  mongoId          String?        @unique
   nickname         String?
   snsLinks         Json?
-  isRankingVisible Boolean      @default(true)
-  isProfileVisible Boolean      @default(true)
+  isRankingVisible Boolean        @default(true)
+  isProfileVisible Boolean        @default(true)
   message          String?
   avatarUrl        String?
-  rank             String       @default("お試し")
+  rank             String         @default("お試し")
   comments         Comment[]
   forumPosts       ForumPost[]
   purchases        Purchase[]
   submissions      Submission[]
+  tokenTracking    TokenTracking?
   badges           UserBadge[]
   courses          UserCourse[]
-    tokenTracking    TokenTracking?  // 追加
 }
 
 model Course {
@@ -215,6 +215,26 @@ model UserBadge {
   @@unique([userId, badgeId])
 }
 
+model TokenTracking {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  weeklyTokens      Int      @default(0)
+  unprocessedTokens Int      @default(0)
+  lastSyncedAt      DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model LevelMessage {
+  id        String   @id @default(cuid())
+  level     Int      @unique
+  message   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -255,22 +275,4 @@ enum BadgeCondition {
   POST_COUNT
   COMMENT_COUNT
   CUSTOM
-}
-model TokenTracking {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  weeklyTokens     Int      @default(0)
-  unprocessedTokens Int     @default(0)
-  lastSyncedAt     DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             User     @relation(fields: [userId], references: [id])
-}
-model LevelMessage {
-  id        String   @id @default(cuid())
-  level     Int      @unique
-  message   String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
