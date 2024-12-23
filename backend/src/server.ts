@@ -4,9 +4,11 @@ import dotenv from 'dotenv';
 import authRoutes from './auth/authRoutes';
 import userRoutes from './users/userRoutes';
 import badgeRoutes from './badges/badgeRoutes';
+import levelMessageRoutes from './levelMessages/levelMessageRoutes';
+import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
-
+export const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -18,6 +20,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/level-messages', levelMessageRoutes);
+
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {
