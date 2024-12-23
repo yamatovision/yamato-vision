@@ -2,10 +2,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/contexts/theme';
-import { Post } from './types';
+import { Post } from '@/types/forum';
+
 interface PostCardProps {
   post: Post;
 }
+
 export function PostCard({ post }: PostCardProps) {
   const { theme } = useTheme();
   return (

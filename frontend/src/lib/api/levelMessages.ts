@@ -1,13 +1,24 @@
-// lib/api/levelMessages.ts
 import api from './auth';
-import { LevelMessageResponse } from '@/types/admin';
+import { LevelMessage } from '@/types/levelMessage';
+
+interface LevelMessageListResponse {
+  success: boolean;
+  data: LevelMessage[];
+  message?: string;
+}
+
+interface SingleLevelMessageResponse {
+  success: boolean;
+  data: LevelMessage;
+  message?: string;
+}
 
 export const levelMessageAPI = {
-  getAll: () => api.get<LevelMessageResponse>('/level-messages'),
+  getAll: () => api.get<LevelMessageListResponse>('/level-messages'),
   create: (data: { level: number; message: string }) => 
-    api.post<LevelMessageResponse>('/level-messages', data),
-  update: (id: string, data: { message?: string; isActive?: boolean }) =>
-    api.patch<LevelMessageResponse>(`/level-messages/${id}`, data),
+    api.post<SingleLevelMessageResponse>('/level-messages', data),
+  update: (id: string, data: Partial<LevelMessage>) =>
+    api.patch<SingleLevelMessageResponse>(`/level-messages/${id}`, data),
   delete: (id: string) => 
-    api.delete<LevelMessageResponse>(`/level-messages/${id}`)
+    api.delete<SingleLevelMessageResponse>(`/level-messages/${id}`)
 };

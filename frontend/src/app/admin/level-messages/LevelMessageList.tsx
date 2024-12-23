@@ -1,20 +1,14 @@
 // frontend/src/app/admin/level-messages/LevelMessageList.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/contexts/toast';
 import { levelMessageAPI } from '@/lib/api/levelMessages';
-
-interface LevelMessage {
-  id: string;
-  level: number;
-  message: string;
-  isActive: boolean;
-}
+import { LevelMessage } from '@/types/levelMessage';
 
 interface Props {
   onEdit: (message: LevelMessage) => void;
 }
+
 
 export function LevelMessageList({ onEdit }: Props) {
   const [messages, setMessages] = useState<LevelMessage[]>([]);
@@ -29,7 +23,11 @@ export function LevelMessageList({ onEdit }: Props) {
     try {
       const response = await levelMessageAPI.getAll();
       if (response.data.success) {
-        setMessages(response.data.data);
+        // 配列であることを保証
+        const messageData = Array.isArray(response.data.data) 
+          ? response.data.data 
+          : [response.data.data];
+        setMessages(messageData);
       }
     } catch (error) {
       showToast('メッセージの取得に失敗しました', 'error');

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from '@/contexts/theme';
-import { Post, PostCreateInput } from './types';
+import { Post, PostCreateInput } from '@/types/forum';
 import { PostCard } from './components/PostCard';
 import { PostEditor } from './components/PostEditor';
 
@@ -19,7 +19,8 @@ const mockPosts: Post[] = [
     updatedAt: new Date(),
     likes: 42,
     commentsCount: 15,
-    tags: ['AI', 'プロンプト', 'テクニック']
+    tags: ['AI', 'プロンプト', 'テクニック'],
+    isVisible: true
   },
   {
     id: '2',
@@ -32,10 +33,12 @@ const mockPosts: Post[] = [
     updatedAt: new Date(),
     likes: 38,
     commentsCount: 23,
-    tags: ['AI', '最適化', 'パフォーマンス']
+    tags: ['AI', '最適化', 'パフォーマンス'],
+    isVisible: true
   }
 ];
 
+// 残りのコードは同じ
 export default function ForumPage() {
   const { theme } = useTheme();
   const [posts, setPosts] = useState<Post[]>(mockPosts);

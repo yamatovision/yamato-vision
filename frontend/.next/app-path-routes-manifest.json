@@ -1,0 +1,19 @@
+{
+  "/page": "/",
+  "/login/page": "/login",
+  "/test-levelup/page": "/test-levelup",
+  "/admin/page": "/admin",
+  "/admin/level-messages/page": "/admin/level-messages",
+  "/admin/badges/page": "/admin/badges",
+  "/admin/notices/page": "/admin/notices",
+  "/api/users/profile/route": "/api/users/profile",
+  "/admin/users/page": "/admin/users",
+  "/user/courses/page": "/user/courses",
+  "/user/shop/page": "/user/shop",
+  "/user/home/page": "/user/home",
+  "/admin/badges/[badgeId]/page": "/admin/badges/[badgeId]",
+  "/admin/notices/[noticeId]/page": "/admin/notices/[noticeId]",
+  "/user/courses/[courseId]/page": "/user/courses/[courseId]",
+  "/user/forum/page": "/user/forum",
+  "/user/forum/[postId]/page": "/user/forum/[postId]"
+}

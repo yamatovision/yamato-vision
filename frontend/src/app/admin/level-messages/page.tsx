@@ -1,13 +1,13 @@
-// frontend/src/app/admin/level-messages/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { LevelMessageList } from './LevelMessageList';
 import { LevelMessageForm } from './LevelMessageForm';
+import { LevelMessage } from '@/types/levelMessage';
 
 export default function LevelMessagesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingMessage, setEditingMessage] = useState<any>(null);
+  const [editingMessage, setEditingMessage] = useState<LevelMessage | undefined>(undefined);  // null から undefined に変更
 
   return (
     <div className="space-y-6">
@@ -15,7 +15,7 @@ export default function LevelMessagesPage() {
         <h1 className="text-2xl font-bold text-[#2C3E50]">レベルメッセージ管理</h1>
         <button
           onClick={() => {
-            setEditingMessage(null);
+            setEditingMessage(undefined);  // null から undefined に変更
             setIsFormOpen(true);
           }}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
@@ -36,7 +36,7 @@ export default function LevelMessagesPage() {
           message={editingMessage}
           onClose={() => {
             setIsFormOpen(false);
-            setEditingMessage(null);
+            setEditingMessage(undefined);  // null から undefined に変更
           }}
         />
       )}

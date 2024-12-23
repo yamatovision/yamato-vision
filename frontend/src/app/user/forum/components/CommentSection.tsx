@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { Comment } from './types';
+import { Comment } from '@/types/forum';
 
 interface CommentSectionProps {
   comments: Comment[];

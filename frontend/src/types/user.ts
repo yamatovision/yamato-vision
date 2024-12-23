@@ -8,10 +8,9 @@ export interface User {
   gems: number;
   avatarUrl?: string;
   message?: string;
-  snsLinks: Array<{
-    type: string;
-    value: string;
-  }>;
+  snsLinks: {
+    [key: string]: string;
+  };
   badges: Array<{
     id: string;
     title: string;

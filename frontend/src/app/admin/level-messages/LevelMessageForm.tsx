@@ -1,15 +1,8 @@
-// frontend/src/app/admin/level-messages/LevelMessageForm.tsx
 'use client';
 import { useState } from 'react';
 import { useToast } from '@/contexts/toast';
 import { levelMessageAPI } from '@/lib/api/levelMessages';
-
-interface LevelMessage {
-  id: string;
-  level: number;
-  message: string;
-  isActive: boolean;
-}
+import { LevelMessage, LevelMessageFormData } from '@/types/levelMessage';
 
 interface Props {
   message?: LevelMessage;
@@ -17,9 +10,9 @@ interface Props {
 }
 
 export function LevelMessageForm({ message, onClose }: Props) {
-  const [formData, setFormData] = useState({
-    level: message?.level || '',
-    message: message?.message || '',
+  const [formData, setFormData] = useState<LevelMessageFormData>({
+    level: message?.level ?? 1,
+    message: message?.message ?? '',
     isActive: message?.isActive ?? true
   });
   const [loading, setLoading] = useState(false);
@@ -46,8 +39,9 @@ export function LevelMessageForm({ message, onClose }: Props) {
         }
       }
     } catch (error) {
+      const err = error as { response?: { data?: { message?: string }; }; message?: string };
       showToast(
-        `${message ? '更新' : '作成'}に失敗しました: ${error.response?.data?.message || error.message}`,
+        `${message ? '更新' : '作成'}に失敗しました: ${err.response?.data?.message || err.message || '不明なエラー'}`,
         'error'
       );
     } finally {
@@ -77,7 +71,7 @@ export function LevelMessageForm({ message, onClose }: Props) {
             <input
               type="number"
               value={formData.level}
-              onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || '' })}
+              onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
               min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required

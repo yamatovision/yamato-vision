@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PostCreateInput } from './types';
+import { PostCreateInput } from '@/types/forum';
 
 interface PostEditorProps {
   onSubmit: (post: PostCreateInput) => Promise<void>;

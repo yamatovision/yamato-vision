@@ -10,6 +10,7 @@ import { AudioPlayer } from '../components/AudioPlayer';
 import { AttachmentFiles } from '../components/AttachmentFiles';
 import { TaskDescription } from '../components/TaskDescription';
 import { Examples } from '../components/Examples';
+import { AttachmentFile } from '@/types/course';  // この行を追加
 
 export default function CoursePage() {
   const { theme } = useTheme();
