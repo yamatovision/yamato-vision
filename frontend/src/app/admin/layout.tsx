@@ -35,6 +35,10 @@ export default function AdminLayout({
             <span>📊</span>
             <span>ダッシュボード</span>
           </a>
+          <a href="/admin/level-messages" className="flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md">
+            <span>⚡</span>
+            <span>レベルメッセージ管理</span>
+          </a>    
           <a href="/admin/notices" className="flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md">
             <span>📢</span>
             <span>お知らせ管理</span>

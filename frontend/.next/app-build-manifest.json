@@ -6,20 +6,20 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/user/layout": [
+    "/admin/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/layout.js"
+      "static/chunks/app/admin/layout.js"
     ],
-    "/user/home/page": [
+    "/admin/level-messages/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/home/page.js"
+      "static/chunks/app/admin/level-messages/page.js"
     ],
-    "/api/users/profile/route": [
+    "/test-levelup/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/users/profile/route.js"
+      "static/chunks/app/test-levelup/page.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",

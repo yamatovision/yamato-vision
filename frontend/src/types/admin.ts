@@ -33,3 +33,18 @@ export interface UsersResponse {
     pagination: PaginationData;
   };
 }
+// types/admin.ts に追加
+export interface LevelMessage {
+  id: string;
+  level: number;
+  message: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LevelMessageResponse {
+  success: boolean;
+  data: LevelMessage | LevelMessage[];
+  message?: string;
+}
