@@ -49,4 +49,19 @@ export class LevelMessageService {
       where: { id }
     });
   }
+// backend/src/levelMessages/levelMessageService.ts
+
+  async processLevelUp(userId: string, newExp: number): Promise<{
+    newLevel: number;
+    message: string | null;
+  }> {
+    const newLevel = Math.floor(newExp / 1000) + 1;
+    
+    const levelMessage = await this.getMessageForLevel(newLevel);
+    
+    return {
+      newLevel,
+      message: levelMessage?.message || null
+    };
+  }
 }

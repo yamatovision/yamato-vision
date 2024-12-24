@@ -22,12 +22,19 @@ export interface ProfileResponse {
   isRankingVisible: boolean;
   isProfileVisible: boolean;
   createdAt: Date;
-  badges: {
+  badges: Array<{
     id: string;
     title: string;
     iconUrl: string;
     earnedAt: Date;
-  }[];
+  }>;
+  // 追加: トークン情報
+  tokens?: {
+    weeklyTokens: number;
+    weeklyLimit: number;
+    purchasedTokens: number;
+    unprocessedTokens: number;
+  } | null;
 }
 
 export interface ProfileListResponse {

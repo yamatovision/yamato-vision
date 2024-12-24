@@ -17,7 +17,10 @@ export interface User {
     title: string;
     iconUrl: string;
   }>;
-  // トークン関連の追加
-  weeklyTokens: number;       // 週間トークン残量
-  unprocessedTokens: number;  // 未処理トークン量
+  tokens?: {
+    weeklyTokens: number;     // 週間使用量
+    weeklyLimit: number;      // 基本制限
+    purchasedTokens: number;  // 購入済みトークン
+    unprocessedTokens: number;// 経験値未換算分
+  };
 }

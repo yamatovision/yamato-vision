@@ -218,8 +218,10 @@ model UserBadge {
 model TokenTracking {
   id                String   @id @default(cuid())
   userId            String   @unique
-  weeklyTokens      Int      @default(0)
-  unprocessedTokens Int      @default(0)
+  weeklyTokens      Int      @default(0)    // 週間使用量
+  weeklyLimit       Int      @default(0)    // 基本制限
+  purchasedTokens   Int      @default(0)    // 購入済みトークン
+  unprocessedTokens Int      @default(0)    // 経験値未換算分
   lastSyncedAt      DateTime @default(now())
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

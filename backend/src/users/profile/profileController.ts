@@ -83,20 +83,20 @@ export class ProfileController {
         });
         return;
       }
-
-      const { avatarUrl } = req.body;
+  
+      const { base64Image } = req.body;
       
-      if (!avatarUrl) {
+      if (!base64Image || !base64Image.startsWith('data:image/')) {
         res.status(400).json({
           success: false,
-          message: 'アバターURLが必要です'
+          message: '有効な画像データが必要です'
         });
         return;
       }
-
+  
       const updatedProfile = await this.profileService.updateAvatar(
         req.user.id,
-        avatarUrl
+        base64Image
       );
       
       res.json({
