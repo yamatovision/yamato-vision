@@ -49,6 +49,8 @@ export function HomeProfile() {
           {/* 右カラム: ユーザー情報のスケルトン */}
           <div className="flex-grow pl-6">
             {/* 名前とレベルのスケルトン */}
+
+            
             <div className="flex items-start mb-4">
               <div className="flex items-center w-full space-x-4">
                 <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-40" />
@@ -123,28 +125,57 @@ export function HomeProfile() {
           {/* 右カラム: ユーザー情報 */}
           <div className="flex-grow pl-6">
             {/* 上段: 名前とレベル */}
-            <div className="flex items-start mb-4">
-              <div className="flex items-center w-full space-x-4">
-                <div className="min-w-0 flex-shrink">
-                  <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
-                    {userData?.nickname || userData?.name || '名無しさん'}
-                  </h1>
-                </div>
-                <div className="flex items-center space-x-2 flex-shrink-0">
-                  <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span className="text-xs font-bold text-white">
-                      {userData?.level || 1}
-                    </span>
-                  </div>
-                  <div className="w-32 h-2 rounded-full bg-gray-100 dark:bg-gray-700">
-                    <div 
-                      className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                      style={{width: `${levelProgress}%`}}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+
+            {/* 上段: 名前とレベル */}
+<div className="flex items-start mb-4">
+  <div className="flex items-center w-full space-x-4">
+    <div className="min-w-0 flex-shrink">
+      <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
+        {userData?.nickname || userData?.name || '名無しさん'}
+      </h1>
+    </div>
+
+
+    <div className="flex items-center space-x-2 flex-shrink-0">
+  <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
+    <span className="text-xs font-bold text-white">
+      {userData?.level || 1}
+    </span>
+  </div>
+ 
+  <div className="relative w-32">
+    {/* ここの bg-gray-100 dark:bg-gray-600 を変更することで背景色を変更できます */}
+
+
+    <div className={`h-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} overflow-hidden`}>
+  <div 
+    className={`h-full rounded-full ${theme === 'dark' ? 'bg-blue-500' : 'bg-blue-400'} transition-all duration-300`}
+    style={{width: `${levelProgress}%`}}
+  />
+  <span className={`
+    absolute inset-0 
+    flex items-center justify-end pr-2
+    text-xs font-medium
+    ${theme === 'dark' ? 'text-sky-300' : 'text-blue-700'}
+    drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]
+  `}>
+    {currentLevelExp.toLocaleString()} / {expToNextLevel.toLocaleString()} 
+  </span>
+</div>
+  </div>
+</div>
+
+
+
+
+
+
+
+  </div>
+</div>
+
+
+
 
             {/* 中段: トークンゲージ */}
             <div className="mb-6">
