@@ -15,7 +15,6 @@ export function useProfile() {
     
     if (newData.level > oldData.level) {
       try {
-        // レベルに対応するメッセージを取得
         const response = await levelMessageAPI.getAll();
         const levelMessage = response.data.data.find(
           (msg: any) => msg.level === newData.level && msg.isActive
@@ -42,15 +41,34 @@ export function useProfile() {
     }
   };
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (force = false) => {
+    if (!force) {
+      // キャッシュチェック
+      const cachedData = localStorage.getItem('profileCache');
+      const cacheTimestamp = localStorage.getItem('profileCacheTimestamp');
+      const cacheAge = cacheTimestamp ? Date.now() - Number(cacheTimestamp) : Infinity;
+
+      if (cachedData && cacheAge < 5 * 60 * 1000) {
+        const parsedData = JSON.parse(cachedData);
+        setUserData(parsedData);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const response = await profileAPI.get();
       const newUserData = response.data;
+      
+      // キャッシュを更新
+      localStorage.setItem('profileCache', JSON.stringify(newUserData));
+      localStorage.setItem('profileCacheTimestamp', Date.now().toString());
+
       await checkLevelUp(userData, newUserData);
       setUserData(newUserData);
-      setLoading(false);
     } catch (err) {
       setError('プロフィールの取得に失敗しました');
+    } finally {
       setLoading(false);
     }
   };
@@ -61,6 +79,10 @@ export function useProfile() {
       const newUserData = response.data;
       await checkLevelUp(userData, newUserData);
       setUserData(prev => ({ ...prev, ...newUserData }));
+      
+      // キャッシュを更新
+      localStorage.setItem('profileCache', JSON.stringify(newUserData));
+      localStorage.setItem('profileCacheTimestamp', Date.now().toString());
     } catch (err) {
       throw new Error('プロフィールの更新に失敗しました');
     }
@@ -72,6 +94,10 @@ export function useProfile() {
       const newUserData = response.data;
       await checkLevelUp(userData, newUserData);
       setUserData(prev => ({ ...prev, ...newUserData }));
+      
+      // キャッシュを更新
+      localStorage.setItem('profileCache', JSON.stringify(newUserData));
+      localStorage.setItem('profileCacheTimestamp', Date.now().toString());
     } catch (err) {
       throw new Error('アバターの更新に失敗しました');
     }
@@ -79,7 +105,14 @@ export function useProfile() {
 
   useEffect(() => {
     fetchUserProfile();
-  }, []);
+  }, []); // 依存配列を空にする
 
-  return { userData, loading, error, updateProfile, updateAvatar };
+  return { 
+    userData, 
+    loading, 
+    error, 
+    updateProfile, 
+    updateAvatar,
+    refreshProfile: fetchUserProfile // キャッシュを無視して更新する場合に使用
+  };
 }

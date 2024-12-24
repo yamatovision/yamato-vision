@@ -34,7 +34,51 @@ export function HomeProfile() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 animate-pulse`}>
+        <div className="flex">
+          {/* 左カラム: アバター、階級バッジのスケルトン */}
+          <div className="flex flex-col items-center w-24">
+            <div className="relative mb-4">
+              <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <div className="w-20 h-6 rounded-full bg-gray-200 dark:bg-gray-700" />
+          </div>
+
+          {/* 右カラム: ユーザー情報のスケルトン */}
+          <div className="flex-grow pl-6">
+            {/* 名前とレベルのスケルトン */}
+            <div className="flex items-start mb-4">
+              <div className="flex items-center w-full space-x-4">
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-40" />
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700" />
+                  <div className="w-32 h-2 rounded-full bg-gray-200 dark:bg-gray-700" />
+                </div>
+              </div>
+            </div>
+
+            {/* トークンゲージのスケルトン */}
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+              </div>
+              <div className="h-3 rounded-full bg-gray-200 dark:bg-gray-700" />
+            </div>
+
+            {/* バッジとジェムのスケルトン */}
+            <div className="flex justify-between items-center">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+              <div className="flex-grow ml-6 h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div>Error: {error}</div>;
 
   const currentExp = userData?.experience || 0;

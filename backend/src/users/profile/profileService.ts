@@ -94,60 +94,59 @@ export class ProfileService {
       } : null
     };
   }
-
-
-    async getProfile(userId: string): Promise<ProfileResponse> {
-      try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          include: {
-            badges: {
-              include: {
-                badge: true
-              }
-            },
-            tokenTracking: true  // トークン情報を含める
+  async getProfile(userId: string): Promise<ProfileResponse> {
+    try {
+      // クエリを最適化（必要なデータのみを取得）
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          nickname: true,
+          avatarUrl: true,
+          rank: true,
+          level: true,
+          experience: true,
+          gems: true,
+          message: true,
+          snsLinks: true,
+          isRankingVisible: true,
+          isProfileVisible: true,
+          createdAt: true,
+          badges: {
+            select: {
+              badge: {
+                select: {
+                  id: true,
+                  title: true,
+                  iconUrl: true
+                }
+              },
+              earnedAt: true
+            }
+          },
+          tokenTracking: {
+            select: {
+              weeklyTokens: true,
+              weeklyLimit: true,
+              purchasedTokens: true,
+              unprocessedTokens: true
+            }
           }
-        });
-  
-        if (!user) {
-          throw new Error('ユーザーが見つかりません');
         }
+      });
   
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          nickname: user.nickname,
-          avatarUrl: user.avatarUrl,
-          rank: user.rank,
-          level: user.level,
-          experience: user.experience,
-          gems: user.gems,
-          message: user.message,
-          snsLinks: user.snsLinks as Record<string, string> | null,
-          isRankingVisible: user.isRankingVisible,
-          isProfileVisible: user.isProfileVisible,
-          createdAt: user.createdAt,
-          badges: user.badges.map(ub => ({
-            id: ub.badge.id,
-            title: ub.badge.title,
-            iconUrl: ub.badge.iconUrl,
-            earnedAt: ub.earnedAt
-          })),
-          // 追加: トークン情報
-          tokens: user.tokenTracking ? {
-            weeklyTokens: user.tokenTracking.weeklyTokens,
-            weeklyLimit: user.tokenTracking.weeklyLimit,
-            purchasedTokens: user.tokenTracking.purchasedTokens,
-            unprocessedTokens: user.tokenTracking.unprocessedTokens
-          } : null
-        };
-      } catch (error) {
-        console.error('Failed to get profile:', error);
-        throw new Error('プロフィールの取得に失敗しました');
+      if (!user) {
+        throw new Error('ユーザーが見つかりません');
       }
+  
+      return this.formatProfileResponse(user);
+    } catch (error) {
+      console.error('Failed to get profile:', error);
+      throw new Error('プロフィールの取得に失敗しました');
     }
+  }
     async updateProfile(userId: string, params: ProfileUpdateParams): Promise<ProfileResponse> {
       try {
         const user = await prisma.user.update({
