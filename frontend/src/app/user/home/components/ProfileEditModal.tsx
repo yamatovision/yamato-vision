@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useState, useRef } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
@@ -47,17 +46,74 @@ export function ProfileEditModal({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+  
+    // ファイルサイズチェック (5MB制限)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('画像サイズは5MB以下にしてください');
+      return;
+    }
+  
     try {
       setLoading(true);
-      // TODO: 実際のアップロード処理を実装
-      // 仮のURL処理
-      const imageUrl = URL.createObjectURL(file);
-      await onAvatarUpdate(imageUrl);
-      setFormData(prev => ({ ...prev, avatarUrl: imageUrl }));
+      
+      // FileをBase64に変換
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        // 画像の圧縮処理
+        const img = new Image();
+        img.src = base64String;
+        await new Promise((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 800;
+            const MAX_HEIGHT = 800;
+            let width = img.width;
+            let height = img.height;
+  
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+  
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+  
+            // 圧縮した画像をbase64で取得
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            onAvatarUpdate(compressedBase64)
+              .then(() => {
+                setFormData(prev => ({ ...prev, avatarUrl: compressedBase64 }));
+              })
+              .catch((error) => {
+                console.error('Failed to update avatar:', error);
+                alert('アバターの更新に失敗しました');
+              })
+              .finally(() => {
+                setLoading(false);
+              });
+          };
+          img.onerror = () => {
+            alert('画像の処理に失敗しました');
+            setLoading(false);
+          };
+        });
+      };
+      
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Failed to upload avatar:', error);
-    } finally {
+      console.error('Failed to process image:', error);
+      alert('画像の処理に失敗しました');
       setLoading(false);
     }
   };
@@ -115,11 +171,13 @@ export function ProfileEditModal({
                 onClick={handleAvatarClick}
                 className="w-24 h-24 rounded-full overflow-hidden cursor-pointer group relative"
               >
-                <img 
-                  src={formData.avatarUrl || "https://placehold.jp/150x150.png"} 
-                  alt="アバター" 
-                  className="w-full h-full object-cover transition-opacity group-hover:opacity-70" 
-                />
+                {formData.avatarUrl && (
+                  <img 
+                    src={formData.avatarUrl} 
+                    alt="アバター" 
+                    className="w-full h-full object-cover transition-opacity group-hover:opacity-70" 
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity">
                   <PlusIcon className="w-8 h-8 text-white" />
                 </div>
@@ -214,7 +272,7 @@ export function ProfileEditModal({
                         : 'bg-white text-gray-900 border-gray-300'
                     } border focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   />
-                <button
+                  <button
                     type="button"
                     onClick={() => handleRemoveSNS(index)}
                     className="text-red-500 hover:text-red-600"

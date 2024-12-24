@@ -28,10 +28,11 @@ export const profileAPI = {
       throw new Error('プロフィールの更新に失敗しました');
     }
   },
-
-  async updateAvatar(avatarUrl: string): Promise<ProfileResponse> {
+  async updateAvatar(base64Image: string): Promise<ProfileResponse> {
     try {
-      const response = await api.patch('/users/profile/avatar', { avatarUrl });
+      const response = await api.patch('/users/profile/avatar', {
+        base64Image
+      });
       return response.data;
     } catch (error) {
       throw new Error('アバターの更新に失敗しました');

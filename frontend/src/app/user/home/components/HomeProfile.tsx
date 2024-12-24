@@ -60,11 +60,13 @@ export function HomeProfile() {
           <div className="flex flex-col items-center w-24">
             <div className="relative mb-4">
               <div className={`w-24 h-24 rounded-full overflow-hidden ${rankStyle.avatarBorder} bg-white`}>
-                <img 
-                  src={userData?.avatarUrl || "/api/placeholder/96/96"} 
-                  alt="アバター" 
-                  className="w-full h-full object-cover" 
-                />
+                {userData?.avatarUrl && (
+                  <img 
+                    src={userData.avatarUrl} 
+                    alt="アバター" 
+                    className="w-full h-full object-cover" 
+                  />
+                )}
               </div>
             </div>
             {/* 階級バッジ */}
@@ -144,7 +146,8 @@ export function HomeProfile() {
         profileData={{
           nickname: userData?.nickname || '',
           avatarUrl: userData?.avatarUrl || '',
-          message: userData?.message || ''
+          message: userData?.message || '',
+          snsLinks: userData?.snsLinks || {}
         }}
         onSave={handleSaveProfile}
         onAvatarUpdate={handleAvatarUpdate}

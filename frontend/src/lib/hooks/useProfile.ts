@@ -66,9 +66,9 @@ export function useProfile() {
     }
   };
 
-  const updateAvatar = async (avatarUrl: string) => {
+  const updateAvatar = async (formData: FormData) => {
     try {
-      const response = await profileAPI.updateAvatar(avatarUrl);
+      const response = await profileAPI.updateAvatar(formData);
       const newUserData = response.data;
       await checkLevelUp(userData, newUserData);
       setUserData(prev => ({ ...prev, ...newUserData }));
