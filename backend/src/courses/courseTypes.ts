@@ -13,7 +13,7 @@ export type CourseWithChapters = Prisma.CourseGetPayload<{
 export interface CreateCourseDTO {
   title: string;
   description: string;
-  thumbnail?: string;       // 追加
+  thumbnail?: string;
   gemCost: number;
   levelRequired?: number;
   rankRequired?: string;
@@ -27,8 +27,7 @@ export interface CreateChapterDTO {
   subtitle?: string;
   content: any;
   timeLimit?: number;
-  initialWait?: number;
-  waitTime?: number;
+  releaseTime?: number;
   orderIndex: number;
 }
 

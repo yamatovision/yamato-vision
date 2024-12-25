@@ -8,7 +8,6 @@ import {
 } from '@/types/course';
 import { APIResponse } from '@/types/api';
 
-// レスポンス型の定義を修正
 interface BaseResponse {
   success: boolean;
   message?: string;
@@ -26,16 +25,29 @@ interface ChapterResponse extends BaseResponse {
   data: Chapter;
 }
 
-// フロントエンドAPIルートのベースURL
 const FRONTEND_API_BASE = '/api';
+
+
+
+
 
 // API関数の型を厳密に定義
 export const courseApi = {
   // コース関連のAPI
   getCourses: async () => {
-    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`);
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
     const data = await response.json();
     return { data: data.data };
+  },
+  getCourse: async (courseId: string) => {
+    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses/${courseId}`);
+    const data = await response.json();
+    return { data }; // data.data ではなく、data そのものを返す
   },
 
   createCourse: async (data: CreateCourseDTO) => {
@@ -82,9 +94,16 @@ export const courseApi = {
 
   // チャプター関連のAPI
   createChapter: async (courseId: string, data: CreateChapterDTO) => {
+    // waitTimeを除外し、releaseTimeを使用
+    const { waitTime, ...restData } = data;
+    const createData = {
+      ...restData,
+      releaseTime: data.releaseTime || waitTime // waitTimeをフォールバックとして使用
+    };
+  
     const response = await api.post<ChapterResponse>(
       `/admin/courses/${courseId}/chapters`,
-      data
+      createData
     );
     return { data: response.data.data };
   },
@@ -94,9 +113,16 @@ export const courseApi = {
     chapterId: string, 
     data: Omit<Partial<Chapter>, 'id' | 'courseId'>
   ) => {
+    // waitTimeを除外し、releaseTimeを使用
+    const { waitTime, ...restData } = data;
+    const updatedData = {
+      ...restData,
+      releaseTime: data.releaseTime || waitTime // waitTimeをフォールバックとして使用
+    };
+  
     const response = await api.put<ChapterResponse>(
       `/admin/courses/${courseId}/chapters/${chapterId}`,
-      data
+      updatedData
     );
     return { data: response.data.data };
   },

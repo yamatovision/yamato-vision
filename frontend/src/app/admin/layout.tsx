@@ -52,36 +52,55 @@ export default function AdminLayout({
           
           {/* コース管理セクション */}
           <div className="mb-2">
-            <button
-              onClick={() => setIsCoursesExpanded(!isCoursesExpanded)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md"
-            >
-              <span>📚</span>
-              <span>コース管理</span>
-              <span className="ml-auto">
-                {isCoursesExpanded ? '▼' : '▶'}
-              </span>
-            </button>
-            
-            {isCoursesExpanded && (
-              <div className="ml-4 space-y-1">
-                <a
-                  href="/admin/courses"
-                  className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/courses')}`}
-                >
-                  <span>📋</span>
-                  <span>コース一覧</span>
-                </a>
-                <a
-                  href="/admin/courses/new"
-                  className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/courses/new')}`}
-                >
-                  <span>✨</span>
-                  <span>新規コース作成</span>
-                </a>
-              </div>
-            )}
-          </div>
+        
+  <button
+    onClick={() => setIsCoursesExpanded(!isCoursesExpanded)}
+    className="w-full flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md"
+  >
+    <span>📚</span>
+    <span>コース管理</span>
+    <span className="ml-auto">
+      {isCoursesExpanded ? '▼' : '▶'}
+    </span>
+  </button>
+  
+  {isCoursesExpanded && (
+    <div className="ml-4 space-y-1">
+      <a
+        href="/admin/courses"
+        className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/courses')}`}
+      >
+        <span>📋</span>
+        <span>コース一覧</span>
+      </a>
+      <a
+        href="/admin/courses/new"
+        className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/courses/new')}`}
+      >
+        <span>✨</span>
+        <span>新規コース作成</span>
+      </a>
+      {pathname?.includes('/admin/courses') && !pathname?.includes('/admin/courses/new') && pathname !== '/admin/courses' && (
+  <>
+    <a
+      href={`${pathname}`}
+      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive(pathname)}`}
+    >
+      <span>📖</span>
+      <span>コース詳細</span>
+    </a>
+    <a
+      href={`${pathname}/chapters`}
+      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive(`${pathname}/chapters`)}`}
+    >
+      <span>📑</span>
+      <span>チャプター管理</span>
+    </a>
+  </>
+)}
+    </div>
+  )}
+</div>
 
           <a 
             href="/admin/level-messages" 

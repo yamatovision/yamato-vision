@@ -1,4 +1,8 @@
-export async function uploadToCloudinary(file: File, folder: string = 'courses'): Promise<string> {
+export async function uploadToCloudinary(
+  file: File, 
+  folder: string = 'courses',
+  onProgress?: (progress: number) => void
+): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || '');

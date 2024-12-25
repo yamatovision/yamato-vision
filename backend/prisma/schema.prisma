@@ -35,22 +35,21 @@ model User {
   courses          UserCourse[]
 }
 model Chapter {
-  id            String       @id @default(cuid())
+  id            String    @id @default(cuid())
   courseId      String
   title         String
   subtitle      String?
-  content       String?
+  content       Json      // contentをJSON型として保存
   orderIndex    Int
   timeLimit     Int?
-  waitTime      Int?
-  initialWait   Int?
-  isVisible     Boolean     @default(true)
-  isFinalExam   Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  course        Course      @relation(fields: [courseId], references: [id])
-  task          Task?       @relation("ChapterTask", fields: [taskId], references: [id])
-  taskId        String?     @unique
+  releaseTime   Int?     // 新しいフィールド
+  isVisible     Boolean   @default(true)
+  isFinalExam   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  course        Course    @relation(fields: [courseId], references: [id])
+  task          Task?     @relation("ChapterTask", fields: [taskId], references: [id])
+  taskId        String?   @unique
 
   @@unique([courseId, orderIndex])
 }
@@ -93,18 +92,18 @@ model UserCourse {
   @@unique([userId, courseId])
 }
 model Task {
-  id          String       @id @default(cuid())
-  courseId    String
-  title       String
-  description String
-  type        String
-  maxPoints   Int
-  timeLimit   Int?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  submissions Submission[]
-  course      Course       @relation(fields: [courseId], references: [id])
-  chapter     Chapter?     @relation("ChapterTask")
+  id              String    @id @default(cuid())
+  courseId        String
+  title           String
+  description     String
+  systemMessage   String    // AI採点用指示
+  referenceText   String?   // 採点用参考テキスト
+  maxPoints       Int       @default(100)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  submissions     Submission[]
+  course          Course    @relation(fields: [courseId], references: [id])
+  chapter         Chapter?  @relation("ChapterTask")
 }
 
 

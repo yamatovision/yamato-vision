@@ -73,8 +73,7 @@ export class CourseService {
             content: JSON.stringify(data.content),
             orderIndex: data.orderIndex,
             timeLimit: data.timeLimit,
-            initialWait: data.initialWait,
-            waitTime: data.waitTime,
+            releaseTime: data.releaseTime,
             isVisible: true,
             isFinalExam: false
           }

@@ -2,20 +2,22 @@ import { PrismaClient } from '@prisma/client';
 import { TokenUsageService } from './tokenUsageService';
 
 const prisma = new PrismaClient();
+const tokenUsageService = new TokenUsageService(); // インスタンスを1つ作成
 
 export class TokenProcessingService {
   private static readonly TOKENS_PER_EXP = 10000;
   private static readonly EXP_PER_LEVEL = 500;
+  private static readonly tokenService = new TokenUsageService(); // クラス内でのstatic参照用
 
   static async processTokenConsumption(userId: string, tokenCount: number) {
     // 1. トークン使用可能性チェック
-    const availability = await TokenUsageService.checkTokenAvailability(userId, tokenCount);
+    const availability = await this.tokenService.checkTokenAvailability(userId, tokenCount);
     if (!availability.isAvailable) {
       throw new Error('Insufficient tokens');
     }
 
     // 2. MONGOでのトークン消費処理
-    const mongoUpdate = await TokenUsageService.updateTokenUsage(userId, tokenCount);
+    const mongoUpdate = await this.tokenService.updateTokenUsage(userId, tokenCount);
 
     // 3. Prismaの更新
     const tracking = await this.updatePrismaTracking(userId, tokenCount);
@@ -92,7 +94,7 @@ export class TokenProcessingService {
       if (!user.mongoId) continue;
 
       try {
-        const mongoUsage = await TokenUsageService.getUserTokenUsage(user.mongoId);
+        const mongoUsage = await this.tokenService.getUserTokenUsage(user.mongoId);
         await this.syncUserTokens(user.id, mongoUsage);
       } catch (error) {
         console.error(`Sync failed for user ${user.id}:`, error);

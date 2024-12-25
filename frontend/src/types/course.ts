@@ -45,7 +45,7 @@ export interface Chapter {
   orderIndex: number;
   timeLimit?: number;
   waitTime?: number;
-  initialWait?: number;
+  releaseTime?: number;  // initialWaitをreleaseTimeに変更
   isVisible: boolean;
   isFinalExam: boolean;
   task: Task;
@@ -94,7 +94,7 @@ export interface CreateChapterDTO {
   orderIndex: number;
   timeLimit?: number;
   waitTime?: number;
-  initialWait?: number;
+  releaseTime?: number;  // initialWaitをreleaseTimeに変更
   isVisible?: boolean;
   isFinalExam?: boolean;
   task: Omit<Task, 'id'>;
@@ -107,7 +107,7 @@ export interface UpdateChapterDTO {
   orderIndex?: number;
   timeLimit?: number;
   waitTime?: number;
-  initialWait?: number;
+  releaseTime?: number;  // initialWaitをreleaseTimeに変更
   isVisible?: boolean;
   isFinalExam?: boolean;
   task?: Omit<Task, 'id'>;

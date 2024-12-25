@@ -5,8 +5,8 @@ import { useTheme } from '@/contexts/theme';
 import { Course, Chapter } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { CourseForm } from '../components/CourseForm';
-import { ChapterForm } from '../components/CourseForm/ChapterForm';
-import { ChapterList } from './components/ChapterList';
+import { ChapterForm } from './chapters/components/ChapterForm';
+import { ChapterList } from './chapters/components/ChapterList';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 

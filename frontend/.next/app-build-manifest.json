@@ -11,20 +11,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/layout.js"
     ],
-    "/admin/courses/page": [
+    "/admin/courses/[courseId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/page.js"
+      "static/chunks/app/admin/courses/[courseId]/page.js"
+    ],
+    "/admin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/page.js"
     ],
     "/admin/courses/new/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/new/page.js"
     ],
-    "/admin/level-messages/page": [
+    "/admin/courses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/level-messages/page.js"
+      "static/chunks/app/admin/courses/page.js"
     ]
   }
 }
