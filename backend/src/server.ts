@@ -5,6 +5,7 @@ import authRoutes from './auth/authRoutes';
 import userRoutes from './users/userRoutes';
 import badgeRoutes from './badges/badgeRoutes';
 import levelMessageRoutes from './levelMessages/levelMessageRoutes';
+import { courseRoutes } from './courses/courseRoutes';  // 追加
 import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
+app.use('/api/courses', courseRoutes);  // 追加
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {

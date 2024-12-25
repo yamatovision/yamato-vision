@@ -39,17 +39,18 @@ model Chapter {
   courseId      String
   title         String
   subtitle      String?
-  content       String?      // JSON形式で保存（mediaUrl, transcription等）
-  orderIndex    Int         // チャプターの順序
-  timeLimit     Int?        // 制限時間（分）
-  waitTime      Int?        // 待機時間（分）
-  initialWait   Int?        // コース開始からの待機時間（分）
+  content       String?
+  orderIndex    Int
+  timeLimit     Int?
+  waitTime      Int?
+  initialWait   Int?
   isVisible     Boolean     @default(true)
   isFinalExam   Boolean     @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   course        Course      @relation(fields: [courseId], references: [id])
-  tasks         Task[]
+  task          Task?       @relation("ChapterTask", fields: [taskId], references: [id])
+  taskId        String?     @unique
 
   @@unique([courseId, orderIndex])
 }
@@ -67,15 +68,14 @@ model Course {
   products      Product[]
   tasks         Task[]
   users         UserCourse[]
-  isPublished   Boolean  @default(false)
-  isArchived    Boolean  @default(false)
+  isPublished   Boolean      @default(false)
+  isArchived    Boolean      @default(false)
   publishedAt   DateTime?
   archivedAt    DateTime?
   thumbnail     String?
-  timeLimit     Int?        // コース全体の制限時間（分）
-  passingScore  Int        @default(60)
-  excellentScore Int       @default(95)
-  status        CourseStatus @default(DRAFT)
+  timeLimit     Int?
+  passingScore  Int         @default(60)
+  excellentScore Int        @default(95)
   chapters      Chapter[]
 }
 
@@ -92,7 +92,6 @@ model UserCourse {
 
   @@unique([userId, courseId])
 }
-
 model Task {
   id          String       @id @default(cuid())
   courseId    String
@@ -105,7 +104,9 @@ model Task {
   updatedAt   DateTime     @updatedAt
   submissions Submission[]
   course      Course       @relation(fields: [courseId], references: [id])
+  chapter     Chapter?     @relation("ChapterTask")
 }
+
 
 model Submission {
   id          String    @id @default(cuid())

@@ -6,30 +6,30 @@ export class CourseController {
   async createCourse(req: Request<{}, {}, CreateCourseDTO>, res: Response) {
     try {
       const course = await courseService.createCourse(req.body);
-      res.status(201).json(course);
+      return res.status(201).json(course);
     } catch (error) {
       console.error('Error creating course:', error);
-      res.status(500).json({ message: 'Failed to create course' });
+      return res.status(500).json({ message: 'Failed to create course' });
     }
   }
 
   async updateCourse(req: Request<{ id: string }, {}, UpdateCourseDTO>, res: Response) {
     try {
       const course = await courseService.updateCourse(req.params.id, req.body);
-      res.json(course);
+      return res.json(course);
     } catch (error) {
       console.error('Error updating course:', error);
-      res.status(500).json({ message: 'Failed to update course' });
+      return res.status(500).json({ message: 'Failed to update course' });
     }
   }
 
   async addChapter(req: Request<{ courseId: string }, {}, CreateChapterDTO>, res: Response) {
     try {
       const chapter = await courseService.addChapter(req.params.courseId, req.body);
-      res.status(201).json(chapter);
+      return res.status(201).json(chapter);
     } catch (error) {
       console.error('Error adding chapter:', error);
-      res.status(500).json({ message: 'Failed to add chapter' });
+      return res.status(500).json({ message: 'Failed to add chapter' });
     }
   }
 
@@ -39,10 +39,10 @@ export class CourseController {
       if (!course) {
         return res.status(404).json({ message: 'Course not found' });
       }
-      res.json(course);
+      return res.json(course);
     } catch (error) {
       console.error('Error fetching course:', error);
-      res.status(500).json({ message: 'Failed to fetch course' });
+      return res.status(500).json({ message: 'Failed to fetch course' });
     }
   }
 
@@ -53,20 +53,20 @@ export class CourseController {
         isArchived: req.query.archived === 'true'
       };
       const courses = await courseService.getCourses(filter);
-      res.json(courses);
+      return res.json(courses);
     } catch (error) {
       console.error('Error fetching courses:', error);
-      res.status(500).json({ message: 'Failed to fetch courses' });
+      return res.status(500).json({ message: 'Failed to fetch courses' });
     }
   }
 
   async deleteCourse(req: Request<{ id: string }>, res: Response) {
     try {
       await courseService.deleteCourse(req.params.id);
-      res.status(204).send();
+      return res.status(204).send();
     } catch (error) {
       console.error('Error deleting course:', error);
-      res.status(500).json({ message: 'Failed to delete course' });
+      return res.status(500).json({ message: 'Failed to delete course' });
     }
   }
 }

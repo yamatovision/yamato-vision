@@ -21,10 +21,11 @@ export function CourseList() {
     try {
       setIsLoading(true);
       const response = await courseApi.getCourses();
-      setCourses(response.data); // .dataを削除（CourseResponse型に合わせて修正）
+      setCourses(response?.data || []); // nullish coalescing operatorを使用
     } catch (error) {
       toast.error('コースの取得に失敗しました');
       console.error('Failed to fetch courses:', error);
+      setCourses([]); // エラー時は空配列を設定
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +97,7 @@ export function CourseList() {
         </div>
       )}
       
-      {courses.length === 0 ? (
+      {!courses || courses.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           コースがありません
         </div>

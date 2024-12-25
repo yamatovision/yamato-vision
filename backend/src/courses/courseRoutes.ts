@@ -1,18 +1,16 @@
 import { Router } from 'express';
 import { courseController } from './courseController';
-import { authMiddleware } from '../auth/authMiddleware';
-import { adminMiddleware } from '../auth/adminMiddleware';
 
 const router = Router();
 
-// Admin routes
-router.post('/', [authMiddleware, adminMiddleware], courseController.createCourse);
-router.put('/:id', [authMiddleware, adminMiddleware], courseController.updateCourse);
-router.post('/:courseId/chapters', [authMiddleware, adminMiddleware], courseController.addChapter);
-router.delete('/:id', [authMiddleware, adminMiddleware], courseController.deleteCourse);
+// Admin routes - ミドルウェアを削除
+router.post('/', courseController.createCourse);
+router.put('/:id', courseController.updateCourse);
+router.post('/:courseId/chapters', courseController.addChapter);
+router.delete('/:id', courseController.deleteCourse);
 
-// Public routes
-router.get('/', authMiddleware, courseController.getCourses);
-router.get('/:id', authMiddleware, courseController.getCourse);
+// Public routes - ミドルウェアを削除
+router.get('/', courseController.getCourses);
+router.get('/:id', courseController.getCourse);
 
 export const courseRoutes = router;

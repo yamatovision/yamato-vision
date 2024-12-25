@@ -26,33 +26,59 @@ interface ChapterResponse extends BaseResponse {
   data: Chapter;
 }
 
+// フロントエンドAPIルートのベースURL
+const FRONTEND_API_BASE = '/api';
+
 // API関数の型を厳密に定義
 export const courseApi = {
   // コース関連のAPI
   getCourses: async () => {
-    const response = await api.get<CourseListResponse>('/admin/courses');
-    return { data: response.data.data };
-  },
-
-  getCourse: async (courseId: string) => {
-    const response = await api.get<CourseResponse>(`/admin/courses/${courseId}`);
-    return { data: response.data.data };
+    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`);
+    const data = await response.json();
+    return { data: data.data };
   },
 
   createCourse: async (data: CreateCourseDTO) => {
-    const response = await api.post<CourseResponse>('/admin/courses', data);
-    return { data: response.data.data };
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    return { data: result.data };
   },
 
   updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
-    const response = await api.put<CourseResponse>(`/admin/courses/${courseId}`, data);
-    return { data: response.data.data };
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses/${courseId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    return { data: result.data };
   },
 
   deleteCourse: async (courseId: string) => {
-    await api.delete(`/admin/courses/${courseId}`);
+    const token = localStorage.getItem('auth_token');
+    await fetch(`${FRONTEND_API_BASE}/admin/courses/${courseId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
     return { success: true };
   },
+
+
+
 
   // チャプター関連のAPI
   createChapter: async (courseId: string, data: CreateChapterDTO) => {
