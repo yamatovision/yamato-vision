@@ -19,7 +19,7 @@ interface ProfileEditModalProps {
     snsLinks: Record<string, string>;
   };
   onSave: (data: any) => Promise<void>;
-  onAvatarUpdate: (url: string) => Promise<void>;
+  onAvatarUpdate: (base64Image: string) => Promise<void>;  // 型を変更
 }
 
 export function ProfileEditModal({ 

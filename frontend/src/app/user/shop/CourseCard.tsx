@@ -13,6 +13,12 @@ interface CourseCardProps {
   rankRequired?: string;
   gradient: string;
   onUnlock: () => void;
+  completion?: {
+    badges?: {
+      completion?: boolean;
+      excellence?: boolean;
+    };
+  };
 }
 
 export function CourseCard({
@@ -24,6 +30,7 @@ export function CourseCard({
   rankRequired,
   gradient,
   onUnlock,
+  completion
 }: CourseCardProps) {
   const { theme } = useTheme();
 
@@ -43,16 +50,34 @@ export function CourseCard({
     );
   };
 
+  const getGradientStyle = () => {
+    // 特別なアニメーション付きグラデーションを適用する条件を変更
+    if (completion?.badges?.excellence) {
+      return 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 animate-gradient';
+    }
+    return gradient;
+  };
+
   return (
-    <div className={`${
+    <div className={`relative ${
       theme === 'dark' 
         ? 'bg-gray-800' 
         : 'bg-white border border-[#DBEAFE] shadow-sm'
     } rounded-lg overflow-hidden ${
       status !== 'unlocked' && status !== 'available' ? 'opacity-75' : ''
     }`}>
-      <div className={`h-40 ${gradient} relative`}>
+      <div className={`h-40 ${getGradientStyle()} relative`}>
         {getStatusBadge()}
+        {completion?.badges && (
+          <div className="absolute bottom-2 left-2 flex space-x-2">
+            {completion.badges.completion && (
+              <span className="text-2xl">🏆</span>
+            )}
+            {completion.badges.excellence && (
+              <span className="text-2xl">⭐️</span>
+            )}
+          </div>
+        )}
       </div>
       <div className="p-4">
         <h3 className={`font-bold text-lg mb-2 ${

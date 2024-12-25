@@ -3,6 +3,20 @@
 import React, { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { CourseCard } from './CourseCard';
+import { CourseStatus } from '@/types/shop';
+
+interface ShopCourse {
+  id: string;
+  title: string;
+  description: string;
+  status: CourseStatus;
+  gemCost?: number;
+  levelRequired?: number;
+  rankRequired?: string;
+  gradient: string;
+}
+
+
 
 const mockCourses = [
   {
@@ -50,10 +64,43 @@ const mockCourses = [
   },
 ];
 
+
+const statusPriority: Record<CourseStatus, number> = {
+  unlocked: 1,
+  available: 2,
+  perfect: 3,
+  completed: 4,
+  failed: 5,
+  level_locked: 6,
+  rank_locked: 7,
+  complex: 8,
+};
+
 export default function ShopPage() {
   const { theme } = useTheme();
   const [filter, setFilter] = useState<'all' | 'available' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCourses = React.useMemo(() => {
+    let filtered = mockCourses;
+    
+    if (filter === 'available') {
+      filtered = mockCourses.filter(course => 
+        ['unlocked', 'available'].includes(course.status));
+    }
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(term) ||
+        course.description.toLowerCase().includes(term)
+      );
+    }
+
+    return [...filtered].sort((a, b) => statusPriority[a.status] - statusPriority[b.status]);
+  }, [filter, searchTerm]);
+
+
 
   return (
     <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
@@ -131,7 +178,7 @@ export default function ShopPage() {
 
       {/* コースグリッド */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockCourses.map((course) => (
+        {filteredCourses.map((course) => (
           <CourseCard
             key={course.id}
             title={course.title}

@@ -26,9 +26,9 @@ export function HomeProfile() {
     }
   };
 
-  const handleAvatarUpdate = async (avatarUrl: string) => {
+  const handleAvatarUpdate = async (base64Image: string) => {
     try {
-      await updateAvatar(avatarUrl);
+      await updateAvatar(base64Image);
     } catch (error) {
       console.error('Failed to update avatar:', error);
     }

@@ -1,4 +1,16 @@
-// src/types/user.ts を更新
+export interface UserTokens {
+  weeklyTokens: number;     // 週間使用量
+  weeklyLimit: number;      // 基本制限
+  purchasedTokens: number;  // 購入済みトークン
+  unprocessedTokens: number;// 経験値未換算分
+}
+
+export interface Badge {
+  id: string;
+  title: string;
+  iconUrl: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -12,15 +24,13 @@ export interface User {
   snsLinks: {
     [key: string]: string;
   };
-  badges: Array<{
-    id: string;
-    title: string;
-    iconUrl: string;
-  }>;
-  tokens?: {
-    weeklyTokens: number;     // 週間使用量
-    weeklyLimit: number;      // 基本制限
-    purchasedTokens: number;  // 購入済みトークン
-    unprocessedTokens: number;// 経験値未換算分
-  };
+  badges: Badge[];
+  tokens?: UserTokens;
+}
+
+// APIレスポンス用の型も定義
+export interface UserResponse {
+  data: User;
+  success: boolean;
+  message?: string;
 }
