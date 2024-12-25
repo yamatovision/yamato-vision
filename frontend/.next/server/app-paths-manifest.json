@@ -1,3 +1,4 @@
 {
-  "/admin/courses/page": "app/admin/courses/page.js"
+  "/admin/courses/page": "app/admin/courses/page.js",
+  "/admin/courses/new/page": "app/admin/courses/new/page.js"
 }
