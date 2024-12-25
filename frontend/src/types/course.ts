@@ -86,6 +86,32 @@ export interface UpdateCourseDTO {
   isPublished?: boolean;
   isArchived?: boolean;
 }
+export interface CourseResponse {
+  id: string;
+  title: string;
+  description: string;
+  gemCost: number | null;
+  levelRequired: number | null;
+  rankRequired: string | null;
+  thumbnail: string | null;
+  status: 'unlocked' | 'available' | 'level_locked' | 'rank_locked' | 'complex';
+  chapters: {
+    id: string;
+    title: string;
+    orderIndex: number;
+  }[];
+}
+
+export interface PurchaseResponse {
+  success: boolean;
+  error?: string;
+  userCourse?: {
+    id: string;
+    courseId: string;
+    progress: number;
+    startedAt: Date;
+  };
+}
 
 export interface CreateChapterDTO {
   title: string;
@@ -124,3 +150,20 @@ export interface SingleCourseResponse {
 export interface ChapterResponse {
   data: Chapter;
 }
+
+
+export type CourseStatus = 
+  | 'unlocked' 
+  | 'available' 
+  | 'level_locked' 
+  | 'rank_locked' 
+  | 'complex';
+
+export interface UserCourse {
+  id: string;
+  courseId: string;
+  progress: number;
+  startedAt: Date;
+  completedAt?: Date;
+}
+

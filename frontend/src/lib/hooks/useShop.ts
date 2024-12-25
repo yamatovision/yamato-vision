@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Course, Product } from '@/app/user/shop/types';
+import { Course } from '@/app/user/shop/types';
 
 export const useShop = () => {
   const [isLoading, setIsLoading] = useState(false);

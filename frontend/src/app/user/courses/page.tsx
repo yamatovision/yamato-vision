@@ -19,7 +19,7 @@ export default function CoursesPage() {
   const fetchCourses = async () => {
     try {
       setIsLoading(true);
-      const response = await courseApi.getCourses();
+      const response = await courseApi.getAvailableCourses();
       setCourses(response.data);
     } catch (error) {
       console.error('Failed to fetch courses:', error);

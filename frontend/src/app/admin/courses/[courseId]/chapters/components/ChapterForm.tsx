@@ -45,37 +45,46 @@ export function ChapterForm({
       type: initialData?.task?.type || 'standard'
     }
   });
-
   const validateForm = () => {
+    console.log('Validating form with data:', formData); // 追加
+    
     if (!formData.title.trim()) {
-      toast.error('チャプタータイトルを入力してください');
-      return false;
+        console.log('Title validation failed'); // 追加
+        toast.error('チャプタータイトルを入力してください');
+        return false;
     }
     if (!formData.content.url) {
-      toast.error('メディアコンテンツをアップロードしてください');
-      return false;
+        console.log('Media URL validation failed'); // 追加
+        toast.error('メディアコンテンツをアップロードしてください');
+        return false;
     }
     if (!formData.task.description.trim()) {
-      toast.error('課題説明を入力してください');
-      return false;
+        console.log('Task description validation failed'); // 追加
+        toast.error('課題説明を入力してください');
+        return false;
     }
     if (!formData.task.systemMessage.trim()) {
-      toast.error('システムメッセージを入力してください');
-      return false;
+        console.log('System message validation failed'); // 追加
+        toast.error('システムメッセージを入力してください');
+        return false;
     }
+    console.log('All validations passed'); // 追加
     return true;
-  };
-
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Submit button clicked'); // 追加
     if (!validateForm()) return;
 
+    console.log('Form validation passed'); // 追加
     setIsSubmitting(true);
     try {
       if (initialData) {
+        console.log('Updating chapter...'); // 追加
         await courseApi.updateChapter(courseId, initialData.id, formData);
         toast.success('チャプターを更新しました');
       } else {
+        console.log('Creating chapter...', formData); // 追加
         await courseApi.createChapter(courseId, formData);
         toast.success('チャプターを作成しました');
       }
@@ -87,7 +96,6 @@ export function ChapterForm({
       setIsSubmitting(false);
     }
   };
-
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,

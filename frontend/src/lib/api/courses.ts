@@ -1,12 +1,13 @@
 import api from './auth';
+import { APIResponse } from '@/types/api';
 import { 
   Course, 
-  Chapter, 
+  Chapter,
   CreateCourseDTO, 
   UpdateCourseDTO, 
-  CreateChapterDTO 
+  CreateChapterDTO,
+  CourseStatus,
 } from '@/types/course';
-import { APIResponse } from '@/types/api';
 
 interface BaseResponse {
   success: boolean;
@@ -18,15 +19,31 @@ interface CourseResponse extends BaseResponse {
 }
 
 interface CourseListResponse extends BaseResponse {
-  data: Course[];
+  data: (Course & {
+    status: CourseStatus;
+    chapters?: Chapter[];
+  })[];
 }
 
 interface ChapterResponse extends BaseResponse {
   data: Chapter;
 }
 
-const FRONTEND_API_BASE = '/api';
+interface UserCourse {
+  id: string;
+  courseId: string;
+  progress: number;
+  startedAt: Date;
+  completedAt?: Date;
+}
 
+interface PurchaseResponse extends BaseResponse {
+  data: {
+    userCourse: UserCourse;
+  };
+}
+
+const FRONTEND_API_BASE = '/api';
 
 
 
@@ -88,7 +105,50 @@ export const courseApi = {
     });
     return { success: true };
   },
+  getAvailableCourses: async (): Promise<CourseListResponse> => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${FRONTEND_API_BASE}/users/courses`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+    const data = await response.json();
+    return { success: true, data: data };
+  },
 
+  purchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/users/courses/${courseId}/purchase`, 
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      }
+    );
+    
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to purchase course');
+    }
+    return { 
+      success: true, 
+      data: result 
+    };
+  },
+
+  getUserCourses: async (): Promise<CourseListResponse> => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${FRONTEND_API_BASE}/users/courses/enrolled`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+    const data = await response.json();
+    return { success: true, data: data };
+  },
 
 
 

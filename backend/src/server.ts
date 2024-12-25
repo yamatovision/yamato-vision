@@ -23,7 +23,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
-app.use('/api/courses', courseRoutes);  // 追加
+app.use('/api/admin/courses', courseRoutes);
+app.use('/api/courses', courseRoutes);             // 一般ユーザー用
+
+
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {

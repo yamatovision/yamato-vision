@@ -2,11 +2,29 @@
 
 import { useTheme } from '@/contexts/theme';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export function BottomNavigation() {
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, checkAuth } = useAuth();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return null;
+  }
 
   const navItems = [
     { icon: '🏠', href: '/user/home', label: 'ホーム' },
@@ -32,12 +50,10 @@ export function BottomNavigation() {
                 ? theme === 'dark' ? 'text-blue-400' : 'text-[#3B82F6]'
                 : theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             } hover:opacity-80 transition-opacity`}
-          >
-            <span role="img" aria-label={item.label}>{item.icon}</span>
+          ><span role="img" aria-label={item.label}>{item.icon}</span>
           </Link>
         ))}
         
-        {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
           className={`text-2xl ${

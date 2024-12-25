@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { NextAuthOptions } from 'next-auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -11,9 +12,11 @@ const api = axios.create({
 
 // リクエストインターセプター
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -22,23 +25,41 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    // 認証エラーの場合
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      
-      // 現在のパスがログインページでない場合のみリダイレクト
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/') {
-        window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
   }
 );
 
+export const authOptions: NextAuthOptions = {
+  providers: [],
+  session: {
+    strategy: 'jwt',
+  },
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    async session({ session, token }) {
+      return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.userId = user.id;
+      }
+      return token;
+    },
+  },
+};
+
 export default api;
 
-// 型定義の追加
 export interface AuthResponse {
   success: boolean;
   token?: string;

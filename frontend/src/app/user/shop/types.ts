@@ -1,4 +1,14 @@
-export type CourseStatus = 'unlocked' | 'available' | 'level_locked' | 'rank_locked' | 'complex';
+// frontend/src/app/user/shop/types.ts
+
+export type CourseStatus = 
+  | 'unlocked'// 未受講で開放可能
+  | 'available'     //ジェムで解放可能
+  | 'level_locked'  // レベル制限
+  | 'rank_locked'   // ランク制限
+  | 'complex'       // 複合条件
+  | 'completed'     // 修了済み
+  | 'perfect'       // Perfect達成
+  | 'failed';       // 不合格/中断
 
 export interface Course {
   id: string;
@@ -9,19 +19,19 @@ export interface Course {
   levelRequired?: number;
   rankRequired?: string;
   gradient: string;
+  completion?: {
+    badges?: {
+      completion?: boolean;
+      excellence?: boolean;
+    };
+  };
 }
 
-export type ProductType = 'COURSE' | 'GEM_PACKAGE' | 'SPECIAL_ITEM';
-
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  type: ProductType;
-  price: number;
-  gemAmount?: number;
-  courseId?: string;
-  rankRequired?: string;
-  levelRequired?: number;
-  isActive: boolean;
+export interface CourseCompletion {
+  status: 'completed' | 'perfect' | 'failed';
+  badges: {
+    completion: boolean;
+    excellence: boolean;
+  };
+  completedAt: Date;
 }

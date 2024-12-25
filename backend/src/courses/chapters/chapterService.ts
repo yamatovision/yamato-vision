@@ -7,51 +7,64 @@ import {
   ChapterAccessStatus
 } from './chapterTypes';
 
-const prisma = new PrismaClient();
-
-export class ChapterService {
+const prisma = new PrismaClient();export class ChapterService {
   // チャプター作成
   async createChapter(courseId: string, data: CreateChapterDTO) {
-    // トランザクションで Chapter と Task を作成
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. まずChapterを作成
-      const chapter = await tx.chapter.create({
-        data: {
-          courseId,
-          title: data.title,
-          subtitle: data.subtitle,
-          content: JSON.stringify(data.content),
-          timeLimit: data.timeLimit,
-          releaseTime: data.releaseTime,
-          orderIndex: data.orderIndex,
-          isVisible: true
-        }
-      });
+    try {
+      // トランザクションで Chapter と Task を作成
+      const result = await prisma.$transaction(async (tx) => {
+        // 現在のコースの最大 orderIndex を取得
+        const maxOrderIndex = await tx.chapter.findFirst({
+          where: { courseId },
+          orderBy: { orderIndex: 'desc' },
+          select: { orderIndex: true }
+        });
 
-      // 2. 次にTaskを作成し、Chapterと関連付け
-      const task = await tx.task.create({
-        data: {
-          courseId,
-          title: data.title,
-          description: data.task.description,
-          systemMessage: data.task.systemMessage,
-          referenceText: data.task.referenceText,
-          maxPoints: data.task.maxPoints,
-          chapter: {
-            connect: { id: chapter.id }
+        // 新しい orderIndex を設定（既存の最大値 + 1、または 0）
+        const newOrderIndex = (maxOrderIndex?.orderIndex ?? -1) + 1;
+
+        // 1. まずChapterを作成
+        const chapter = await tx.chapter.create({
+          data: {
+            courseId,
+            title: data.title,
+            subtitle: data.subtitle,
+            content: JSON.stringify(data.content),
+            timeLimit: data.timeLimit || 0,
+            releaseTime: data.releaseTime || 0,
+            orderIndex: newOrderIndex,
+            isVisible: true
           }
-        }
+        });
+
+        // 2. 次にTaskを作成し、Chapterと関連付け
+        const task = await tx.task.create({
+          data: {
+            courseId,
+            title: data.title,
+            description: data.task.description,
+            systemMessage: data.task.systemMessage,
+            referenceText: data.task.referenceText,
+            maxPoints: data.task.maxPoints || 100,
+            chapter: {
+              connect: { id: chapter.id }
+            }
+          }
+        });
+
+        // 3. ChapterのtaskIdを更新
+        return tx.chapter.update({
+          where: { id: chapter.id },
+          data: { taskId: task.id },
+          include: { task: true }
+        });
       });
 
-      // 3. ChapterのtaskIdを更新
-      return tx.chapter.update({
-        where: { id: chapter.id },
-        data: { taskId: task.id },
-        include: { task: true }
-      });
-    });
-
-    return result;
+      return result;
+    } catch (error) {
+      console.error('Error in createChapter:', error);
+      throw error;
+    }
   }
 
 

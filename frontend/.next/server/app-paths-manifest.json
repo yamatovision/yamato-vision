@@ -1,7 +1,9 @@
 {
-  "/admin/page": "app/admin/page.js",
-  "/admin/courses/page": "app/admin/courses/page.js",
-  "/admin/courses/new/page": "app/admin/courses/new/page.js",
+  "/login/page": "app/login/page.js",
+  "/api/users/courses/route": "app/api/users/courses/route.js",
+  "/user/home/page": "app/user/home/page.js",
+  "/user/shop/page": "app/user/shop/page.js",
   "/admin/courses/[courseId]/page": "app/admin/courses/[courseId]/page.js",
+  "/admin/courses/new/page": "app/admin/courses/new/page.js",
   "/api/admin/courses/[courseId]/route": "app/api/admin/courses/[courseId]/route.js"
 }

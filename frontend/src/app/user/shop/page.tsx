@@ -1,94 +1,132 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { CourseCard } from './CourseCard';
-import { CourseStatus } from '@/types/shop';
+import { courseApi } from '@/lib/api/courses';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { Course, CourseStatus } from './types';
+import { toast } from 'react-hot-toast';
+import { ActivationModal } from './ActivationModal';
 
-interface ShopCourse {
-  id: string;
-  title: string;
-  description: string;
-  status: CourseStatus;
-  gemCost?: number;
-  levelRequired?: number;
-  rankRequired?: string;
-  gradient: string;
-}
-
-
-
-const mockCourses = [
-  {
-    id: '1',
-    title: 'AIプロンプト基礎マスター',
-    description: '効果的なプロンプトエンジニアリングの基礎を学ぶ',
-    status: 'unlocked' as const,
-    gradient: 'bg-gradient-to-r from-blue-600 to-purple-600',
-  },
-  {
-    id: '2',
-    title: 'AI開発実践コース',
-    description: '実践的なAI開発手法を習得する',
-    status: 'available' as const,
-    gemCost: 500,
-    rankRequired: 'Gold',
-    gradient: 'bg-gradient-to-r from-yellow-600 to-orange-600',
-  },
-  {
-    id: '3',
-    title: 'AI最適化マスター',
-    description: '高度なAI最適化テクニックを学ぶ',
-    status: 'level_locked' as const,
-    gemCost: 1000,
-    levelRequired: 30,
-    gradient: 'bg-gradient-to-r from-purple-600 to-pink-600',
-  },
-  {
-    id: '4',
-    title: 'エンタープライズAI戦略',
-    description: '企業向けAI戦略の策定と実装を学ぶ',
-    status: 'rank_locked' as const,
-    rankRequired: 'Platinum',
-    gradient: 'bg-gradient-to-r from-red-600 to-orange-600',
-  },
-  {
-    id: '5',
-    title: 'AIイノベーター育成',
-    description: '次世代のAI開発リーダーを目指す',
-    status: 'complex' as const,
-    gemCost: 2000,
-    levelRequired: 40,
-    rankRequired: 'Platinum',
-    gradient: 'bg-gradient-to-r from-green-600 to-blue-600',
-  },
-];
-
-
-const statusPriority: Record<CourseStatus, number> = {
-  unlocked: 1,
-  available: 2,
-  perfect: 3,
-  completed: 4,
-  failed: 5,
-  level_locked: 6,
-  rank_locked: 7,
-  complex: 8,
+const LoadingSpinner = () => {
+  return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
 };
 
 export default function ShopPage() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [filter, setFilter] = useState<'all' | 'available' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activatingCourse, setActivatingCourse] = useState<string | null>(null);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await courseApi.getAvailableCourses();
+        if (response.success) {
+          const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+            id: apiCourse.id,
+            title: apiCourse.title,
+            description: apiCourse.description,
+            status: apiCourse.status as CourseStatus,
+            gemCost: apiCourse.gemCost || undefined,
+            levelRequired: apiCourse.levelRequired || undefined,
+            rankRequired: apiCourse.rankRequired || undefined,
+            gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
+            completion: apiCourse.completion || undefined,
+          }));
+          setCourses(formattedCourses);
+        }
+      } catch (error) {
+        console.error('Failed to fetch courses:', error);
+        toast.error('コースの取得に失敗しました');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  const handleUnlock = async (courseId: string) => {
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+
+    if (course.status === 'unlocked') {
+      setActivatingCourse(courseId);
+      setShowActivationModal(true);
+    } else if (course.status === 'available') {
+      try {
+        const result = await courseApi.purchaseCourse(courseId);
+        if (result.success) {
+          toast.success('コースを解放しました！');
+          const response = await courseApi.getAvailableCourses();
+          if (response.success) {
+            const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+              id: apiCourse.id,
+              title: apiCourse.title,
+              description: apiCourse.description,
+              status: apiCourse.status as CourseStatus,
+              gemCost: apiCourse.gemCost || undefined,
+              levelRequired: apiCourse.levelRequired || undefined,
+              rankRequired: apiCourse.rankRequired || undefined,
+              gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
+              completion: apiCourse.completion || undefined,
+            }));
+            setCourses(formattedCourses);
+          }
+        }
+      } catch (error: any) {
+        toast.error(error.message || 'コースの解放に失敗しました');
+      }
+    }
+  };
+
+  const handleActivation = async () => {
+    if (!activatingCourse) return;
+    try {
+      const result = await courseApi.purchaseCourse(activatingCourse);
+      if (result.success) {
+        toast.success('コースを開始しました！');
+        const response = await courseApi.getAvailableCourses();
+        if (response.success) {
+          const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+            id: apiCourse.id,
+            title: apiCourse.title,
+            description: apiCourse.description,
+            status: apiCourse.status as CourseStatus,
+            gemCost: apiCourse.gemCost || undefined,
+            levelRequired: apiCourse.levelRequired || undefined,
+            rankRequired: apiCourse.rankRequired || undefined,
+            gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
+            completion: apiCourse.completion || undefined,
+          }));
+          setCourses(formattedCourses);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'コースの開始に失敗しました');
+    } finally {
+      setShowActivationModal(false);
+      setActivatingCourse(null);
+    }
+  };
 
   const filteredCourses = React.useMemo(() => {
-    let filtered = mockCourses;
+    let filtered = courses;
     
     if (filter === 'available') {
-      filtered = mockCourses.filter(course => 
+      filtered = courses.filter(course => 
         ['unlocked', 'available'].includes(course.status));
     }
-    
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(course =>
@@ -97,136 +135,74 @@ export default function ShopPage() {
       );
     }
 
-    return [...filtered].sort((a, b) => statusPriority[a.status] - statusPriority[b.status]);
-  }, [filter, searchTerm]);
+    return [...filtered].sort((a, b) => {
+      const statusPriority: Record<CourseStatus, number> = {
+        unlocked: 1,
+        available: 2,
+        perfect: 3,
+        completed: 4,
+        failed: 5,
+        level_locked: 6,
+        rank_locked: 7,
+        complex: 8,
+      };
+      return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
+    });
+  }, [courses, filter, searchTerm]);
 
-
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
-      {/* ユーザーステータス */}
       <div className={theme === 'dark' ? 'bg-gray-800 rounded-lg p-4 mb-6' : 'bg-white rounded-lg p-4 mb-6 border border-[#DBEAFE] shadow-sm'}>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="text-sm">
               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>現在の階級：</span>
-              <span className={theme === 'dark' ? 'text-purple-400 font-bold' : 'text-[#1E40AF] font-bold'}>Gold</span>
+              <span className={theme === 'dark' ? 'text-purple-400 font-bold' : 'text-[#1E40AF] font-bold'}>
+                {user?.rank}
+              </span>
             </div>
             <div className="text-sm">
               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>レベル：</span>
-              <span className={theme === 'dark' ? 'text-blue-400 font-bold' : 'text-[#3B82F6] font-bold'}>25</span>
+              <span className={theme === 'dark' ? 'text-blue-400 font-bold' : 'text-[#3B82F6] font-bold'}>
+                {user?.level}
+              </span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <span className="text-yellow-400 text-xl">💎</span>
-              <span className={theme === 'dark' ? 'font-bold text-white' : 'font-bold text-[#1E40AF]'}>1,250</span>
+              <span className={theme === 'dark' ? 'font-bold text-white' : 'font-bold text-[#1E40AF]'}>
+                {user?.gems}
+              </span>
               <span className={theme === 'dark' ? 'text-gray-400 text-sm' : 'text-gray-500 text-sm'}>ジェム</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* フィルターと検索 */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex space-x-2">
-          <button 
-            className={`px-4 py-2 rounded-lg ${
-              filter === 'all' 
-                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
-                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-            }`}
-            onClick={() => setFilter('all')}
-          >
-            すべて
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-lg ${
-              filter === 'available' 
-                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
-                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-            }`}
-            onClick={() => setFilter('available')}
-          >
-            解放可能
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-lg ${
-              filter === 'new' 
-                ? theme === 'dark' ? 'bg-blue-600' : 'bg-[#3B82F6] text-white'
-                : theme === 'dark' ? 'bg-gray-700' : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-            }`}
-            onClick={() => setFilter('new')}
-          >
-            新着
-          </button>
-        </div>
-        <div className="relative">
-          <input 
-            type="search"
-            placeholder="コースを検索..."
-            className={`rounded-lg px-4 py-2 w-64 ${
-              theme === 'dark' 
-                ? 'bg-gray-700 text-white' 
-                : 'bg-white border border-[#DBEAFE] text-[#1E40AF]'
-            }`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* コースグリッド */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCourses.map((course) => (
           <CourseCard
             key={course.id}
-            title={course.title}
-            description={course.description}
-            status={course.status}
-            gemCost={course.gemCost}
-            levelRequired={course.levelRequired}
-            rankRequired={course.rankRequired}
-            gradient={course.gradient}
-            onUnlock={() => console.log('Unlocking course:', course.id)}
+            {...course}
+            onUnlock={() => handleUnlock(course.id)}
           />
         ))}
       </div>
 
-      {/* ページネーション */}
-      <div className="flex justify-center mt-8">
-        <div className="flex space-x-2">
-          <button className={`px-4 py-2 rounded-lg ${
-            theme === 'dark' 
-              ? 'bg-gray-700' 
-              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-          }`}>
-            前へ
-          </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg">1</button>
-          <button className={`px-4 py-2 rounded-lg ${
-            theme === 'dark' 
-              ? 'bg-gray-700' 
-              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-          }`}>
-            2
-          </button>
-          <button className={`px-4 py-2 rounded-lg ${
-            theme === 'dark' 
-              ? 'bg-gray-700' 
-              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-          }`}>
-            3
-          </button>
-          <button className={`px-4 py-2 rounded-lg ${
-            theme === 'dark' 
-              ? 'bg-gray-700' 
-              : 'bg-white border border-[#DBEAFE] text-[#3B82F6]'
-          }`}>
-            次へ
-          </button>
-        </div>
-      </div>
+      <ActivationModal
+        isOpen={showActivationModal}
+        onClose={() => {
+          setShowActivationModal(false);
+          setActivatingCourse(null);
+        }}
+        onConfirm={handleActivation}
+        hasCurrentCourse={courses.some(c => c.status === 'unlocked' && c.completion?.badges?.completion)}
+      />
     </div>
   );
 }
