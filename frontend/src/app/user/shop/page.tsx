@@ -8,6 +8,14 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { Course, CourseStatus } from './types';
 import { toast } from 'react-hot-toast';
 import { ActivationModal } from './ActivationModal';
+import api from '@/lib/api/auth';
+
+interface UserDetails {
+  id: string;
+  rank: string;
+  level: number;
+  gems: number;
+}
 
 const LoadingSpinner = () => {
   return (
@@ -19,18 +27,50 @@ const LoadingSpinner = () => {
 
 export default function ShopPage() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [filter, setFilter] = useState<'all' | 'available' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(true);
   const [activatingCourse, setActivatingCourse] = useState<string | null>(null);
   const [showActivationModal, setShowActivationModal] = useState(false);
+
+  // ユーザー詳細情報の取得
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        setUserLoading(true);
+        const response = await api.get('/users/profile');
+        const userData = response.data.data;
+        if (userData) {
+          setUserDetails({
+            id: userData.id,
+            rank: userData.rank,
+            level: userData.level,
+            gems: userData.gems || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch user details:', error);
+        toast.error('ユーザー情報の取得に失敗しました');
+      } finally {
+        setUserLoading(false);
+      }
+    };
+
+    if (authUser) {
+      fetchUserDetails();
+    }
+  }, [authUser]);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        setCoursesLoading(true);
         const response = await courseApi.getAvailableCourses();
+        console.log('Available courses response:', response); // デバッグ用ログ
         if (response.success) {
           const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
             id: apiCourse.id,
@@ -49,13 +89,11 @@ export default function ShopPage() {
         console.error('Failed to fetch courses:', error);
         toast.error('コースの取得に失敗しました');
       } finally {
-        setLoading(false);
+        setCoursesLoading(false);
       }
     };
-
     fetchCourses();
   }, []);
-
   const handleUnlock = async (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
@@ -124,7 +162,7 @@ export default function ShopPage() {
     let filtered = courses;
     
     if (filter === 'available') {
-      filtered = courses.filter(course => 
+      filtered = courses.filter(course =>
         ['unlocked', 'available'].includes(course.status));
     }
     if (searchTerm) {
@@ -141,8 +179,7 @@ export default function ShopPage() {
         available: 2,
         perfect: 3,
         completed: 4,
-        failed: 5,
-        level_locked: 6,
+        failed: 5,level_locked: 6,
         rank_locked: 7,
         complex: 8,
       };
@@ -150,7 +187,7 @@ export default function ShopPage() {
     });
   }, [courses, filter, searchTerm]);
 
-  if (loading) {
+  if (userLoading || coursesLoading || !userDetails) {
     return <LoadingSpinner />;
   }
 
@@ -162,13 +199,13 @@ export default function ShopPage() {
             <div className="text-sm">
               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>現在の階級：</span>
               <span className={theme === 'dark' ? 'text-purple-400 font-bold' : 'text-[#1E40AF] font-bold'}>
-                {user?.rank}
+                {userDetails.rank}
               </span>
             </div>
             <div className="text-sm">
               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>レベル：</span>
               <span className={theme === 'dark' ? 'text-blue-400 font-bold' : 'text-[#3B82F6] font-bold'}>
-                {user?.level}
+                {userDetails.level}
               </span>
             </div>
           </div>
@@ -176,7 +213,7 @@ export default function ShopPage() {
             <div className="flex items-center space-x-2">
               <span className="text-yellow-400 text-xl">💎</span>
               <span className={theme === 'dark' ? 'font-bold text-white' : 'font-bold text-[#1E40AF]'}>
-                {user?.gems}
+                {userDetails.gems}
               </span>
               <span className={theme === 'dark' ? 'text-gray-400 text-sm' : 'text-gray-500 text-sm'}>ジェム</span>
             </div>

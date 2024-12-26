@@ -43,10 +43,16 @@ interface PurchaseResponse extends BaseResponse {
   };
 }
 
-const FRONTEND_API_BASE = '/api';
+const FRONTEND_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 
-
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
+  };
+};
 
 // API関数の型を厳密に定義
 export const courseApi = {
@@ -106,16 +112,29 @@ export const courseApi = {
     return { success: true };
   },
   getAvailableCourses: async (): Promise<CourseListResponse> => {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${FRONTEND_API_BASE}/users/courses`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-    });
-    const data = await response.json();
-    return { success: true, data: data };
-  },
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${FRONTEND_API_BASE}/courses/user/available`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
+
+      const data = await response.json();
+      return { 
+        success: true,
+        data: data // バックエンドのレスポンスをそのまま使用
+      };
+    } catch (error) {
+      console.error('Failed to fetch courses:', error);
+      throw error;
+    }
+  },
   purchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
     const token = localStorage.getItem('auth_token');
     const response = await fetch(
