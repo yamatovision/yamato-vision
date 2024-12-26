@@ -9,6 +9,7 @@ import { Course, CourseStatus } from './types';
 import { toast } from 'react-hot-toast';
 import { ActivationModal } from './ActivationModal';
 import api from '@/lib/api/auth';
+import { useRouter } from 'next/navigation';  // 追加
 
 interface UserDetails {
   id: string;
@@ -26,6 +27,7 @@ const LoadingSpinner = () => {
 };
 
 export default function ShopPage() {
+  const router = useRouter();  // 追加
   const { theme } = useTheme();
   const { user: authUser } = useAuth();
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
@@ -131,9 +133,11 @@ export default function ShopPage() {
   const handleActivation = async () => {
     if (!activatingCourse) return;
     try {
-      const result = await courseApi.purchaseCourse(activatingCourse);
+      // purchaseCoursesの代わりにstartCourseを使用
+      const result = await courseApi.startCourse(activatingCourse);
       if (result.success) {
         toast.success('コースを開始しました！');
+        // コース一覧を更新
         const response = await courseApi.getAvailableCourses();
         if (response.success) {
           const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
@@ -149,6 +153,8 @@ export default function ShopPage() {
           }));
           setCourses(formattedCourses);
         }
+        // 開始したコースのページに遷移
+        router.push(`/user/courses/${activatingCourse}`);
       }
     } catch (error: any) {
       toast.error(error.message || 'コースの開始に失敗しました');
@@ -157,7 +163,6 @@ export default function ShopPage() {
       setActivatingCourse(null);
     }
   };
-
   const filteredCourses = React.useMemo(() => {
     let filtered = courses;
     

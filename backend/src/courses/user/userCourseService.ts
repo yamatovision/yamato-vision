@@ -128,6 +128,61 @@ export class UserCourseService {
     });
   }
 
+  async startCourse(userId: string, courseId: string) {
+    return await prisma.$transaction(async (tx) => {
+      // 既存のアクティブなコースを確認
+      const existingActiveCourse = await tx.userCourse.findFirst({
+        where: {
+          userId,
+          isActive: true,
+        },
+      });
+
+      // コースの購入状態を確認
+      const purchasedCourse = await tx.userCourse.findUnique({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+      });
+
+      if (!purchasedCourse) {
+        return { error: 'Course not purchased' };
+      }
+
+      // 既存のアクティブなコースがある場合は非アクティブに
+      if (existingActiveCourse) {
+        await tx.userCourse.update({
+          where: { id: existingActiveCourse.id },
+          data: { 
+            isActive: false
+          },
+        });
+      }
+
+      // 選択されたコースをアクティブに
+      const updatedCourse = await tx.userCourse.update({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        data: {
+          isActive: true,
+          startedAt: new Date(),
+        },
+        include: {
+          course: true,
+        },
+      });
+
+      return { success: true, data: updatedCourse };
+    });
+  }
+
   async getUserCourses(userId: string) {
     return prisma.userCourse.findMany({
       where: { userId },

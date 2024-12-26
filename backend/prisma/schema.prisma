@@ -80,14 +80,16 @@ model Course {
 
 
 model UserCourse {
-  id          String    @id @default(cuid())
-  userId      String
-  courseId    String
-  progress    Int       @default(0)
-  startedAt   DateTime  @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  isActive    Boolean   @default(false)
+  status    String   @default("INACTIVE") // ACTIVE, INACTIVE, COMPLETED
+  startedAt DateTime?
   completedAt DateTime?
-  course      Course    @relation(fields: [courseId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
+  progress  Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
 
   @@unique([userId, courseId])
 }

@@ -171,6 +171,31 @@ export const courseApi = {
       data: result 
     };
   },
+  
+
+  startCourse: async (courseId: string): Promise<APIResponse<{ success: boolean; data: any }>> => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/start`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      }
+    );
+    
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to start course');
+    }
+    return { 
+      success: true, 
+      data: result 
+    };
+  },
+
 
   getUserCourses: async (): Promise<CourseListResponse> => {
     const token = localStorage.getItem('auth_token');

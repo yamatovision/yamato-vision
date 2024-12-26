@@ -213,8 +213,16 @@ const prisma = new PrismaClient();export class ChapterService {
       }
     }
 
+
     if (chapter.releaseTime) {
       const courseStartTime = userCourse.startedAt;
+      // Nullチェックを追加
+      if (!courseStartTime) {
+        return { 
+          canAccess: false, 
+          message: 'コースが開始されていません' 
+        };
+      }
       const releaseTime = new Date(courseStartTime.getTime() + (chapter.releaseTime * 60 * 1000));
       
       if (new Date() < releaseTime) {
@@ -232,12 +240,11 @@ const prisma = new PrismaClient();export class ChapterService {
           taskId: chapter.taskId
         }
       });
-
-      if (submission) {
+    
+      if (submission && userCourse.startedAt) { // Nullチェックを追加
         const submissionTime = submission.submittedAt;
         const timeDiff = submissionTime.getTime() - userCourse.startedAt.getTime();
         const isOverTime = timeDiff > (chapter.timeLimit * 60 * 1000);
-
         return { 
           canAccess: true, 
           timePenalty: isOverTime 

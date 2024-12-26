@@ -10,5 +10,6 @@ router.use(authMiddleware);
 router.get('/available', userCourseController.getAvailableCourses);
 router.post('/:courseId/purchase', userCourseController.purchaseCourse);
 router.get('/user-courses', userCourseController.getUserCourses);
+router.post('/:courseId/start', userCourseController.startCourse);
 
 export const userCourseRoutes = router;

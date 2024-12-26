@@ -23,16 +23,6 @@ export class CourseController {
     }
   }
 
-  async addChapter(req: Request<{ courseId: string }, {}, CreateChapterDTO>, res: Response) {
-    try {
-      const chapter = await courseService.addChapter(req.params.courseId, req.body);
-      return res.status(201).json(chapter);
-    } catch (error) {
-      console.error('Error adding chapter:', error);
-      return res.status(500).json({ message: 'Failed to add chapter' });
-    }
-  }
-
   async getCourse(req: Request<{ id: string }>, res: Response) {
     try {
       const course = await courseService.getCourseById(req.params.id);
