@@ -1,11 +1,11 @@
+// backend/src/courses/user/userCourseService.ts
 import { PrismaClient } from '@prisma/client';
-import { CourseWithStatus, CourseStatus } from './userCourseTypes';
+import { CourseWithStatus, CourseStatus, USER_RANKS, PurchaseResult, UserRank } from './userCourseTypes';
 
 const prisma = new PrismaClient();
 
 export class UserCourseService {
   async getAvailableCourses(userId: string): Promise<CourseWithStatus[]> {
-    // ユーザー情報を取得
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -22,7 +22,10 @@ export class UserCourseService {
       throw new Error('User not found');
     }
 
-    // 公開済みの全コースを取得
+    if (user.rank === '退会者') {
+      return [];
+    }
+
     const courses = await prisma.course.findMany({
       where: {
         isPublished: true,
@@ -33,7 +36,6 @@ export class UserCourseService {
       },
     });
 
-    // コースのステータスを判定して返却
     return courses.map(course => {
       const userCourse = user.courses.find(uc => uc.courseId === course.id);
       
@@ -42,13 +44,13 @@ export class UserCourseService {
         status = 'unlocked';
       } else if (
         (!course.levelRequired || user.level >= course.levelRequired) &&
-        (!course.rankRequired || user.rank === course.rankRequired) &&
+        (!course.rankRequired || USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]) &&
         (!course.gemCost || user.gems >= course.gemCost)
       ) {
         status = 'available';
       } else if (course.levelRequired && user.level < course.levelRequired) {
         status = 'level_locked';
-      } else if (course.rankRequired && user.rank !== course.rankRequired) {
+      } else if (course.rankRequired && USER_RANKS[user.rank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
         status = 'rank_locked';
       } else {
         status = 'complex';
@@ -61,10 +63,8 @@ export class UserCourseService {
     });
   }
 
-  async purchaseCourse(userId: string, courseId: string) {
-    // トランザクションを開始
+  async purchaseCourse(userId: string, courseId: string): Promise<PurchaseResult> {
     return await prisma.$transaction(async (tx) => {
-      // ユーザーとコースの情報を取得
       const user = await tx.user.findUnique({
         where: { id: userId },
         select: {
@@ -82,18 +82,20 @@ export class UserCourseService {
         return { error: 'User or course not found' };
       }
 
-      // 購入条件のチェック
+      if (user.rank === '退会者') {
+        return { error: 'Retired users cannot purchase courses' };
+      }
+
       if (course.levelRequired && user.level < course.levelRequired) {
         return { error: 'Level requirement not met' };
       }
-      if (course.rankRequired && user.rank !== course.rankRequired) {
+      if (course.rankRequired && USER_RANKS[user.rank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
         return { error: 'Rank requirement not met' };
       }
       if (course.gemCost && user.gems < course.gemCost) {
         return { error: 'Insufficient gems' };
       }
 
-      // 既に購入済みかチェック
       const existingPurchase = await tx.userCourse.findUnique({
         where: {
           userId_courseId: {
@@ -107,7 +109,6 @@ export class UserCourseService {
         return { error: 'Course already purchased' };
       }
 
-      // 購入処理
       if (course.gemCost) {
         await tx.user.update({
           where: { id: userId },
@@ -115,7 +116,6 @@ export class UserCourseService {
         });
       }
 
-      // UserCourseレコードを作成
       const userCourse = await tx.userCourse.create({
         data: {
           userId,

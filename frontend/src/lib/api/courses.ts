@@ -58,15 +58,29 @@ const getAuthHeaders = () => {
 export const courseApi = {
   // コース関連のAPI
   getCourses: async () => {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-    });
-    const data = await response.json();
-    return { data: data.data };
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${FRONTEND_API_BASE}/admin/courses`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses');
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      throw error;
+    }
   },
+
+
+
+
   getCourse: async (courseId: string) => {
     const response = await fetch(`${FRONTEND_API_BASE}/admin/courses/${courseId}`);
     const data = await response.json();
@@ -138,7 +152,7 @@ export const courseApi = {
   purchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
     const token = localStorage.getItem('auth_token');
     const response = await fetch(
-      `${FRONTEND_API_BASE}/users/courses/${courseId}/purchase`, 
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/purchase`, 
       {
         method: 'POST',
         headers: {

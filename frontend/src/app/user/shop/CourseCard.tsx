@@ -65,6 +65,8 @@ export function CourseCard({
     return gradient;
   };
 
+  
+
   const getButtonLabel = () => {
     switch (status) {
       case 'unlocked':
