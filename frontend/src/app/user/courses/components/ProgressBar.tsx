@@ -1,15 +1,41 @@
-'use client';
-import { useTheme } from '@/contexts/theme';
+// frontend/src/app/user/courses/components/ProgressBar.tsx
+import { useEffect, useState } from 'react';
+import { courseApi } from '@/lib/api/courses';
 
 interface ProgressBarProps {
-  progress: number;
+  courseId: string;
+  totalChapters: number;
 }
 
-export function ProgressBar({ progress }: ProgressBarProps) {
-  const { theme } = useTheme();
+export function ProgressBar({ courseId, totalChapters }: ProgressBarProps) {
+  const [completedChapters, setCompletedChapters] = useState(0);
+
+  useEffect(() => {
+    const fetchProgress = async () => {
+      try {
+        const course = await courseApi.getCurrentUserCourse(courseId);
+        if (course.success && course.data) {
+          const completed = course.data.chapters.filter(
+            chapter => chapter.userProgress?.status === 'COMPLETED'
+          ).length;
+          setCompletedChapters(completed);
+        }
+      } catch (error) {
+        console.error('Failed to fetch progress:', error);
+      }
+    };
+
+    fetchProgress();
+  }, [courseId]);
+
+  const progress = (completedChapters / totalChapters) * 100;
+
   return (
-    <div className={`w-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded-full h-2`}>
-      <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progress}%` }} />
+    <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div 
+        className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+        style={{ width: `${progress}%` }}
+      />
     </div>
   );
 }

@@ -28,6 +28,7 @@ export class CourseService {
     });
   }
 
+  
   async updateCourse(id: string, data: UpdateCourseDTO) {
     const updateData: Prisma.CourseUpdateInput = {
       ...(typeof data.gemCost === 'number' && { gemCost: data.gemCost }), // 0も含めて数値として扱う

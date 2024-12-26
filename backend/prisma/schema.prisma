@@ -33,6 +33,7 @@ model User {
   tokenTracking    TokenTracking?
   badges           UserBadge[]
   courses          UserCourse[]
+    chapterProgress UserChapterProgress[] // 追加
 }
 model Chapter {
   id            String    @id @default(cuid())
@@ -50,6 +51,7 @@ model Chapter {
   course        Course    @relation(fields: [courseId], references: [id])
   task          Task?     @relation("ChapterTask", fields: [taskId], references: [id])
   taskId        String?   @unique
+    userProgress UserChapterProgress[] // 追加
 
   @@unique([courseId, orderIndex])
 }
@@ -76,6 +78,7 @@ model Course {
   passingScore  Int         @default(60)
   excellentScore Int        @default(95)
   chapters      Chapter[]
+    chapterProgress UserChapterProgress[] // 追加
 }
 
 
@@ -310,3 +313,22 @@ enum BadgeCondition {
   COMMENT_COUNT
   CUSTOM
 }
+model UserChapterProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  chapterId   String
+  status      String    @default("NOT_STARTED")
+  startedAt   DateTime?
+  completedAt DateTime?
+  score       Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  course      Course    @relation(fields: [courseId], references: [id])
+  chapter     Chapter   @relation(fields: [chapterId], references: [id])
+
+  @@unique([userId, courseId, chapterId])
+  @@index([userId, courseId])
+}
+

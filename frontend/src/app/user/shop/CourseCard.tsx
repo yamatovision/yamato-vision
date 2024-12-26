@@ -102,32 +102,33 @@ export function CourseCard({
     }
     return gradient;
   };
-
-  const handleUnlock = async () => {
-    if (status === 'active') {
-      try {
-        // 現在のコース情報を取得
-        const response = await courseApi.getCurrentUserCourse(id);
-        if (response.success && response.data && response.data.chapters.length > 0) {
-          // 最初のチャプターに遷移
-          const firstChapter = response.data.chapters[0];
-          router.push(`/user/courses/${id}/chapters/${firstChapter.id}`);
-        } else {
-          // チャプターが存在しない場合はコース一覧ページにリダイレクト
-          router.push('/user/courses');
-          toast.error('利用可能なチャプターが見つかりませんでした');
-        }
-      } catch (error) {
-        console.error('Failed to fetch course details:', error);
-        toast.error('コース情報の取得に失敗しました');
-        // エラー時はコース一覧ページに遷移
+// frontend/src/app/user/shop/CourseCard.tsx// CourseCard.tsx内のhandleUnlock関数を以下のように修正
+const handleUnlock = async () => {
+  if (status === 'active') {
+    try {
+      console.log('Fetching current course:', id);
+      // getCurrentChapterを使用して直接次のチャプターを取得
+      const currentChapterResponse = await courseApi.getCurrentChapter(id);
+      
+      if (currentChapterResponse.success && currentChapterResponse.data) {
+        const chapter = currentChapterResponse.data;
+        console.log('Navigating to chapter:', chapter);
+        
+        // チャプターページに遷移
+        router.push(`/user/courses/${id}/chapters/${chapter.id}`);
+      } else {
+        toast.error('利用可能なチャプターが見つかりませんでした');
         router.push('/user/courses');
       }
-    } else {
-      onUnlock();
+    } catch (error) {
+      console.error('Error in handleUnlock:', error);
+      toast.error('チャプター情報の取得に失敗しました');
+      router.push('/user/courses');
     }
-  };
-  
+  } else {
+    onUnlock();
+  }
+};
   
   const getButtonLabel = () => {
     switch (status) {

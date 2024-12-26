@@ -53,42 +53,112 @@ export class ChapterController {
     res: Response
   ) {
     try {
+      // デバッグログ：リクエストパラメータ
+      console.log('GetChapter Request:', {
+        courseId: req.params.courseId,
+        chapterId: req.params.chapterId,
+        userId: req.user?.id
+      });
+  
       const chapter = await chapterService.getChapter(req.params.chapterId);
+      
+      // デバッグログ：サービスからの結果
+      console.log('Chapter Service Result:', {
+        found: !!chapter,
+        chapterId: req.params.chapterId
+      });
+  
       if (!chapter) {
-        return res.status(404).json({ message: 'チャプターが見つかりません' });
+        console.log('Chapter not found:', req.params.chapterId);
+        return res.status(404).json({
+          success: false,
+          message: 'チャプターが見つかりません'
+        });
       }
-      return res.json(chapter);
+  
+      // content文字列のパース
+      const parsedChapter = {
+        ...chapter,
+        content: typeof chapter.content === 'string' 
+          ? JSON.parse(chapter.content) 
+          : chapter.content
+      };
+  
+      // デバッグログ：レスポンスデータ
+      console.log('Sending chapter response:', {
+        chapterId: parsedChapter.id,
+        title: parsedChapter.title
+      });
+  
+      return res.status(200).json({
+        success: true,
+        data: parsedChapter
+      });
     } catch (error) {
-      console.error('Error fetching chapter:', error);
-      return res.status(500).json({ message: 'チャプターの取得に失敗しました' });
+      console.error('Error in getChapter:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        chapterId: req.params.chapterId,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+  
+      return res.status(500).json({
+        success: false,
+        message: 'チャプターの取得に失敗しました'
+      });
     }
   }
-  // コースのチャプター一覧取得
+
+  async updateChaptersOrder(
+    req: Request<{ courseId: string }, {}, Array<{ id: string; orderIndex: number }>>,
+    res: Response
+  ) {
+    try {
+      console.log('Updating chapter order:', {
+        courseId: req.params.courseId,
+        updates: req.body
+      });
+
+      await chapterService.updateChaptersOrder(req.body);
+
+      return res.status(200).json({
+        success: true,
+        message: '順序を更新しました'
+      });
+    } catch (error) {
+      console.error('Error updating chapter order:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'チャプター順序の更新に失敗しました'
+      });
+    }
+  }
+
+  // チャプター一覧取得メソッドを追加
   async getChapters(
     req: Request<{ courseId: string }>,
     res: Response
   ) {
     try {
+      console.log('Fetching chapters for course:', {
+        courseId: req.params.courseId
+      });
+
       const chapters = await chapterService.getChapters(req.params.courseId);
-      return res.json(chapters);
+
+      return res.status(200).json({
+        success: true,
+        data: chapters
+      });
     } catch (error) {
       console.error('Error fetching chapters:', error);
-      return res.status(500).json({ message: 'チャプター一覧の取得に失敗しました' });
+      return res.status(500).json({
+        success: false,
+        message: 'チャプター一覧の取得に失敗しました'
+      });
     }
   }
-  // チャプター順序更新
-  async updateChaptersOrder(
-    req: Request<{ courseId: string }, {}, ChapterOrderItem[]>,
-    res: Response
-  ) {
-    try {
-      await chapterService.updateChaptersOrder(req.body);
-      return res.status(200).json({ message: '順序を更新しました' });
-    } catch (error) {
-      console.error('Error updating chapter order:', error);
-      return res.status(500).json({ message: 'チャプター順序の更新に失敗しました' });
-    }
-  }
+
+
   // チャプターアクセス状態チェック
   async checkChapterAccess(
     req: Request<{ courseId: string; chapterId: string }>,

@@ -1,169 +1,195 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { useState } from 'react';
-import { TimeRemaining } from '../components/TimeRemaining';
-import { ProgressBar } from '../components/ProgressBar';
-import { ParticipantList } from '../components/ParticipantList';
-import { VideoPlayer } from '../components/VideoPlayer';
-import { AudioPlayer } from '../components/AudioPlayer';
-import { AttachmentFiles } from '../components/AttachmentFiles';
-import { TaskDescription } from '../components/TaskDescription';
-import { Examples } from '../components/Examples';
-import { AttachmentFile } from '@/types/course';  // この行を追加
-
-export default function CoursePage() {
+import { Chapter } from '@/types/course';
+import { courseApi } from '@/lib/api/courses';
+import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { VideoPlayer } from '@/app/user/courses/components/VideoPlayer';
+import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
+import { TaskDescription } from '@/app/user/courses/components/TaskDescription';
+import { AttachmentFiles } from '@/app/user/courses/components/AttachmentFiles';
+import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
+import { ParticipantList } from '@/app/user/courses/components/ParticipantList';
+import { ProgressBar } from '@/app/user/courses/components/ProgressBar';
+export default function ChapterPage({ 
+  params 
+}: { 
+  params: { courseId: string; chapterId: string } 
+}) {
   const { theme } = useTheme();
-  const [contentType, setContentType] = useState<'video' | 'audio'>('video');
-  
-  const sampleFiles: AttachmentFile[] = [
-    {
-      id: '1',
-      name: 'lesson_guide.pdf',
-      size: 1024 * 1024 * 2.5,
-      type: 'pdf' as const,  // 型を明示的に指定
-      url: '/samples/guide.pdf'
-    },
-    {
-      id: '2',
-      name: 'reference_image.png',
-      size: 1024 * 500,
-      type: 'image' as const,  // 型を明示的に指定
-      url: '/samples/image.png'
-    }
-  ];
-  
+  const router = useRouter();
+  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
-  return (
-    <div className="max-w-[800px] mx-auto pb-20">
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg mb-4`}>
-        <div className="p-4 text-center">
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            STAGE 2-1: 効果的なプロンプトの作成
+  useEffect(() => {
+    const loadChapter = async () => {
+      try {
+        setLoading(true);
+        const response = await courseApi.getChapter(params.courseId, params.chapterId);
+        
+        if (response.success && response.data) {
+          const parsedChapter = {
+            ...response.data,
+            content: response.data.content ? 
+              (typeof response.data.content === 'string' ? 
+                JSON.parse(response.data.content) : 
+                response.data.content
+              ) : null
+          };
+          setChapter(parsedChapter);
+          
+          // プログレスの取得
+          const progressResponse = await courseApi.getCurrentUserCourse(params.courseId);
+          if (progressResponse.success && progressResponse.data) {
+            setProgress(progressResponse.data.progress);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load chapter:', error);
+        toast.error('チャプターの読み込みに失敗しました');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadChapter();
+  }, [params.courseId, params.chapterId]);
+
+  const handleChapterComplete = async () => {
+    try {
+      setSubmitting(true);
+      const result = await courseApi.completeChapter(params.courseId, params.chapterId);
+      
+      if (result.success) {
+        toast.success('チャプターを完了しました！');
+        
+        if (result.data.nextChapter) {
+          // 次のチャプターがある場合は自動的に遷移
+          router.push(`/user/courses/${params.courseId}/chapters/${result.data.nextChapter.id}`);
+        } else {
+          // 全チャプターが完了した場合はコース一覧に戻る
+          toast.success('おめでとうございます！コースを完了しました！');
+          router.push('/user/courses');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to complete chapter:', error);
+      toast.error('チャプターの完了処理に失敗しました');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
+
+  if (!chapter) {
+    return (
+      <div className="max-w-[800px] mx-auto p-4">
+        <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 text-center`}>
+          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            チャプターが見つかりません
           </p>
         </div>
-
-        <div className="px-4 pb-4">
-          <div className="flex justify-between items-center mb-2">
-            <button className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} hover:opacity-80 transition-opacity`}>
-              ←
-            </button>
-            <TimeRemaining />
-            <div className="w-6" />
-          </div>
-          <ProgressBar progress={45} />
-        </div>
       </div>
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm p-2 rounded-lg mb-4`}>
-        <ParticipantList />
-      </div>
+    );
+  }
 
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg p-6 mb-6`}>
-        <h1 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
-          プロンプトエンジニアリング基礎
-        </h1>
-
-        <div className="flex justify-end space-x-2 mb-4">
-          <button
-            onClick={() => setContentType('video')}
-            className={`px-3 py-1 rounded-lg transition-colors ${
-              contentType === 'video'
-                ? theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
-                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            動画
-          </button>
-          <button
-            onClick={() => setContentType('audio')}
-            className={`px-3 py-1 rounded-lg transition-colors ${
-              contentType === 'audio'
-                ? theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
-                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            音声
-          </button>
-        </div>
-
-        {contentType === 'video' ? <VideoPlayer /> : <AudioPlayer />}
-
-        <div className="mt-4">
-          <AttachmentFiles files={sampleFiles} />
-        </div>
-      </div>
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg p-6 mb-6`}>
-        <div className="max-w-[800px] mx-auto">
-          <Examples />
-        </div>
-      </div>
-
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg p-6`}>
-        <div className="max-w-[700px] mx-auto space-y-8">
-          <div className="space-y-4">
-            <h2 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
-              実践課題
-            </h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-              以下のシナリオに対して、最適なプロンプトを作成してください。
-              作成したプロンプトは実際に動作確認を行い、結果と共に提出してください。
+  return (
+    <div className="max-w-[800px] mx-auto pb-20 px-4">
+      {/* ヘッダー部分 */}
+      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg mb-6`}>
+        <div className="p-4 text-center">
+          <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
+            {chapter.title}
+          </h1>
+          {chapter.subtitle && (
+            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              {chapter.subtitle}
             </p>
-            <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50'} rounded-lg p-3 border ${
-              theme === 'dark' ? 'border-gray-600' : 'border-blue-100'
-            }`}>
-              <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-200' : 'text-[#1E40AF]'}`}>
-                シナリオ：ECサイトの商品説明文を生成するAIシステムを構築したい。
-                ブランドの特徴を維持しながら、魅力的な説明文を生成するプロンプトを作成してください。
-              </p>
-            </div>
-          </div>
+          )}
+        </div>
+      </div>
 
-          <div className="space-y-6">
-            <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
-              あなたの回答
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  プロンプト
-                </label>
-                <textarea 
-                  className={`w-full h-32 rounded-lg p-3 ${
-                    theme === 'dark' 
-                      ? 'bg-gray-700 text-white border-gray-600' 
-                      : 'bg-white text-gray-900 border-gray-200'
-                  } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                  placeholder="プロンプトを入力してください"
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  動作結果
-                </label>
-                <textarea 
-                  className={`w-full h-32 rounded-lg p-3 ${
-                    theme === 'dark' 
-                      ? 'bg-gray-700 text-white border-gray-600' 
-                      : 'bg-white text-gray-900 border-gray-200'
-                  } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                  placeholder="AIの出力結果を貼り付けてください"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button className={`${
-                  theme === 'dark'
-                    ? 'bg-blue-600 hover:bg-blue-700'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                } text-white px-6 py-3 rounded-lg font-bold transition-colors`}>
-                  課題を提出
-                </button>
-              </div>
-            </div>
+      {/* コンテンツ部分 */}
+      <div className="space-y-6">
+        {/* メディアプレイヤー */}
+        {chapter.content?.type === 'video' && (
+          <div className="mb-6">
+            <VideoPlayer 
+              url={chapter.content.url} 
+              transcription={chapter.content.transcription}
+            />
           </div>
+        )}
+
+        {chapter.content?.type === 'audio' && (
+          <div className="mb-6">
+            <AudioPlayer 
+              url={chapter.content.url}
+              transcription={chapter.content.transcription}
+            />
+          </div>
+        )}
+
+        {/* タスク部分 */}
+        {chapter.task && (
+          <div className="mb-6">
+            <TaskDescription
+              description={chapter.task.description}
+              systemMessage={chapter.task.systemMessage}
+              referenceText={chapter.task.referenceText}
+              maxPoints={chapter.task.maxPoints}
+              type={chapter.task.type}
+            />
+          </div>
+        )}
+
+        {/* 添付ファイル */}
+        {/* AttachmentFilesコンポーネントの実装に応じて追加 */}
+
+        {/* 進捗と時間 */}
+        <div className="mt-8 space-y-4">
+          <ProgressBar progress={progress} />
+          {chapter.timeLimit && (
+            <div className="flex justify-between items-center">
+              <TimeRemaining initialTime={chapter.timeLimit} />
+              <ParticipantList />
+            </div>
+          )}
+        </div>
+
+        {/* チャプター完了ボタン */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleChapterComplete}
+            disabled={submitting}
+            className={`
+              ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'}
+              text-white font-bold py-3 px-6 rounded-lg
+              transition-all duration-200
+              ${submitting ? 'opacity-50 cursor-not-allowed' : ''}
+              shadow-lg hover:shadow-xl
+            `}
+          >
+            {submitting ? (
+              <span className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                処理中...
+              </span>
+            ) : (
+              'チャプターを完了する'
+            )}
+          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,13 @@
 // backend/src/courses/user/userCourseService.ts
 import { PrismaClient } from '@prisma/client';
-import { CourseWithStatus, CourseStatus, USER_RANKS, PurchaseResult, UserRank } from './userCourseTypes';
+import { 
+  CourseWithStatus, 
+  CourseStatus, 
+  USER_RANKS, 
+  PurchaseResult, 
+  UserRank,
+  ChapterProgressStatus  // 追加
+} from './userCourseTypes';
 
 const prisma = new PrismaClient();
 
@@ -159,7 +166,26 @@ export class UserCourseService {
       if (!purchasedCourse) {
         return { error: 'Course not purchased' };
       }
-
+      const firstChapter = await tx.chapter.findFirst({
+        where: {
+          courseId,
+        },
+        orderBy: {
+          orderIndex: 'asc',
+        },
+      });
+      
+      if (firstChapter) {
+        await tx.userChapterProgress.create({
+          data: {
+            userId,
+            courseId,
+            chapterId: firstChapter.id,
+            status: 'IN_PROGRESS',  // 型キャストを削除
+            startedAt: new Date(),
+          },
+        });
+      }
       // 既存のアクティブなコースがある場合は非アクティブに
       if (existingActiveCourse) {
         await tx.userCourse.update({
@@ -212,6 +238,43 @@ export class UserCourseService {
   
     return userCourse;
   }
+  async getCurrentChapter(userId: string, courseId: string) {
+    // Get all chapter progress for this course
+    const chapterProgress = await prisma.userChapterProgress.findMany({
+      where: {
+        userId,
+        courseId,
+      },
+      include: {
+        chapter: true,
+      },
+      orderBy: {
+        chapter: {
+          orderIndex: 'asc',
+        },
+      },
+    });
+  
+    // Get all chapters for this course
+    const courseChapters = await prisma.chapter.findMany({
+      where: {
+        courseId,
+      },
+      orderBy: {
+        orderIndex: 'asc',
+      },
+    });
+  
+    // Find the first incomplete chapter
+    const nextChapter = courseChapters.find(chapter => {
+      const progress = chapterProgress.find(p => p.chapterId === chapter.id);
+      return !progress || progress.status !== 'COMPLETED';  // 文字列リテラルのままで問題ありません
+    });
+  
+    // If all chapters are completed, return the last chapter
+    return nextChapter || courseChapters[courseChapters.length - 1];
+  }
+
 
   async getUserCourses(userId: string) {
     return prisma.userCourse.findMany({

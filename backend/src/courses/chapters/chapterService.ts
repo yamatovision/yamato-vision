@@ -129,28 +129,144 @@ const prisma = new PrismaClient();export class ChapterService {
     });
   }
 
-  // チャプター取得
-  async getChapter(chapterId: string): Promise<ChapterWithTask | null> {
-    return prisma.chapter.findUnique({
+// backend/src/courses/chapters/chapterService.ts に追加
+ async completeChapter(userId: string, courseId: string, chapterId: string) {
+  return await prisma.$transaction(async (tx) => {
+    // チャプター進捗を完了に更新
+    await tx.userChapterProgress.upsert({
+      where: {
+        userId_courseId_chapterId: {
+          userId,
+          courseId,
+          chapterId,
+        },
+      },
+      update: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+      create: {
+        userId,
+        courseId,
+        chapterId,
+        status: 'COMPLETED',
+        startedAt: new Date(),
+        completedAt: new Date(),
+      },
+    });
+
+    // 次のチャプターを開始
+    const nextChapter = await tx.chapter.findFirst({
+      where: {
+        courseId,
+        orderIndex: {
+          gt: (await tx.chapter.findUnique({ where: { id: chapterId } }))?.orderIndex
+        },
+      },
+      orderBy: {
+        orderIndex: 'asc',
+      },
+    });
+
+    if (nextChapter) {
+      await tx.userChapterProgress.create({
+        data: {
+          userId,
+          courseId,
+          chapterId: nextChapter.id,
+          status: 'IN_PROGRESS',
+          startedAt: new Date(),
+        },
+      });
+    } else {
+      // コースの完了処理
+      await tx.userCourse.update({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+    }
+
+    return nextChapter;
+  });
+}
+
+
+async getChapters(courseId: string): Promise<ChapterWithTask[]> {
+  try {
+    console.log('Fetching chapters for course:', { courseId });
+
+    const chapters = await prisma.chapter.findMany({
+      where: { 
+        courseId,
+        isVisible: true  // 可視状態のチャプターのみ取得
+      },
+      include: {
+        task: true
+      },
+      orderBy: {
+        orderIndex: 'asc'  // 順序順に取得
+      }
+    });
+
+    console.log('Chapters found:', {
+      courseId,
+      count: chapters.length
+    });
+
+    // contentのパース処理を追加
+    const parsedChapters = chapters.map(chapter => ({
+      ...chapter,
+      content: typeof chapter.content === 'string' 
+        ? JSON.parse(chapter.content) 
+        : chapter.content
+    }));
+
+    return parsedChapters;
+  } catch (error) {
+    console.error('Error fetching chapters:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      courseId
+    });
+    throw error;
+  }
+}
+
+async getChapter(chapterId: string): Promise<ChapterWithTask | null> {
+  try {
+    // デバッグログ：クエリ開始
+    console.log('Getting chapter from database:', { chapterId });
+
+    const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: {
         task: true
       }
     });
-  }
 
-  // コースのチャプター一覧取得
-  async getChapters(courseId: string): Promise<ChapterWithTask[]> {
-    return prisma.chapter.findMany({
-      where: { courseId },
-      include: {
-        task: true
-      },
-      orderBy: {
-        orderIndex: 'asc'
-      }
+    // デバッグログ：クエリ結果
+    console.log('Database query result:', {
+      found: !!chapter,
+      chapterId,
+      title: chapter?.title
     });
+
+    return chapter;
+  } catch (error) {
+    console.error('Error in getChapter service:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      chapterId
+    });
+    throw error;
   }
+}
 
   // チャプター順序更新
   async updateChaptersOrder(orders: ChapterOrderItem[]) {

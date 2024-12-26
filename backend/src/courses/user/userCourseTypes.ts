@@ -24,6 +24,7 @@ export type CourseStatus =
 export interface CourseWithStatus extends Course {
   status: CourseStatus;
 }
+export type ChapterProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface PurchaseResult {
   error?: string;

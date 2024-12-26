@@ -23,6 +23,8 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
   const [isAddingChapter, setIsAddingChapter] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'chapters'>('basic');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null); // 追加
+
 
   useEffect(() => {
     fetchCourse();
@@ -47,6 +49,21 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
     toast.success('チャプターを追加しました');
   };
 
+  const handleEditChapter = (chapterId: string) => {
+    const chapterToEdit = course?.chapters?.find(chapter => chapter.id === chapterId);
+    if (chapterToEdit) {
+      setEditingChapterId(chapterId);
+      setIsAddingChapter(true);
+    }
+  };
+  
+  const handleEditSuccess = async () => {
+    await fetchCourse();
+    setIsAddingChapter(false);
+    setEditingChapterId(null);
+    toast.success('チャプターを更新しました');
+  };
+  
   const handleChapterDelete = async (chapterId: string) => {
     if (!confirm('このチャプターを削除してもよろしいですか？')) return;
 
@@ -249,6 +266,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
                   <ChapterList
                     chapters={course.chapters}
                     onDelete={handleChapterDelete}
+                    onEdit={handleEditChapter}  // 追加
                     onOrderUpdate={handleChapterOrderUpdate}
                   />
                 )}

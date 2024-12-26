@@ -7,6 +7,7 @@ import { userCourseRoutes } from './user/userCourseRoutes';
 
 const router = Router();
 
+
 // ユーザー向けルートを先に定義（より具体的なパスを先に）
 router.use('/user', userCourseRoutes);  // /api/courses/user/*
 

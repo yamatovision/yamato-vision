@@ -3,14 +3,19 @@ import { useTheme } from '@/contexts/theme';
 import { Chapter } from '@/types/course';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useState } from 'react';
+
 interface ChapterListProps {
   chapters?: Chapter[];
   onDelete: (chapterId: string) => void;
+  onEdit: (chapterId: string) => void;  // 追加
   onOrderUpdate: (chapters: Chapter[]) => void;
 }
-export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterListProps) {
+
+export function ChapterList({ chapters = [], onDelete, onEdit, onOrderUpdate }: ChapterListProps) {
+
   const { theme } = useTheme();
   const [isReordering, setIsReordering] = useState(false);
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
     const items = Array.from(chapters);
@@ -23,6 +28,7 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
       setIsReordering(false);
     }
   };
+
   if (chapters.length === 0) {
     return (
       <div className={`text-center py-12 ${
@@ -32,6 +38,7 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
       </div>
     );
   }
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable droppableId="chapters">
@@ -58,9 +65,9 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
                     {...provided.draggableProps}
                     className={`${
                       theme === 'dark'
-                        ? 'bg-gray-700 hover:bg-gray-600'
-                        : 'bg-gray-50 hover:bg-gray-100'
-                    } rounded-lg transition-colors ${
+                        ? 'bg-gray-800/80 hover:bg-gray-700'
+                        : 'bg-white hover:bg-gray-50'
+                    } rounded-lg shadow-sm transition-colors ${
                       snapshot.isDragging ? 'shadow-lg' : ''
                     }`}
                   >
@@ -70,12 +77,14 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
                           <div className="flex items-center space-x-3">
                             <div
                               {...provided.dragHandleProps}
-                              className={`cursor-move p-1 rounded hover:bg-gray-200 ${
-                                theme === 'dark' ? 'hover:bg-gray-500' : 'hover:bg-gray-200'
+                              className={`cursor-move p-1 rounded ${
+                                theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
                               }`}
                             >
                               <svg
-                                className="w-5 h-5 text-gray-500"
+                                className={`w-5 h-5 ${
+                                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                }`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -89,14 +98,14 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
                               </svg>
                             </div>
                             <div>
-                              <h3 className={`font-bold ${
+                              <h3 className={`text-lg font-semibold ${
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
                                 {chapter.title}
                               </h3>
                               {chapter.subtitle && (
                                 <p className={`text-sm mt-1 ${
-                                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                                 }`}>
                                   {chapter.subtitle}
                                 </p>
@@ -104,46 +113,71 @@ export function ChapterList({ chapters = [], onDelete, onOrderUpdate }: ChapterL
                             </div>
                           </div>
                           <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-  <div>
-    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-      コンテンツタイプ:
-    </span>
-    <span className={`ml-2 ${
-      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-    }`}>
-      {chapter.content?.type === 'video' ? '動画' : '音声'}
-    </span>
-  </div>
-  <div>
-    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-      制限時間:
-    </span>
-    <span className={`ml-2 ${
-      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-    }`}>
-      {chapter.timeLimit || '-'} 分
-    </span>
-  </div>
-  <div>
-    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-      解放時間:
-    </span>
-    <span className={`ml-2 ${
-      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-    }`}>
-      {chapter.releaseTime 
-        ? `${chapter.releaseTime}分後` 
-        : '-'
-      }
-    </span>
-  </div>
-</div>
+                            <div>
+                              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                                コンテンツタイプ:
+                              </span>
+                              <span className={`ml-2 font-medium ${
+                                theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                              }`}>
+                                {chapter.content?.type === 'video' ? '動画' : '音声'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                                制限時間:
+                              </span>
+                              <span className={`ml-2 font-medium ${
+                                theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                              }`}>
+                                {chapter.timeLimit || '-'} 分
+                              </span>
+                            </div>
+                            <div>
+                              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                                解放時間:
+                              </span>
+                              <span className={`ml-2 font-medium ${
+                                theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                              }`}>
+                                {chapter.releaseTime ? `${chapter.releaseTime}分後` : '-'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <div className="flex space-x-2 ml-4">
+  <button
+    onClick={() => onEdit(chapter.id)}
+    className={`p-2 rounded group ${
+      theme === 'dark' 
+        ? 'hover:bg-blue-900/30' 
+        : 'hover:bg-blue-100'
+    }`}
+  >
+    <svg
+      className={`w-5 h-5 ${
+        theme === 'dark' 
+          ? 'text-blue-400 group-hover:text-blue-300'
+          : 'text-blue-500 group-hover:text-blue-600'
+      }`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
+    </svg>
+  </button>
                           <button
                             onClick={() => onDelete(chapter.id)}
-                            className={`p-2 rounded hover:bg-red-100 group ${
-                              theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'
+                            className={`p-2 rounded group ${
+                              theme === 'dark' 
+                                ? 'hover:bg-red-900/30' 
+                                : 'hover:bg-red-100'
                             }`}
                           >
                             <svg
