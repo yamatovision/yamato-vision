@@ -308,23 +308,24 @@ export const courseApi = {
   },
 
   // 現在のコースの取得
-  getCurrentUserCourse: async (courseId: string): Promise<CurrentCourseResponse> => {
+  getCurrentUserCourse: async (): Promise<CurrentCourseResponse> => {
     try {
+      // courseIdパラメータを削除し、固定のエンドポイントを使用
       const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/user/${courseId}/current`,
+        `${FRONTEND_API_BASE}/courses/user/current`,
         {
           headers: getAuthHeaders(),
         }
       );
-
+  
       if (!response.ok) {
         throw new Error('Failed to fetch current course');
       }
-
+  
       const data = await response.json();
       return { 
         success: true,
-        data: data 
+        data: data.data 
       };
     } catch (error) {
       console.error('Failed to fetch current course:', error);
