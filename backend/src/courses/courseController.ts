@@ -38,10 +38,13 @@ export class CourseController {
 
   async getCourses(req: Request, res: Response) {
     try {
-      const filter = {
-        isPublished: req.query.published === 'true',
-        isArchived: req.query.archived === 'true'
-      };
+      const filter = req.query.published === 'all' 
+        ? undefined  // フィルターなし（全て取得）
+        : {
+            isPublished: req.query.published === 'true',
+            isArchived: req.query.archived === 'true'
+          };
+      
       const courses = await courseService.getCourses(filter);
       return res.json(courses);
     } catch (error) {

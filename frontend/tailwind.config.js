@@ -63,5 +63,8 @@ module.exports = {
       opacity: ['disabled'],
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+
+  ],
 };

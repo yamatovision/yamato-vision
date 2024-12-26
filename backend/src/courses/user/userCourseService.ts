@@ -190,6 +190,28 @@ export class UserCourseService {
       return { success: true, data: updatedCourse };
     });
   }
+  async getCurrentUserCourse(userId: string, courseId: string) {
+    const userCourse = await prisma.userCourse.findFirst({
+      where: {
+        userId,
+        courseId,
+        isActive: true
+      },
+      include: {
+        course: {
+          include: {
+            chapters: {
+              orderBy: {
+                orderIndex: 'asc'
+              }
+            }
+          }
+        }
+      }
+    });
+  
+    return userCourse;
+  }
 
   async getUserCourses(userId: string) {
     return prisma.userCourse.findMany({

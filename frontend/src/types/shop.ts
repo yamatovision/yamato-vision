@@ -6,6 +6,7 @@ export type CourseStatus =
   | 'level_locked'
   | 'rank_locked'
   | 'complex'
+  | 'active'    // 追加
   | 'perfect'
   | 'completed'
   | 'failed';
@@ -29,4 +30,5 @@ export interface CourseCardProps {
       excellence?: boolean;
     };
   };
+  lastAccessedChapterId?: string; // 追加
 }

@@ -150,6 +150,19 @@ export interface SingleCourseResponse {
 export interface ChapterResponse {
   data: Chapter;
 }
+export interface CourseChapter {
+  id: string;
+  orderIndex: number;
+  title: string;
+}
+
+export interface CurrentUserCourse {
+  id: string;
+  courseId: string;
+  chapters: CourseChapter[];
+  progress: number;
+  startedAt: Date;
+}
 
 
 export type CourseStatus = 

@@ -73,6 +73,9 @@ export default function ShopPage() {
         setCoursesLoading(true);
         const response = await courseApi.getAvailableCourses();
         console.log('Available courses response:', response); // デバッグ用ログ
+
+    console.log('API Response:', response);
+    console.log('Courses Data:', response.data);
         if (response.success) {
           const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
             id: apiCourse.id,
@@ -96,10 +99,26 @@ export default function ShopPage() {
     };
     fetchCourses();
   }, []);
+
   const handleUnlock = async (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
-
+  
+    if (course.status === 'active') {
+      try {
+        // 現在のコース情報を取得
+        const currentCourse = await courseApi.getCurrentUserCourse(courseId);
+        if (currentCourse.success && currentCourse.data) {
+          // 最初のチャプターまたは進行中のチャプターに遷移
+          const targetChapter = currentCourse.data.chapters[0];
+          router.push(`/user/courses/${courseId}/chapters/${targetChapter.id}`);
+        }
+      } catch (error) {
+        console.error('Failed to get current course:', error);
+        toast.error('コース情報の取得に失敗しました');
+      }
+      return;
+    }
     if (course.status === 'unlocked') {
       setActivatingCourse(courseId);
       setShowActivationModal(true);
@@ -228,11 +247,12 @@ export default function ShopPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            {...course}
-            onUnlock={() => handleUnlock(course.id)}
-          />
+         <CourseCard
+         key={course.id}
+         {...course}
+         onUnlock={() => handleUnlock(course.id)}
+         lastAccessedChapterId={course.lastAccessedChapterId} // 追加が必要
+       />
         ))}
       </div>
 

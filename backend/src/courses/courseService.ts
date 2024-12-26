@@ -30,14 +30,15 @@ export class CourseService {
 
   async updateCourse(id: string, data: UpdateCourseDTO) {
     const updateData: Prisma.CourseUpdateInput = {
+      ...(typeof data.gemCost === 'number' && { gemCost: data.gemCost }), // 0も含めて数値として扱う
+      // ...
       ...(data.title && { title: data.title }),
       ...(data.description && { description: data.description }),
-      ...(data.gemCost && { gemCost: data.gemCost }),
-      ...(data.levelRequired && { levelRequired: data.levelRequired }),
+      ...(typeof data.levelRequired === 'number' && { levelRequired: data.levelRequired }),
       ...(data.rankRequired && { rankRequired: data.rankRequired }),
-      ...(data.timeLimit && { timeLimit: data.timeLimit }),
-      ...(data.passingScore && { passingScore: data.passingScore }),
-      ...(data.excellentScore && { excellentScore: data.excellentScore }),
+      ...(typeof data.timeLimit === 'number' && { timeLimit: data.timeLimit }),
+      ...(typeof data.passingScore === 'number' && { passingScore: data.passingScore }),
+      ...(typeof data.excellentScore === 'number' && { excellentScore: data.excellentScore }),
       ...(data.thumbnail && { thumbnail: data.thumbnail }),
       ...(typeof data.isPublished !== 'undefined' && {
         isPublished: data.isPublished,

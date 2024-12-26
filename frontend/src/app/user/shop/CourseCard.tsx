@@ -4,6 +4,10 @@ import React from 'react';
 import { useTheme } from '@/contexts/theme';
 import { CourseStatus } from './types';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';  // ファイルの先頭に追加
+import { courseApi } from '@/lib/api/courses';  // この行を追加
+
+
 
 interface CourseCardProps {
   id: string;
@@ -99,14 +103,32 @@ export function CourseCard({
     return gradient;
   };
 
-  const handleUnlock = () => {
-    if (status === 'active' && lastAccessedChapterId) {
-      router.push(`/user/courses/${id}/chapters/${lastAccessedChapterId}`);
+  const handleUnlock = async () => {
+    if (status === 'active') {
+      try {
+        // 現在のコース情報を取得
+        const response = await courseApi.getCurrentUserCourse(id);
+        if (response.success && response.data && response.data.chapters.length > 0) {
+          // 最初のチャプターに遷移
+          const firstChapter = response.data.chapters[0];
+          router.push(`/user/courses/${id}/chapters/${firstChapter.id}`);
+        } else {
+          // チャプターが存在しない場合はコース一覧ページにリダイレクト
+          router.push('/user/courses');
+          toast.error('利用可能なチャプターが見つかりませんでした');
+        }
+      } catch (error) {
+        console.error('Failed to fetch course details:', error);
+        toast.error('コース情報の取得に失敗しました');
+        // エラー時はコース一覧ページに遷移
+        router.push('/user/courses');
+      }
     } else {
       onUnlock();
     }
   };
-
+  
+  
   const getButtonLabel = () => {
     switch (status) {
       case 'active':
