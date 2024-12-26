@@ -69,39 +69,6 @@ const getAuthHeaders = () => {
   };
 };
 
-const getCurrentChapter = async (courseId: string): Promise<APIResponse<Chapter>> => {
-  try {
-    // パスを修正
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
-      {
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      console.error('Failed to fetch current chapter:', response.status);
-      throw new Error('Failed to fetch current chapter');
-    }
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to fetch current chapter');
-    }
-
-    return {
-      success: true,
-      data: data.data
-    };
-  } catch (error) {
-    console.error('Error fetching current chapter:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-};
 
 export const courseApi = {
   // コース一覧取得
@@ -133,6 +100,39 @@ export const courseApi = {
     );
     const data = await response.json();
     return { data };
+  },
+
+  getCurrentChapter: async (courseId: string): Promise<APIResponse<Chapter>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Failed to fetch current chapter:', response.status);
+        throw new Error('Failed to fetch current chapter');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch current chapter');
+      }
+
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Error fetching current chapter:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   },
 
   // コース作成

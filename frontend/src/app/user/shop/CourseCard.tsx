@@ -107,16 +107,15 @@ const handleUnlock = async () => {
   if (status === 'active') {
     try {
       console.log('Fetching current course:', id);
-      // getCurrentChapterを使用して直接次のチャプターを取得
       const currentChapterResponse = await courseApi.getCurrentChapter(id);
       
       if (currentChapterResponse.success && currentChapterResponse.data) {
         const chapter = currentChapterResponse.data;
         console.log('Navigating to chapter:', chapter);
         
-        // チャプターページに遷移
         router.push(`/user/courses/${id}/chapters/${chapter.id}`);
       } else {
+        console.error('Failed to get current chapter:', currentChapterResponse.error);
         toast.error('利用可能なチャプターが見つかりませんでした');
         router.push('/user/courses');
       }

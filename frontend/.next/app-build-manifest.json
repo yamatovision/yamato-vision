@@ -1,5 +1,10 @@
 {
   "pages": {
+    "/user/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/layout.js"
+    ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -26,10 +31,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/page.js"
     ],
-    "/user/layout": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/layout.js"
+      "static/chunks/app/page.js"
+    ],
+    "/user/home/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/home/page.js"
     ]
   }
 }
