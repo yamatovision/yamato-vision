@@ -14,6 +14,7 @@ export const USER_RANKS = {
 export type UserRank = keyof typeof USER_RANKS;
 
 export type CourseStatus = 
+| 'active'      // 追加
   | 'unlocked' 
   | 'available' 
   | 'level_locked' 

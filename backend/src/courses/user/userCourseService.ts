@@ -13,7 +13,10 @@ export class UserCourseService {
         rank: true,
         gems: true,
         courses: {
-          select: { courseId: true }
+          select: { 
+            courseId: true,
+            isActive: true  // これを追加
+          }
         }
       }
     });
@@ -40,14 +43,19 @@ export class UserCourseService {
       const userCourse = user.courses.find(uc => uc.courseId === course.id);
       
       let status: CourseStatus;
-      if (userCourse) {
-        status = 'unlocked';
-      } else if (
-        (!course.levelRequired || user.level >= course.levelRequired) &&
-        (!course.rankRequired || USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]) &&
-        (!course.gemCost || user.gems >= course.gemCost)
-      ) {
-        status = 'available';
+  if (userCourse) {
+    // ここを修正：userCourseのisActiveを確認
+    if (userCourse.isActive) {
+      status = 'active';
+    } else {
+      status = 'unlocked';
+    }
+  } else if (
+    (!course.levelRequired || user.level >= course.levelRequired) &&
+    (!course.rankRequired || USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]) &&
+    (!course.gemCost || user.gems >= course.gemCost)
+  ) {
+    status = 'available';
       } else if (course.levelRequired && user.level < course.levelRequired) {
         status = 'level_locked';
       } else if (course.rankRequired && USER_RANKS[user.rank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
