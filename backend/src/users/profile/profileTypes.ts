@@ -18,6 +18,8 @@ export interface ProfileResponse {
   experience: number;
   gems: number;
   message: string | null;
+  expGained?: number;
+  shouldShowExpNotification?: boolean;
   snsLinks: Record<string, string> | null;
   isRankingVisible: boolean;
   isProfileVisible: boolean;

@@ -1,7 +1,4 @@
 {
-  "/page": "app/page.js",
-  "/user/home/page": "app/user/home/page.js",
-  "/user/shop/page": "app/user/shop/page.js",
-  "/user/courses/[courseId]/page": "app/user/courses/[courseId]/page.js",
-  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js"
+  "/login/page": "app/login/page.js",
+  "/user/home/page": "app/user/home/page.js"
 }

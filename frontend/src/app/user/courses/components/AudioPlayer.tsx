@@ -3,7 +3,12 @@
 import { useTheme } from '@/contexts/theme';
 import { useState, useRef } from 'react';
 
-export function AudioPlayer() {
+interface AudioPlayerProps {
+  url: string;
+  transcription?: string;
+}
+
+export function AudioPlayer({ url, transcription }: AudioPlayerProps) {
   const { theme } = useTheme();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -75,8 +80,17 @@ export function AudioPlayer() {
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        src="/sample-audio.mp3"
-      />
+        src={url}  // urlプロパティを使用
+      >
+        {transcription && (
+          <track
+            kind="captions"
+            src={transcription}
+            label="日本語"
+            default
+          />
+        )}
+      </audio>
       
       <div className="flex items-center space-x-4">
         {/* 再生/一時停止ボタン */}

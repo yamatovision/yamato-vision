@@ -307,31 +307,39 @@ export const courseApi = {
     }
   },
 
-  // 現在のコースの取得
-  getCurrentUserCourse: async (): Promise<CurrentCourseResponse> => {
-    try {
-      // courseIdパラメータを削除し、固定のエンドポイントを使用
-      const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/user/current`,
-        {
-          headers: getAuthHeaders(),
-        }
-      );
-  
-      if (!response.ok) {
-        throw new Error('Failed to fetch current course');
+ // courses.ts
+getCurrentUserCourse: async (courseId?: string) => {
+  try {
+    const endpoint = courseId 
+      ? `${FRONTEND_API_BASE}/courses/user/${courseId}/progress`
+      : `${FRONTEND_API_BASE}/courses/user/current`;  // 現在のコースを取得するエンドポイント
+
+    const response = await fetch(
+      endpoint,
+      {
+        headers: getAuthHeaders(),
       }
-  
-      const data = await response.json();
-      return { 
-        success: true,
-        data: data.data 
-      };
-    } catch (error) {
-      console.error('Failed to fetch current course:', error);
-      throw error;
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch current course');
     }
-  },
+
+    const data = await response.json();
+    return {
+      success: true,
+      data: data.data
+    };
+  } catch (error) {
+    console.error('Failed to fetch current course:', error);
+    return {
+      success: false,
+      data: null,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
 
   // チャプター作成
   createChapter: async (courseId: string, data: CreateChapterDTO) => {

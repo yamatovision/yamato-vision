@@ -1,9 +1,10 @@
-// frontend/src/app/user/shared/Toast.tsx
 'use client';
 
 interface LevelUpData {
+  oldLevel: number;  // 追加
   newLevel: number;
-  specialUnlock?: string;
+  message: string | null;  // 管理画面で設定したメッセージ用
+  experienceGained?: number;  // 追加：獲得経験値表示用
 }
 
 interface ToastProps {
@@ -25,37 +26,45 @@ export function Toast({ message, type, onClose, levelUpData }: ToastProps) {
 
   if (type === 'levelUp' && levelUpData) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50" onClick={onClose}>
-        <div className="absolute inset-0 bg-black bg-opacity-50" />
-        <div className={`${baseStyle} ${typeStyles[type]} transform transition-all duration-300 scale-100 hover:scale-105`}>
-          <div className="text-center w-full">
-            <div className="text-4xl font-bold mb-4">
-              🎊 Level Up! 🎊
-            </div>
+      <div className="fixed inset-0 flex items-center justify-center z-50">
+        <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+        <div className="max-w-md mx-auto w-full px-4">
+          <div className="bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-lg p-6 text-center text-white">
+            <div className="text-2xl mb-2">🎊 Level Up! 🎊</div>
             
-            <div className="text-5xl font-bold mb-4">
-              Lv.{levelUpData.newLevel}
+            <div className="text-3xl font-bold mb-4">
+              Lv.{levelUpData.oldLevel} → Lv.{levelUpData.newLevel}
             </div>
-            
-            {levelUpData.specialUnlock ? (
-              <div className="text-lg bg-yellow-700 rounded-lg p-3 mt-4 mb-4">
-                🎉 {levelUpData.specialUnlock} 🎉
-              </div>
-            ) : (
-              <div className="text-lg bg-yellow-700 rounded-lg p-3 mt-4 mb-4">
-                🎉 おめでとうございます！！ 🎉
+
+            {/* 獲得経験値の表示（オプション） */}
+            {levelUpData.experienceGained && (
+              <div className="bg-yellow-500/30 rounded-lg p-3 mb-4">
+                <div className="text-lg font-bold">獲得経験値</div>
+                <div className="text-2xl text-yellow-100">
+                  +{levelUpData.experienceGained} EXP
+                </div>
               </div>
             )}
             
-            <div className="text-sm text-yellow-100 mt-4">
-              クリックして閉じる
+            {/* レベルメッセージ */}
+            <div className="text-lg bg-yellow-500/30 rounded-lg p-3 mb-6">
+              {levelUpData.message || 'おめでとうございます！'}
             </div>
+            
+            {/* アクションボタン */}
+            <button
+              onClick={onClose}
+              className="w-full bg-white text-yellow-600 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
+            >
+              次へ進む
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
+  // 通常のトースト表示（変更なし）
   return (
     <div className={`${baseStyle} ${typeStyles[type]}`}>
       <span>{message}</span>

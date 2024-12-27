@@ -27,29 +27,10 @@ export default function ChapterPage({
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     const loadChapter = async () => {
-      // デバッグ追加
-      console.log('Loading chapter with params:', {
-        courseId: params.courseId,
-        chapterId: params.chapterId
-      });
-  
-      if (!params.courseId || !params.chapterId) {
-        console.error('Missing required params:', params);
-        toast.error('必要なパラメータが不足しています');
-        router.push('/user/courses');
-        return;
-      }
-  
       try {
         setLoading(true);
-        // リクエストの前にパラメータを確実に文字列化
-        const response = await courseApi.getChapter(
-          String(params.courseId),
-          String(params.chapterId)
-        );
-  
-        console.log('Chapter response:', response); // デバッグ用
-  
+        const response = await courseApi.getChapter(params.courseId, params.chapterId);
+        
         if (response.success && response.data) {
           const parsedChapter = {
             ...response.data,
@@ -66,8 +47,6 @@ export default function ChapterPage({
           if (progressResponse.success && progressResponse.data) {
             setProgress(progressResponse.data.progress);
           }
-        } else {
-          throw new Error('Failed to fetch chapter data');
         }
       } catch (error) {
         console.error('Failed to load chapter:', error);
@@ -78,8 +57,7 @@ export default function ChapterPage({
     };
   
     loadChapter();
-  }, [params.courseId, params.chapterId, router]);
-
+  }, [params.courseId, params.chapterId]);
 
   if (loading) {
     return (

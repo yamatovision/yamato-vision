@@ -5,9 +5,12 @@ const prisma = new PrismaClient();
 const tokenUsageService = new TokenUsageService(); // インスタンスを1つ作成
 
 export class TokenProcessingService {
-  private static readonly TOKENS_PER_EXP = 10000;
-  private static readonly EXP_PER_LEVEL = 500;
-  private static readonly tokenService = new TokenUsageService(); // クラス内でのstatic参照用
+  private static readonly EXP_PER_LEVEL = 500;        // 500経験値で1レベルアップ
+  private static readonly EXP_THRESHOLD = 30;          // NEW: 30経験値で自動変換
+  public static readonly TOKEN_THRESHOLD = 300000;
+  public static readonly TOKENS_PER_EXP = 10000;
+  
+  private static readonly tokenService = new TokenUsageService();
 
   static async processTokenConsumption(userId: string, tokenCount: number) {
     // 1. トークン使用可能性チェック
@@ -47,20 +50,24 @@ export class TokenProcessingService {
     });
   }
 
-  private static async processExperiencePoints(userId: string) {
+  public static async processExperiencePoints(userId: string) {
     const tracking = await prisma.tokenTracking.findUnique({
       where: { userId }
     });
-
+  
     if (!tracking) return;
-
+  
+    // 閾値チェックを追加
+    if (tracking.unprocessedTokens < this.TOKEN_THRESHOLD) {
+      return;  // 30経験値に満たない場合は変換しない
+    }
+  
     const expPoints = Math.floor(tracking.unprocessedTokens / this.TOKENS_PER_EXP);
     const remainingTokens = tracking.unprocessedTokens % this.TOKENS_PER_EXP;
-
+  
+    // 以下は既存の処理を維持
     if (expPoints > 0) {
-      // トランザクションで経験値更新
       await prisma.$transaction(async (tx) => {
-        // 経験値とレベルの更新
         const user = await tx.user.update({
           where: { id: userId },
           data: {
@@ -70,15 +77,14 @@ export class TokenProcessingService {
             }
           }
         });
-
-        // 未処理トークンの更新
+  
         await tx.tokenTracking.update({
           where: { userId },
           data: {
             unprocessedTokens: remainingTokens
           }
         });
-
+  
         return user;
       });
     }

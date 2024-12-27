@@ -43,11 +43,17 @@ export function useProfile() {
     }
   };
 
+  // 追加: プロフィール更新用メソッド
+  const refreshProfile = () => {
+    fetchProfile();
+  };
+
   return {
     userData,
     loading,
     error,
     updateProfile,
-    updateAvatar
+    updateAvatar,
+    refreshProfile  // 追加: 更新用メソッドを返す
   };
 }

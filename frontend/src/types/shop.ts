@@ -1,4 +1,4 @@
-import { Course } from './course';
+import { Course, CourseStatus } from './course';  // CourseStatus を import
 
 export type CourseStatus = 
   | 'unlocked'
@@ -11,8 +11,8 @@ export type CourseStatus =
   | 'completed'
   | 'failed';
 
-export interface ShopCourse extends Course {
-  status: CourseStatus;
+  export interface ShopCourse extends Course {
+    status: CourseStatus;
 }
 
 export interface CourseCardProps {

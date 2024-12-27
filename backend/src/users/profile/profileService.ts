@@ -3,12 +3,50 @@
 import { PrismaClient } from '@prisma/client';
 import { ProfileUpdateParams, ProfileResponse } from './profileTypes';
 import { v2 as cloudinary } from 'cloudinary';
+import { TokenProcessingService } from '../../token/tokenProcessingService';
 
 const prisma = new PrismaClient();
 
 export class ProfileService {
+  // クエリの共通部分を定数として定義
+  private readonly USER_SELECT = {
+    id: true,
+    email: true,
+    name: true,
+    nickname: true,
+    avatarUrl: true,
+    rank: true,
+    level: true,
+    experience: true,
+    gems: true,
+    message: true,
+    snsLinks: true,
+    isRankingVisible: true,
+    isProfileVisible: true,
+    createdAt: true,
+    badges: {
+      select: {
+        badge: {
+          select: {
+            id: true,
+            title: true,
+            iconUrl: true
+          }
+        },
+        earnedAt: true
+      }
+    },
+    tokenTracking: {
+      select: {
+        weeklyTokens: true,
+        weeklyLimit: true,
+        purchasedTokens: true,
+        unprocessedTokens: true
+      }
+    }
+  } as const;
+
   constructor() {
-    // Cloudinaryの設定
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -16,7 +54,6 @@ export class ProfileService {
     });
   }
 
-  // 新規: Base64画像をアップロードしてURLを取得
   private async uploadImageToCloudinary(base64Image: string, userId: string): Promise<string> {
     try {
       const result = await cloudinary.uploader.upload(base64Image, {
@@ -36,35 +73,7 @@ export class ProfileService {
     }
   }
 
-  // updateAvatarメソッドを修正
-  async updateAvatar(userId: string, base64Image: string): Promise<ProfileResponse> {
-    try {
-      // Cloudinaryにアップロード
-      const avatarUrl = await this.uploadImageToCloudinary(base64Image, userId);
-
-      // プロフィール更新
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { avatarUrl },
-        include: {
-          badges: {
-            include: {
-              badge: true
-            }
-          },
-          tokenTracking: true
-        }
-      });
-
-      return this.formatProfileResponse(user);
-    } catch (error) {
-      console.error('Failed to update avatar:', error);
-      throw new Error('アバターの更新に失敗しました');
-    }
-  }
-
-  // ProfileResponseのフォーマット用ヘルパーメソッド
-  private formatProfileResponse(user: any): ProfileResponse {
+  private formatProfileResponse(user: any, expGained: number = 0, shouldShowExpNotification: boolean = false): ProfileResponse {
     return {
       id: user.id,
       email: user.email,
@@ -91,115 +100,91 @@ export class ProfileService {
         weeklyLimit: user.tokenTracking.weeklyLimit,
         purchasedTokens: user.tokenTracking.purchasedTokens,
         unprocessedTokens: user.tokenTracking.unprocessedTokens
-      } : null
+      } : null,
+      expGained,
+      shouldShowExpNotification
     };
   }
+
+
   async getProfile(userId: string): Promise<ProfileResponse> {
     try {
-      // クエリを最適化（必要なデータのみを取得）
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          nickname: true,
-          avatarUrl: true,
-          rank: true,
-          level: true,
-          experience: true,
-          gems: true,
-          message: true,
-          snsLinks: true,
-          isRankingVisible: true,
-          isProfileVisible: true,
-          createdAt: true,
-          badges: {
-            select: {
-              badge: {
-                select: {
-                  id: true,
-                  title: true,
-                  iconUrl: true
-                }
-              },
-              earnedAt: true
-            }
-          },
-          tokenTracking: {
-            select: {
-              weeklyTokens: true,
-              weeklyLimit: true,
-              purchasedTokens: true,
-              unprocessedTokens: true
-            }
-          }
-        }
+        select: this.USER_SELECT
       });
   
       if (!user) {
         throw new Error('ユーザーが見つかりません');
       }
   
-      return this.formatProfileResponse(user);
+      // トークン処理
+      let expGained = 0;
+      let shouldShowExpNotification = false;
+  
+      // Null チェックを強化
+      if (user.tokenTracking && user.tokenTracking.unprocessedTokens && 
+          user.tokenTracking.unprocessedTokens >= TokenProcessingService.TOKEN_THRESHOLD) {
+        await TokenProcessingService.processExperiencePoints(userId);
+        expGained = Math.floor(user.tokenTracking.unprocessedTokens / TokenProcessingService.TOKENS_PER_EXP);
+        shouldShowExpNotification = true;
+  
+        // 更新後のデータを取得
+        const updatedUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: this.USER_SELECT
+        });
+  
+        if (updatedUser) {
+          return this.formatProfileResponse(updatedUser, expGained, shouldShowExpNotification);
+        }
+      }
+  
+      return this.formatProfileResponse(user, expGained, shouldShowExpNotification);
+  
     } catch (error) {
       console.error('Failed to get profile:', error);
       throw new Error('プロフィールの取得に失敗しました');
     }
   }
-    async updateProfile(userId: string, params: ProfileUpdateParams): Promise<ProfileResponse> {
-      try {
-        const user = await prisma.user.update({
-          where: { id: userId },
-          data: {
-            nickname: params.nickname,
-            avatarUrl: params.avatarUrl,
-            message: params.message,
-            snsLinks: params.snsLinks as any,
-            isRankingVisible: params.isRankingVisible,
-            isProfileVisible: params.isProfileVisible
-          },
-          include: {
-            badges: {
-              include: {
-                badge: true
-              }
-            },
-            tokenTracking: true  // 追加
-          }
-        });
-    
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          nickname: user.nickname,
-          avatarUrl: user.avatarUrl,
-          rank: user.rank,
-          level: user.level,
-          experience: user.experience,
-          gems: user.gems,
-          message: user.message,
-          snsLinks: user.snsLinks as Record<string, string> | null,
-          isRankingVisible: user.isRankingVisible,
-          isProfileVisible: user.isProfileVisible,
-          createdAt: user.createdAt,
-          badges: user.badges.map(ub => ({
-            id: ub.badge.id,
-            title: ub.badge.title,
-            iconUrl: ub.badge.iconUrl,
-            earnedAt: ub.earnedAt
-          })),
-          tokens: user.tokenTracking ? {
-            weeklyTokens: user.tokenTracking.weeklyTokens,
-            weeklyLimit: user.tokenTracking.weeklyLimit,
-            purchasedTokens: user.tokenTracking.purchasedTokens,
-            unprocessedTokens: user.tokenTracking.unprocessedTokens
-          } : null
-        };
-      } catch (error) {
-        console.error('Failed to update profile:', error);
-        throw new Error('プロフィールの更新に失敗しました');
-      }
+
+
+  async updateAvatar(userId: string, base64Image: string): Promise<ProfileResponse> {
+    try {
+      const avatarUrl = await this.uploadImageToCloudinary(base64Image, userId);
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { avatarUrl },
+        select: this.USER_SELECT
+      });
+
+      return this.formatProfileResponse(user);
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      throw new Error('アバターの更新に失敗しました');
     }
   }
+
+  async updateProfile(userId: string, params: ProfileUpdateParams): Promise<ProfileResponse> {
+    try {
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          nickname: params.nickname,
+          avatarUrl: params.avatarUrl,
+          message: params.message,
+          snsLinks: params.snsLinks as any,
+          isRankingVisible: params.isRankingVisible,
+          isProfileVisible: params.isProfileVisible
+        },
+        select: this.USER_SELECT
+      });
+
+      return this.formatProfileResponse(user);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      throw new Error('プロフィールの更新に失敗しました');
+    }
+  }
+}

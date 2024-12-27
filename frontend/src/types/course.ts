@@ -19,6 +19,7 @@ export interface Course {
   stage?: string;
   level?: string;
   progress?: number;
+  lastAccessedChapterId?: string;
 }
 
 export interface ChapterContent {
@@ -164,13 +165,17 @@ export interface CurrentUserCourse {
   startedAt: Date;
 }
 
-
 export type CourseStatus = 
   | 'unlocked' 
   | 'available' 
   | 'level_locked' 
   | 'rank_locked' 
-  | 'complex';
+  | 'complex'
+  | 'active'
+  | 'completed'
+  | 'perfect'
+  | 'failed';
+
 
 export interface UserCourse {
   id: string;
@@ -180,3 +185,39 @@ export interface UserCourse {
   completedAt?: Date;
 }
 
+export interface CourseData {
+  id: string;
+  userId: string;
+  courseId: string;
+  isActive: boolean;
+  status: CourseStatus;
+  startedAt: string;
+  completedAt: null | string;
+  progress: number;
+  course: {
+    id: string;
+    title: string;
+    description: string;
+    level: number;
+    gemCost: number;
+    rankRequired: string;
+    levelRequired: number;
+    timeLimit: number;
+    chapters: Array<{
+      id: string;
+      courseId: string;
+      title: string;
+      subtitle: string;
+      orderIndex: number;
+      timeLimit: number;
+      isVisible: boolean;
+    }>;
+  };
+}
+export interface TaskDescriptionProps {
+  description: string;
+  systemMessage: string;
+  referenceText: string;
+  maxPoints: number;
+  type: string;
+}

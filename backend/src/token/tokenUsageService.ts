@@ -43,31 +43,41 @@ export class TokenUsageService {
     };
   }
 
+
   async updateTokenUsage(userId: string, tokenCount: number) {
     const tracking = await prisma.tokenTracking.findUnique({
-      where: { userId }
+      where: { userId },
+      include: {
+        user: true // userの情報も取得
+      }
     });
-
+  
     if (!tracking) {
       throw new Error('Token tracking not found');
     }
-
+  
     // 未処理トークンの計算
     const newUnprocessedTokens = (tracking.unprocessedTokens || 0) + tokenCount;
     const expToAdd = Math.floor(newUnprocessedTokens / TokenUsageService.TOKENS_PER_EXP);
     const remainingTokens = newUnprocessedTokens % TokenUsageService.TOKENS_PER_EXP;
-
+  
     let levelUpMessage = null;
-
+    const oldLevel = tracking.user.level; // 事前にレベルを保存
+  
     // トランザクションで処理
     const [updatedUser, updatedTracking] = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user) throw new Error('User not found');
-
-      const oldLevel = user.level;
+  
       const newExp = user.experience + expToAdd;
       const newLevel = Math.floor(newExp / 1000) + 1;
-
+  
+      // レベルアップ時のメッセージを取得（トランザクション内で実行）
+      if (newLevel > oldLevel) {
+        const message = await this.levelMessageService.getMessageForLevel(newLevel);
+        levelUpMessage = message?.message;
+      }
+  
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
@@ -75,7 +85,7 @@ export class TokenUsageService {
           level: newLevel
         }
       });
-
+  
       const updatedTracking = await tx.tokenTracking.update({
         where: { userId },
         data: {
@@ -84,25 +94,20 @@ export class TokenUsageService {
           lastSyncedAt: new Date()
         }
       });
-
-      // レベルアップ時のメッセージを取得
-      if (newLevel > oldLevel) {
-        const message = await this.levelMessageService.getMessageForLevel(newLevel);
-        levelUpMessage = message?.message;
-      }
-
+  
       return [updatedUser, updatedTracking];
     });
-
+  
     return {
       success: true,
       weeklyUsage: updatedTracking.weeklyTokens,
       experienceGained: expToAdd,
       currentLevel: updatedUser.level,
-      levelUpMessage
+      oldLevel, // 追加：レベルアップ前のレベル
+      levelUpMessage, // レベルアップメッセージ
+      isLevelUp: updatedUser.level > oldLevel // レベルアップしたかどうかのフラグ
     };
   }
-
   async getUserTokenUsage(userId: string) {
     const tracking = await prisma.tokenTracking.findUnique({
       where: { userId }

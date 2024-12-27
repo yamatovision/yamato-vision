@@ -1,17 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  // useEffect を追加
 import { useTheme } from '@/contexts/theme';
 import { ProfileEditModal } from './ProfileEditModal';
 import { useProfile } from '@/lib/hooks/useProfile';
 import { getRankStyle } from '@/lib/utils/rankStyles';
+import { useToast } from '@/contexts/toast';  // 追加
 
 export function HomeProfile() {
   const { theme } = useTheme();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { userData, loading, error, updateProfile, updateAvatar } = useProfile();
+  const { userData, loading, error, updateProfile, updateAvatar, refreshProfile } = useProfile();  // refreshProfile を追加
+  const [showExpGain, setShowExpGain] = useState(false);  // この行を追加
+  const { showToast } = useToast();  // 追加
   
   const rankStyle = getRankStyle(userData?.rank || 'お試し', theme);
+  const [previousUnprocessedTokens, setPreviousUnprocessedTokens] = useState<number>(0);
+
+
+
+
+ useEffect(() => {
+    if (userData?.shouldShowExpNotification && userData.expGained) {
+      setShowExpGain(true);
+      // 5秒後に通知を非表示
+      const timer = setTimeout(() => {
+        setShowExpGain(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [userData]);
+
+  
+  // レベルアップの監視も同様に修正
+  const [previousLevel, setPreviousLevel] = useState<number | undefined>(undefined);
+  
+  useEffect(() => {
+    if (userData?.level && previousLevel && userData.level > previousLevel) {
+      showToast('', 'levelUp', {
+        oldLevel: previousLevel,
+        newLevel: userData.level,
+        message: null
+      });
+    }
+    setPreviousLevel(userData?.level);
+  }, [userData?.level, showToast]);
 
   const handleProfileClick = () => {
     setIsEditModalOpen(true);
@@ -98,9 +131,15 @@ export function HomeProfile() {
 
   return (
     <>
-      <div className={`${rankStyle.container} rounded-2xl p-6 cursor-pointer hover:opacity-95 transition-all duration-300`}
+       <div className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
         onClick={handleProfileClick}
       >
+        {/* 経験値獲得通知 */}
+        {showExpGain && (
+          <div className="absolute top-4 right-4 bg-yellow-400 text-white px-3 py-1 rounded-full font-bold animate-bounce">
+            +{userData?.expGained} EXP
+          </div>
+        )}
         <div className="flex">
           {/* 左カラム: アバター、階級バッジ */}
           <div className="flex flex-col items-center w-24">

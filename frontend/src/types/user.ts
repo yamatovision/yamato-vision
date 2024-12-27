@@ -21,6 +21,8 @@ export interface User {
   gems: number;
   avatarUrl?: string;
   message?: string;
+  expGained?: number;
+  shouldShowExpNotification?: boolean;
   snsLinks: {
     [key: string]: string;
   };

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTheme } from '@/contexts/theme';
-import { CourseStatus } from './types';
+import { CourseStatus } from '@/types/course';  // './types' から変更
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';  // ファイルの先頭に追加
 import { courseApi } from '@/lib/api/courses';  // この行を追加
