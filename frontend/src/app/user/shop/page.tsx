@@ -12,6 +12,9 @@ import { PurchaseSuccessModal } from './PurchaseSuccessModal';
 import { RepurchaseConfirmModal } from './RepurchaseConfirmModal';
 import api from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
+import { ShopCourse } from '@/types/course';
+
+
 
 interface UserDetails {
   id: string;
@@ -80,18 +83,25 @@ export default function ShopPage() {
         setCoursesLoading(true);
         const response = await courseApi.getAvailableCourses();
         if (response.success) {
-          const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+          const formattedCourses = response.data.map((apiCourse: any) => ({
             id: apiCourse.id,
             title: apiCourse.title,
             description: apiCourse.description,
             status: apiCourse.status as CourseStatus,
-            gemCost: apiCourse.gemCost || undefined,
-            levelRequired: apiCourse.levelRequired || undefined,
-            rankRequired: apiCourse.rankRequired || undefined,
-            gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
-            completion: apiCourse.completion || undefined,
+            gemCost: apiCourse.gemCost,
+            levelRequired: apiCourse.levelRequired,
+            rankRequired: apiCourse.rankRequired,
+            gradient: apiCourse.gradient,
+            completion: apiCourse.completion,
             archiveUntil: apiCourse.archiveUntil,
-          }));
+            // ShopCourse の必須フィールドを追加
+            createdAt: apiCourse.createdAt,
+            updatedAt: apiCourse.updatedAt,
+            passingScore: apiCourse.passingScore,
+            excellentScore: apiCourse.excellentScore,
+            isPublished: apiCourse.isPublished,
+            isArchived: apiCourse.isArchived
+          })) as ShopCourse[];
           setCourses(formattedCourses);
         }
       } catch (error) {
@@ -153,17 +163,24 @@ export default function ShopPage() {
   const refreshCourses = async () => {
     const response = await courseApi.getAvailableCourses();
     if (response.success) {
-      const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+      const formattedCourses: ShopCourse[] = response.data.map((apiCourse: any) => ({
         id: apiCourse.id,
         title: apiCourse.title,
         description: apiCourse.description,
         status: apiCourse.status as CourseStatus,
-        gemCost: apiCourse.gemCost || undefined,
-        levelRequired: apiCourse.levelRequired || undefined,
-        rankRequired: apiCourse.rankRequired || undefined,
+        gemCost: apiCourse.gemCost,
+        levelRequired: apiCourse.levelRequired,
+        rankRequired: apiCourse.rankRequired,
         gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
-        completion: apiCourse.completion || undefined,
+        completion: apiCourse.completion,
         archiveUntil: apiCourse.archiveUntil,
+        // ShopCourse必須フィールドの追加
+        passingScore: apiCourse.passingScore || 0,
+        excellentScore: apiCourse.excellentScore || 0,
+        isPublished: apiCourse.isPublished || false,
+        isArchived: apiCourse.isArchived || false,
+        createdAt: new Date(apiCourse.createdAt),
+        updatedAt: new Date(apiCourse.updatedAt)
       }));
       setCourses(formattedCourses);
     }
@@ -241,11 +258,13 @@ export default function ShopPage() {
       {/* コース一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            {...course}
-            onUnlock={() => handleUnlock(course.id)}
-          />
+         <CourseCard
+         key={course.id}
+         {...course}
+         gradient={course.gradient || 'default-gradient'} // デフォルト値を設定
+         status={course.status}
+         onUnlock={() => handleUnlock(course.id)}
+       />
         ))}
       </div>
 

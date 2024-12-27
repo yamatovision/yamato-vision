@@ -1,5 +1,6 @@
-// frontend/src/types/timeout.ts
+// src/types/timeout.ts
 export type TimeoutSeverity = 'normal' | 'warning' | 'danger';
+export type TimeoutType = 'chapter' | 'course' | 'archive';
 
 export interface TimeConfig {
   chapter: {
@@ -10,10 +11,15 @@ export interface TimeConfig {
     warningThreshold: number;  // 15日 = 1296000秒
     dangerThreshold: number;   // 3日 = 259200秒
   };
+  archive: {
+    warningThreshold: number;
+    dangerThreshold: number;
+  };
 }
 
 export interface TimeRemainingProps {
-  initialTime: number;         // 秒単位
-  type: 'chapter' | 'course';
-  onTimeout: () => void;
+  timeLimit: number;
+  type: TimeoutType;
+  onTimeout?: () => void;
+  startTime?: Date;
 }

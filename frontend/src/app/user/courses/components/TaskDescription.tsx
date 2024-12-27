@@ -1,77 +1,108 @@
 'use client';
 
-import { useTheme } from '@/contexts/theme';  // パスを修正
+import { useTheme } from '@/contexts/theme';
+import { useState } from 'react';
+import type { TaskDescriptionProps } from '@/types/course';
 
-export function TaskDescription() {
+export const TaskDescription: React.FC<TaskDescriptionProps> = ({
+  description,
+  systemMessage,
+  referenceText,
+  maxPoints,
+  type
+}) => {
   const { theme } = useTheme();
+  const [prompt, setPrompt] = useState('');
+  const [result, setResult] = useState('');
+
+  const handleSubmit = async () => {
+    // 提出処理の実装
+    // API呼び出しなどを行う
+  };
+
+  const getThemedTextColor = (isDark: boolean, primary: boolean = false) => 
+    isDark 
+      ? (primary ? 'text-white' : 'text-gray-300')
+      : (primary ? 'text-[#1E40AF]' : 'text-gray-600');
+
+  const getThemedBgColor = (isDark: boolean) =>
+    isDark ? 'bg-gray-700' : 'bg-blue-50';
+
+  const getThemedBorderColor = (isDark: boolean) =>
+    isDark ? 'border-gray-600' : 'border-blue-100';
+
+  const getThemedInputStyle = (isDark: boolean) =>
+    `w-full h-32 rounded-lg p-3 ${
+      isDark 
+        ? 'bg-gray-700 text-white border-gray-600' 
+        : 'bg-white text-gray-900 border-gray-200'
+    } border focus:ring-2 focus:ring-blue-500 focus:outline-none`;
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className={`font-bold text-lg mb-2 ${
-          theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-        }`}>実践課題</h2>
-        <p className={`text-sm ${
-          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-        } mb-4`}>
-          以下のシナリオに対して、最適なプロンプトを作成してください。
-          作成したプロンプトは実際に動作確認を行い、結果と共に提出してください。
+        <h2 className={`font-bold text-lg mb-2 ${getThemedTextColor(theme === 'dark', true)}`}>
+          {type === 'practice' ? '実践課題' : '基礎課題'}
+        </h2>
+        <p className={`text-sm ${getThemedTextColor(theme === 'dark')} mb-4`}>
+          {systemMessage}
         </p>
-        <div className={`${
-          theme === 'dark' ? 'bg-gray-700' : 'bg-blue-50'
-        } rounded-lg p-4 border ${
-          theme === 'dark' ? 'border-gray-600' : 'border-blue-100'
-        }`}>
-          <p className={`text-sm ${
-            theme === 'dark' ? 'text-gray-200' : 'text-[#1E40AF]'
-          }`}>
-            シナリオ：ECサイトの商品説明文を生成するAIシステムを構築したい。
-            ブランドの特徴を維持しながら、魅力的な説明文を生成するプロンプトを作成してください。
+        <div className={`${getThemedBgColor(theme === 'dark')} rounded-lg p-4 border ${getThemedBorderColor(theme === 'dark')}`}>
+          <p className={`text-sm ${getThemedTextColor(theme === 'dark', true)}`}>
+            {description}
           </p>
+          {referenceText && (
+            <div className="mt-4">
+              <h3 className={`text-sm font-medium mb-2 ${getThemedTextColor(theme === 'dark')}`}>
+                参考資料
+              </h3>
+              <p className={`text-sm ${getThemedTextColor(theme === 'dark')}`}>
+                {referenceText}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 提出フォーム */}
       <div className="space-y-4">
         <div>
-          <label className={`block text-sm font-medium mb-2 ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-          }`}>
+          <label className={`block text-sm font-medium mb-2 ${getThemedTextColor(theme === 'dark')}`}>
             プロンプト
           </label>
           <textarea 
-            className={`w-full h-32 rounded-lg p-3 ${
-              theme === 'dark' 
-                ? 'bg-gray-700 text-white border-gray-600' 
-                : 'bg-white text-gray-900 border-gray-200'
-            } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className={getThemedInputStyle(theme === 'dark')}
             placeholder="プロンプトを入力してください"
           />
         </div>
         <div>
-          <label className={`block text-sm font-medium mb-2 ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-          }`}>
+          <label className={`block text-sm font-medium mb-2 ${getThemedTextColor(theme === 'dark')}`}>
             動作結果
           </label>
           <textarea 
-            className={`w-full h-32 rounded-lg p-3 ${
-              theme === 'dark' 
-                ? 'bg-gray-700 text-white border-gray-600' 
-                : 'bg-white text-gray-900 border-gray-200'
-            } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+            value={result}
+            onChange={(e) => setResult(e.target.value)}
+            className={getThemedInputStyle(theme === 'dark')}
             placeholder="AIの出力結果を貼り付けてください"
           />
         </div>
-        <div className="flex justify-end">
-          <button className={`${
-            theme === 'dark'
-              ? 'bg-blue-600 hover:bg-blue-700'
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white px-6 py-3 rounded-lg font-bold transition-colors`}>
+        <div className="flex justify-between items-center">
+          <div className={`text-sm ${getThemedTextColor(theme === 'dark')}`}>
+            配点: {maxPoints}点
+          </div>
+          <button 
+            onClick={handleSubmit}
+            className={`${
+              theme === 'dark'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white px-6 py-3 rounded-lg font-bold transition-colors`}
+          >
             課題を提出
           </button>
         </div>
       </div>
     </div>
   );
-}
+};

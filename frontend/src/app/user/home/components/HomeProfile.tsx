@@ -6,6 +6,7 @@ import { ProfileEditModal } from './ProfileEditModal';
 import { useProfile } from '@/lib/hooks/useProfile';
 import { getRankStyle } from '@/lib/utils/rankStyles';
 import { useToast } from '@/contexts/toast';  // 追加
+import { LevelUpData } from '@/types/toast';  // 追加
 
 export function HomeProfile() {
   const { theme } = useTheme();
@@ -17,7 +18,12 @@ export function HomeProfile() {
   const rankStyle = getRankStyle(userData?.rank || 'お試し', theme);
   const [previousUnprocessedTokens, setPreviousUnprocessedTokens] = useState<number>(0);
 
-
+  interface LevelUpToastData {
+    oldLevel: number;
+    newLevel: number;
+    message: string;
+    experienceGained: number;
+  }
 
 
  useEffect(() => {
@@ -39,7 +45,7 @@ export function HomeProfile() {
     if (userData?.expGained && userData.expGained > 0) {
       showToast(
         `+${userData.expGained} EXP を獲得!`, 
-        'expGained'
+        'success'  // 'expGained'を'success'に変更
       );
     }
   }, [userData?.expGained]);
@@ -47,7 +53,13 @@ export function HomeProfile() {
   // 別途レベルアップの処理
   useEffect(() => {
     if (userData?.levelUpData) {
-      showToast('', 'levelUp', userData.levelUpData);
+      const levelUpData: LevelUpToastData = {  // 明示的に定義した型を使用
+        oldLevel: userData.levelUpData.oldLevel,
+        newLevel: userData.levelUpData.currentLevel,
+        message: userData.levelUpData.levelUpMessage || 'レベルアップしました！',
+        experienceGained: userData.levelUpData.experienceGained || 0  // デフォルト値を設定
+      };
+      showToast('', 'levelUp', levelUpData);
     }
   }, [userData?.levelUpData]);
 

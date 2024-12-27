@@ -24,6 +24,7 @@ export interface SubmissionResult {
   finalScore: number;
   originalScore: number;
   feedback: string;
+  timeoutMessage?: string;  // この行を追加
 }
 
 export interface SubmissionStats {

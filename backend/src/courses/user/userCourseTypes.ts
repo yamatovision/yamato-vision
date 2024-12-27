@@ -14,12 +14,15 @@ export const USER_RANKS = {
 export type UserRank = keyof typeof USER_RANKS;
 
 export type CourseStatus = 
-| 'active'      // 追加
-  | 'unlocked' 
-  | 'available' 
-  | 'level_locked' 
-  | 'rank_locked' 
-  | 'complex';
+  | 'unlocked'
+  | 'available'
+  | 'level_locked'
+  | 'rank_locked'
+  | 'complex'
+  | 'active'
+  | 'perfect'
+  | 'completed_archive'
+  | 'repurchasable';
 
 export interface CourseWithStatus extends Course {
   status: CourseStatus;

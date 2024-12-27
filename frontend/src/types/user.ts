@@ -26,6 +26,12 @@ export interface User {
   snsLinks: {
     [key: string]: string;
   };
+  levelUpData?: {
+    currentLevel: number;
+    oldLevel: number;
+    levelUpMessage?: string;
+    experienceGained: number;  // この行を追加
+  };
   badges: Badge[];
   tokens?: UserTokens;
 }

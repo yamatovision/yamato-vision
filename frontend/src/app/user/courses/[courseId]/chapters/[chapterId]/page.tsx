@@ -13,8 +13,8 @@ import { AttachmentFiles } from '../../../components/AttachmentFiles';
 import { TimeRemaining } from '../../../components/TimeRemaining';
 import { ParticipantList } from '../../../components/ParticipantList';
 import { ProgressBar } from '../../../components/ProgressBar';
-import { TimeoutModal } from '@/components/timeouts/TimeoutModal';
-import { TimeoutWarning } from '@/components/timeouts/TimeoutWarning';
+import { TimeoutModal } from '@/app/user/courses/components/TimeoutModal';
+import { TimeoutWarning } from '@/app/user/courses/components/TimeoutWarning';
 
 export default function ChapterPage({ 
   params 

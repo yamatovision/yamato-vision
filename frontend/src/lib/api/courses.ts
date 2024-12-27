@@ -1,5 +1,7 @@
 import api from './auth';
 import { APIResponse } from '@/types/api';
+import { handleApiError } from './errorHandler';
+
 import { 
   Course, 
   Chapter,
@@ -130,6 +132,7 @@ export const courseApi = {
       console.error('Error fetching current chapter:', error);
       return { 
         success: false, 
+        data: null,  // この行を追加
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -254,35 +257,37 @@ export const courseApi = {
 
 
   // チャプター関連のAPI
-  getChapter: async (courseId: string, chapterId: string): Promise<{ success: boolean; data?: Chapter }> => {
-    if (!courseId || !chapterId) {
-      throw new Error('courseId and chapterId are required');
-    }
-  
-    try {
-      console.log('Fetching chapter:', { courseId, chapterId });
-      const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}`,
-        {
-          headers: getAuthHeaders(),
-        }
-      );
-  
-      if (!response.ok) {
-        console.error('Chapter fetch failed:', response.status);
-        return { success: false };
+  // src/lib/api/courses.ts の getChapter メソッドを修正
+getChapter: async (courseId: string, chapterId: string): Promise<APIResponse<Chapter>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}`,
+      {
+        headers: getAuthHeaders(),
       }
-  
-      const responseData = await response.json();
+    );
+
+    if (!response.ok) {
       return { 
-        success: true, 
-        data: responseData.data 
+        success: false, 
+        data: null,
+        error: 'Failed to fetch chapter'
       };
-    } catch (error) {
-      console.error('Failed to fetch chapter:', error);
-      return { success: false };
     }
-  },
+
+    const responseData = await response.json();
+    return { 
+      success: true, 
+      data: responseData.data 
+    };
+  } catch (error) {
+    return { 
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+},
 
   // チャプター完了処理
   completeChapter: async (courseId: string, chapterId: string): Promise<APIResponse<{ nextChapter: Chapter | null }>> => {
@@ -348,7 +353,54 @@ expireArchiveAccess: async (courseId: string) => {
     throw handleApiError(error);
   }
 },
+// src/lib/api/courses.ts に追加
+startChapter: async (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/start`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
 
+    if (!response.ok) {
+      throw new Error('Failed to start chapter');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data: data.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
+// repurchaseCourse メソッドの追加
+repurchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
+  const response = await fetch(
+    `${FRONTEND_API_BASE}/courses/user/${courseId}/repurchase`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }
+  );
+  
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Failed to repurchase course');
+  }
+  return { 
+    success: true, 
+    data: result 
+  };
+},
   // チャプター作成
   createChapter: async (courseId: string, data: CreateChapterDTO) => {
     const { waitTime, ...restData } = data;

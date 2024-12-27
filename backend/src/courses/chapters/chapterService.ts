@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import { timeoutService } from '../timeouts/timeoutService';
+
 import { 
   CreateChapterDTO, 
   UpdateChapterDTO, 
@@ -165,7 +167,8 @@ async completeChapter(userId: string, courseId: string, chapterId: string) {
     }
 
     const submission = userChapter.chapter.task?.submissions[0];
-    const isPerfect = submission && submission.points >= 95;
+    const isPerfect = submission?.points ? submission.points >= 95 : false;
+
 
     await tx.userChapterProgress.update({
       where: { id: userChapter.id },
@@ -224,7 +227,7 @@ async completeChapter(userId: string, courseId: string, chapterId: string) {
 }
 
 private async checkAllChaptersPerfect(
-  tx: PrismaClient,
+  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
   userId: string,
   courseId: string
 ) {
@@ -245,7 +248,7 @@ private async checkAllChaptersPerfect(
 
   const allPerfect = chapters.every(chapter => {
     const submission = chapter.task?.submissions[0];
-    return submission && submission.points >= 95;
+    return submission?.points ? submission.points >= 95 : false;
   });
 
   return { allPerfect };

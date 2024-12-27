@@ -3,8 +3,8 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { Toast } from '@/app/user/shared/Toast';
+import { ToastType, LevelUpData } from '@/types/toast';  // LevelUpDataをインポート
 
-type ToastType = 'success' | 'error' | 'info' | 'warning' | 'levelUp';
 
 interface ToastMessage {
   id: number;
@@ -13,12 +13,6 @@ interface ToastMessage {
   levelUpData?: LevelUpData;
 }
 
-interface LevelUpData {
-  oldLevel: number;
-  newLevel: number;
-  message: string | null;
-  experienceGained?: number;
-}
 
 interface ToastContextType {
   showToast: (message: string, type: ToastType, levelUpData?: LevelUpData) => void;

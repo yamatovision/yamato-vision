@@ -1,4 +1,4 @@
 {
-  "/user/shop/page": "app/user/shop/page.js",
-  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js"
+  "/page": "app/page.js",
+  "/user/home/page": "app/user/home/page.js"
 }

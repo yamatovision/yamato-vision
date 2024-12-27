@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { TimeoutSeverity, TimeConfig } from '@/types/timeout';
+import { TimeoutSeverity, TimeConfig, TimeoutType } from '@/types/timeout';
 
 const TIME_CONFIG: TimeConfig = {
   chapter: {
@@ -19,19 +19,19 @@ const TIME_CONFIG: TimeConfig = {
   }
 };
 
-interface TimeRemainingProps {
+interface Props {
   startTime: Date;
   timeLimit: number;
-  type: 'chapter' | 'course' | 'archive';
-  onTimeout: () => void;
+  type: TimeoutType;
+  onTimeout?: () => void;
 }
 
 export function TimeRemaining({ 
   startTime,
   timeLimit,
   type,
-  onTimeout 
-}: TimeRemainingProps) {
+  onTimeout = () => {} // デフォルト値を設定
+}: Props) {
   const { theme } = useTheme();
   const [remainingTime, setRemainingTime] = useState(() => {
     const now = new Date();

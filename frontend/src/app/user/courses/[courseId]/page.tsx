@@ -67,10 +67,9 @@ export default function ChapterPage({
       if (result.success) {
         toast.success('チャプターを完了しました！');
         
-        if (result.data.nextChapter) {
-          // 次のチャプターがある場合は自動的に遷移
-          router.push(`/user/courses/${params.courseId}/chapters/${result.data.nextChapter.id}`);
-        } else {
+if (result.data && result.data.nextChapter) {
+  router.push(`/user/courses/${params.courseId}/chapters/${result.data.nextChapter.id}`);
+} else {
           // 全チャプターが完了した場合はコース一覧に戻る
           toast.success('おめでとうございます！コースを完了しました！');
           router.push('/user/courses');
@@ -161,11 +160,21 @@ export default function ChapterPage({
         <div className="mt-8 space-y-4">
           <ProgressBar progress={progress} />
           {chapter.timeLimit && (
-            <div className="flex justify-between items-center">
-              <TimeRemaining initialTime={chapter.timeLimit} />
-              <ParticipantList />
-            </div>
-          )}
+  <div className="flex justify-between items-center">
+   <TimeRemaining 
+  startTime={new Date()} 
+  timeLimit={chapter.timeLimit}
+  type="chapter"
+  onTimeout={() => {
+    toast('制限時間が終了しました', {
+      icon: '⚠️',
+      duration: 3000
+    });
+  }}
+/>
+    <ParticipantList />
+  </div>
+)}
         </div>
 
         {/* チャプター完了ボタン */}
