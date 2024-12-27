@@ -1,0 +1,9 @@
+DATABASE_URL="postgresql://postgres:IpINzNGcoRWxToGpStQzNtukHTzZreRQ@junction.proxy.rlwy.net:19585/railway"
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+MONGODB_URI="mongodb+srv://lisence:FhpQAu5UPwjm0L1J@motherprompt-cluster.np3xp.mongodb.net/motherprompt?retryWrites=true&w=majority&appName=MotherPrompt-Cluster"
+JWT_SECRET=your-secure-secret-key-here
+JWT_EXPIRES_IN=344h
+CLOUDINARY_CLOUD_NAME="dr9g8wsag"
+CLOUDINARY_API_KEY="781257285769339"
+CLOUDINARY_API_SECRET="16Lh5L-gP4IpMUMgBE3hGJLRpWo"
