@@ -19,6 +19,11 @@ export interface ProfileResponse {
   gems: number;
   message: string | null;
   expGained?: number;
+  levelUpData?: {
+    oldLevel: number;
+    newLevel: number;
+    message: string | null;
+  };  // セミコロンを追加
   shouldShowExpNotification?: boolean;
   snsLinks: Record<string, string> | null;
   isRankingVisible: boolean;
@@ -30,7 +35,6 @@ export interface ProfileResponse {
     iconUrl: string;
     earnedAt: Date;
   }>;
-  // 追加: トークン情報
   tokens?: {
     weeklyTokens: number;
     weeklyLimit: number;

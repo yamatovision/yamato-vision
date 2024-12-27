@@ -29,6 +29,7 @@ export interface CreateChapterDTO {
 export interface UpdateChapterDTO extends Partial<CreateChapterDTO> {
   isVisible?: boolean;
   isFinalExam?: boolean;
+  isPerfectOnly?: boolean; // 追加
 }
 
 export interface ChapterOrderItem {
@@ -40,6 +41,7 @@ export interface ChapterAccessStatus {
   canAccess: boolean;
   message?: string;
   timePenalty?: boolean;
+  mode?: 'normal' | 'perfect' | 'archive'; // 追加
 }
 
 export interface ChapterProgress {

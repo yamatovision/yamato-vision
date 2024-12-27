@@ -1,4 +1,3 @@
-// backend/src/courses/user/userCourseService.ts
 import { PrismaClient } from '@prisma/client';
 import { 
   CourseWithStatus, 
@@ -6,12 +5,14 @@ import {
   USER_RANKS, 
   PurchaseResult, 
   UserRank,
-  ChapterProgressStatus  // 追加
+  ChapterProgressStatus
 } from './userCourseTypes';
+import { timeoutService } from '../timeouts/timeoutService';
 
 const prisma = new PrismaClient();
 
 export class UserCourseService {
+  // getAvailableCoursesメソッドを更新
   async getAvailableCourses(userId: string): Promise<CourseWithStatus[]> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -22,7 +23,10 @@ export class UserCourseService {
         courses: {
           select: { 
             courseId: true,
-            isActive: true  // これを追加
+            isActive: true,
+            isTimedOut: true,
+            status: true,
+            archiveUntil: true
           }
         }
       }
@@ -50,19 +54,26 @@ export class UserCourseService {
       const userCourse = user.courses.find(uc => uc.courseId === course.id);
       
       let status: CourseStatus;
-  if (userCourse) {
-    // ここを修正：userCourseのisActiveを確認
-    if (userCourse.isActive) {
-      status = 'active';
-    } else {
-      status = 'unlocked';
-    }
-  } else if (
-    (!course.levelRequired || user.level >= course.levelRequired) &&
-    (!course.rankRequired || USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]) &&
-    (!course.gemCost || user.gems >= course.gemCost)
-  ) {
-    status = 'available';
+      if (userCourse) {
+        if (userCourse.isTimedOut) {
+          status = 'repurchasable';
+        } else if (userCourse.status === 'COMPLETED') {
+          if (userCourse.archiveUntil && userCourse.archiveUntil > new Date()) {
+            status = 'completed_archive';
+          } else {
+            status = 'repurchasable';
+          }
+        } else if (userCourse.isActive) {
+          status = 'active';
+        } else {
+          status = 'unlocked';
+        }
+      } else if (
+        (!course.levelRequired || user.level >= course.levelRequired) &&
+        (!course.rankRequired || USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]) &&
+        (!course.gemCost || user.gems >= course.gemCost)
+      ) {
+        status = 'available';
       } else if (course.levelRequired && user.level < course.levelRequired) {
         status = 'level_locked';
       } else if (course.rankRequired && USER_RANKS[user.rank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
@@ -77,6 +88,190 @@ export class UserCourseService {
       };
     });
   }
+
+  // startCourseメソッドを更新
+  async startCourse(userId: string, courseId: string) {
+    return await prisma.$transaction(async (tx) => {
+      const existingActiveCourse = await tx.userCourse.findFirst({
+        where: {
+          userId,
+          isActive: true,
+        },
+      });
+
+      const purchasedCourse = await tx.userCourse.findUnique({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        include: {
+          course: true
+        }
+      });
+
+      if (!purchasedCourse) {
+        return { error: 'Course not purchased' };
+      }
+
+      if (purchasedCourse.isTimedOut) {
+        return { error: 'Course has timed out. Please repurchase.' };
+      }
+
+      const firstChapter = await tx.chapter.findFirst({
+        where: {
+          courseId,
+        },
+        orderBy: {
+          orderIndex: 'asc',
+        },
+      });
+      
+      if (firstChapter) {
+        await tx.userChapterProgress.create({
+          data: {
+            userId,
+            courseId,
+            chapterId: firstChapter.id,
+            status: 'IN_PROGRESS',
+            startedAt: new Date(),
+            isTimedOut: false,
+          },
+        });
+      }
+
+      if (existingActiveCourse) {
+        await tx.userCourse.update({
+          where: { id: existingActiveCourse.id },
+          data: { 
+            isActive: false
+          },
+        });
+      }
+
+      const updatedCourse = await tx.userCourse.update({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          },
+        },
+        data: {
+          isActive: true,
+          startedAt: new Date(),
+          isTimedOut: false,
+          timeOutAt: null,
+          status: 'ACTIVE'
+        },
+        include: {
+          course: true,
+        },
+      });
+
+      return { success: true, data: updatedCourse };
+    });
+  }
+
+  // getCurrentUserCourseメソッドを更新
+  async getCurrentUserCourse(userId: string, courseId: string) {
+    const userCourse = await prisma.userCourse.findFirst({
+      where: {
+        userId,
+        courseId,
+        isActive: true,
+        isTimedOut: false
+      },
+      include: {
+        course: {
+          include: {
+            chapters: {
+              orderBy: {
+                orderIndex: 'asc'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (userCourse) {
+      // タイムアウトチェック
+      const timeoutCheck = await timeoutService.checkCourseTimeout(userId, courseId);
+      if (timeoutCheck.isTimedOut) {
+        return null;
+      }
+    }
+  
+    return userCourse;
+  }
+
+  // repurchaseCourseメソッドを追加
+  async repurchaseCourse(userId: string, courseId: string): Promise<PurchaseResult> {
+    return await prisma.$transaction(async (tx) => {
+      const userCourse = await tx.userCourse.findUnique({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          }
+        },
+        include: {
+          course: true
+        }
+      });
+
+      if (!userCourse) {
+        return { error: 'Course not found' };
+      }
+
+      const repurchasePrice = Math.floor(userCourse.course.gemCost * 0.1);
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { gems: true }
+      });
+
+      if (!user || user.gems < repurchasePrice) {
+        return { error: 'Insufficient gems for repurchase' };
+      }
+
+      // ジェムを消費して再購入
+      await tx.user.update({
+        where: { id: userId },
+        data: { gems: user.gems - repurchasePrice }
+      });
+
+      // コース状態をリセット
+      const updatedCourse = await tx.userCourse.update({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId,
+          }
+        },
+        data: {
+          isTimedOut: false,
+          timeOutAt: null,
+          status: 'UNLOCKED',
+          progress: 0,
+          startedAt: null,
+          completedAt: null,
+          isActive: false
+        }
+      });
+
+      // 関連するチャプター進捗をすべて削除
+      await tx.userChapterProgress.deleteMany({
+        where: {
+          userId,
+          courseId
+        }
+      });
+
+      return { success: true, userCourse: updatedCourse };
+    });
+  }
+
 
   async purchaseCourse(userId: string, courseId: string): Promise<PurchaseResult> {
     return await prisma.$transaction(async (tx) => {
@@ -143,101 +338,7 @@ export class UserCourseService {
     });
   }
 
-  async startCourse(userId: string, courseId: string) {
-    return await prisma.$transaction(async (tx) => {
-      // 既存のアクティブなコースを確認
-      const existingActiveCourse = await tx.userCourse.findFirst({
-        where: {
-          userId,
-          isActive: true,
-        },
-      });
 
-      // コースの購入状態を確認
-      const purchasedCourse = await tx.userCourse.findUnique({
-        where: {
-          userId_courseId: {
-            userId,
-            courseId,
-          },
-        },
-      });
-
-      if (!purchasedCourse) {
-        return { error: 'Course not purchased' };
-      }
-      const firstChapter = await tx.chapter.findFirst({
-        where: {
-          courseId,
-        },
-        orderBy: {
-          orderIndex: 'asc',
-        },
-      });
-      
-      if (firstChapter) {
-        await tx.userChapterProgress.create({
-          data: {
-            userId,
-            courseId,
-            chapterId: firstChapter.id,
-            status: 'IN_PROGRESS',  // 型キャストを削除
-            startedAt: new Date(),
-          },
-        });
-      }
-      // 既存のアクティブなコースがある場合は非アクティブに
-      if (existingActiveCourse) {
-        await tx.userCourse.update({
-          where: { id: existingActiveCourse.id },
-          data: { 
-            isActive: false
-          },
-        });
-      }
-
-      // 選択されたコースをアクティブに
-      const updatedCourse = await tx.userCourse.update({
-        where: {
-          userId_courseId: {
-            userId,
-            courseId,
-          },
-        },
-        data: {
-          isActive: true,
-          startedAt: new Date(),
-        },
-        include: {
-          course: true,
-        },
-      });
-
-      return { success: true, data: updatedCourse };
-    });
-  }
-  async getCurrentUserCourse(userId: string, courseId: string) {
-    const userCourse = await prisma.userCourse.findFirst({
-      where: {
-        userId,
-        courseId,
-        isActive: true
-      },
-      include: {
-        course: {
-          include: {
-            chapters: {
-              orderBy: {
-                orderIndex: 'asc'
-              }
-            }
-          }
-        }
-      }
-    });
-  
-    return userCourse;
-  }
   async getCurrentChapter(userId: string, courseId: string) {
     // Get all chapter progress for this course
     const chapterProgress = await prisma.userChapterProgress.findMany({
@@ -275,6 +376,20 @@ export class UserCourseService {
     return nextChapter || courseChapters[courseChapters.length - 1];
   }
 
+  async expireArchiveAccess(userId: string, courseId: string) {
+    return await prisma.userCourse.update({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId
+        }
+      },
+      data: {
+        status: 'repurchasable',
+        archiveUntil: null
+      }
+    });
+  }
 
   async getUserCourses(userId: string) {
     return prisma.userCourse.findMany({

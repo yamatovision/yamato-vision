@@ -16,7 +16,23 @@ export class UserCourseController {
       return res.status(500).json({ message: 'Failed to fetch available courses' });
     }
   }
-
+  async expireArchiveAccess(req: Request, res: Response) {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+  
+      const result = await userCourseService.expireArchiveAccess(userId, courseId);
+      return res.json(result);
+    } catch (error) {
+      console.error('Error expiring archive access:', error);
+      return res.status(500).json({ message: 'Failed to expire archive access' });
+    }
+  }
+  
   async purchaseCourse(req: Request, res: Response) {
     try {
       const userId = req.user?.id;

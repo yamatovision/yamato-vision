@@ -48,6 +48,16 @@ router.get('/current-chapter', authMiddleware, async (req, res) => {
     });
   }
 });
+// chapterRoutes.tsに追加
+router.patch('/:chapterId/visibility', 
+  authMiddleware, 
+  chapterController.updateVisibility.bind(chapterController)
+);
+
+router.patch('/:chapterId/perfect-only', 
+  authMiddleware, 
+  chapterController.updatePerfectOnly.bind(chapterController)
+);
 
 // Complete chapter endpoint
 router.post('/:chapterId/complete', authMiddleware, async (req, res) => {

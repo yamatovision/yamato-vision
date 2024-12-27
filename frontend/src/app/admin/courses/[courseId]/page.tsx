@@ -79,6 +79,35 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       setIsProcessing(false);
     }
   };
+  const handleToggleVisibility = async (chapterId: string, isVisible: boolean) => {
+    try {
+      setIsProcessing(true);
+      await courseApi.updateChapter(params.courseId, chapterId, { isVisible });
+      await fetchCourse();
+      toast.success(isVisible ? 'チャプターを表示に設定しました' : 'チャプターを非表示に設定しました');
+    } catch (error) {
+      console.error('Failed to toggle chapter visibility:', error);
+      toast.error('設定の更新に失敗しました');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  const handleTogglePerfectOnly = async (chapterId: string, isPerfectOnly: boolean) => {
+    try {
+      setIsProcessing(true);
+      await courseApi.updateChapter(params.courseId, chapterId, { isPerfectOnly });
+      await fetchCourse();
+      toast.success(isPerfectOnly ? 'Perfectユーザー専用に設定しました' : 'Perfect専用設定を解除しました');
+    } catch (error) {
+      console.error('Failed to toggle perfect only:', error);
+      toast.error('設定の更新に失敗しました');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+
 
   const handleChapterOrderUpdate = async (updatedChapters: Chapter[]) => {
     try {
@@ -263,12 +292,14 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
                   </button>
                 </div>
                 {course.chapters && (
-                  <ChapterList
-                    chapters={course.chapters}
-                    onDelete={handleChapterDelete}
-                    onEdit={handleEditChapter}  // 追加
-                    onOrderUpdate={handleChapterOrderUpdate}
-                  />
+                <ChapterList
+                chapters={course.chapters}
+                onDelete={handleChapterDelete}
+                onEdit={handleEditChapter}
+                onOrderUpdate={handleChapterOrderUpdate}
+                onToggleVisibility={handleToggleVisibility}
+                onTogglePerfectOnly={handleTogglePerfectOnly}
+              />
                 )}
               </>
             ) : (

@@ -36,15 +36,20 @@ export function HomeProfile() {
   const [previousLevel, setPreviousLevel] = useState<number | undefined>(undefined);
   
   useEffect(() => {
-    if (userData?.level && previousLevel && userData.level > previousLevel) {
-      showToast('', 'levelUp', {
-        oldLevel: previousLevel,
-        newLevel: userData.level,
-        message: null
-      });
+    if (userData?.expGained && userData.expGained > 0) {
+      showToast(
+        `+${userData.expGained} EXP を獲得!`, 
+        'expGained'
+      );
     }
-    setPreviousLevel(userData?.level);
-  }, [userData?.level, showToast]);
+  }, [userData?.expGained]);
+  
+  // 別途レベルアップの処理
+  useEffect(() => {
+    if (userData?.levelUpData) {
+      showToast('', 'levelUp', userData.levelUpData);
+    }
+  }, [userData?.levelUpData]);
 
   const handleProfileClick = () => {
     setIsEditModalOpen(true);

@@ -87,6 +87,12 @@ router.get('/:courseId/current-chapter', async (req, res) => {
   }
 });
 
+router.post(
+  '/:courseId/expire-archive',
+  authMiddleware,
+  userCourseController.expireArchiveAccess
+);
+
 router.get('/current', async (req, res) => {
     try {
       const userId = req.user?.id;

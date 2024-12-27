@@ -6,11 +6,11 @@ import {
   UserSubmissionStatus 
 } from './submissionTypes';
 import { taskService } from '../tasks/taskService';
+import { timeoutService } from '../timeouts/timeoutService';
 
 const prisma = new PrismaClient();
 
 export class SubmissionService {
-  // 課題提出
   async createSubmission(data: CreateSubmissionDTO): Promise<SubmissionResult> {
     const task = await prisma.task.findUnique({
       where: { id: data.taskId },
@@ -29,18 +29,35 @@ export class SubmissionService {
       }
     });
 
-    if (!task) {
+    if (!task || !task.chapter) {
       throw new Error('課題が見つかりません');
     }
 
+    // コースのタイムアウトチェック
+    const courseTimeout = await timeoutService.checkCourseTimeout(
+      data.userId,
+      task.chapter.courseId
+    );
+
+    if (courseTimeout.isTimedOut) {
+      throw new Error('コースの期限が終了しています。再購入が必要です。');
+    }
+
+    // チャプターのタイムアウトチェック
+    const chapterTimeout = await timeoutService.checkChapterTimeout(
+      data.userId,
+      task.chapter.courseId,
+      task.chapter.id
+    );
+
     const userCourse = task.chapter?.course.users[0];
-    const timePenalty = task.chapter?.timeLimit 
+    const timePenalty = chapterTimeout.isTimedOut || (task.chapter?.timeLimit 
       ? taskService.calculateTimePenalty(
           new Date(),
           userCourse?.startedAt || new Date(),
           task.chapter.timeLimit
         ) < 1
-      : false;
+      : false);
 
     const evaluationResult = await taskService.evaluateSubmission({
       systemMessage: task.systemMessage,
@@ -53,6 +70,7 @@ export class SubmissionService {
     const finalScore = timePenalty 
       ? Math.floor(originalScore * 0.33) 
       : originalScore;
+
 
     const submission = await prisma.submission.create({
       data: {
@@ -71,7 +89,9 @@ export class SubmissionService {
       timePenalty,
       finalScore,
       originalScore,
-      feedback: evaluationResult.feedback
+      feedback: evaluationResult.feedback,
+      timeoutMessage: chapterTimeout.message || courseTimeout.message
+
     };
   }
 

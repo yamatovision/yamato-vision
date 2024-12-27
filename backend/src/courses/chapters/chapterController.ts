@@ -107,7 +107,38 @@ export class ChapterController {
       });
     }
   }
+// chapterController.tsに追加
+async updateVisibility(
+  req: Request<{ courseId: string; chapterId: string }>,
+  res: Response
+) {
+  try {
+    const chapter = await chapterService.updateChapterVisibility(
+      req.params.chapterId,
+      req.body.isVisible
+    );
+    return res.json({ success: true, data: chapter });
+  } catch (error) {
+    console.error('Error updating chapter visibility:', error);
+    return res.status(500).json({ message: '表示設定の更新に失敗しました' });
+  }
+}
 
+async updatePerfectOnly(
+  req: Request<{ courseId: string; chapterId: string }>,
+  res: Response
+) {
+  try {
+    const chapter = await chapterService.updateChapterPerfectOnly(
+      req.params.chapterId,
+      req.body.isPerfectOnly
+    );
+    return res.json({ success: true, data: chapter });
+  } catch (error) {
+    console.error('Error updating chapter perfect only status:', error);
+    return res.status(500).json({ message: 'Perfect専用設定の更新に失敗しました' });
+  }
+}
   async updateChaptersOrder(
     req: Request<{ courseId: string }, {}, Array<{ id: string; orderIndex: number }>>,
     res: Response
@@ -132,6 +163,29 @@ export class ChapterController {
       });
     }
   }
+
+  // backend/src/courses/chapters/chapterController.ts
+async startChapter(req: Request, res: Response) {
+  try {
+    const { courseId, chapterId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const result = await chapterService.startChapter(
+      userId,
+      courseId,
+      chapterId
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error starting chapter:', error);
+    return res.status(500).json({ message: 'Failed to start chapter' });
+  }
+}
 
   // チャプター一覧取得メソッドを追加
   async getChapters(

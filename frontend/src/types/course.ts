@@ -166,24 +166,33 @@ export interface CurrentUserCourse {
 }
 
 export type CourseStatus = 
-  | 'unlocked' 
-  | 'available' 
-  | 'level_locked' 
-  | 'rank_locked' 
-  | 'complex'
-  | 'active'
-  | 'completed'
-  | 'perfect'
-  | 'failed';
+  | 'unlocked'          // 購入済み（未開始）
+  | 'available'         // 購入可能
+  | 'level_locked'      // レベル制限
+  | 'rank_locked'       // 階級制限
+  | 'complex'           // 複合制限
+  | 'active'           // 受講中
+  | 'perfect'          // Perfect達成（無期限アクセス権）
+  | 'completed_archive' // 完了（1週間限定アーカイブ）
+  | 'repurchasable';    // 再購入必要
 
-
-export interface UserCourse {
-  id: string;
-  courseId: string;
-  progress: number;
-  startedAt: Date;
-  completedAt?: Date;
-}
+  export interface Course {
+    id: string;
+    title: string;
+    description: string;
+    status: CourseStatus;
+    gemCost?: number;
+    levelRequired?: number;
+    rankRequired?: string;
+    gradient?: string;
+    archiveUntil?: string;  // 追加：アーカイブ期限
+    completion?: {
+      badges?: {
+        completion?: boolean;
+        excellence?: boolean;
+      };
+    };
+  }
 
 export interface CourseData {
   id: string;

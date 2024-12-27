@@ -1,5 +1,3 @@
-// frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/page.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -15,6 +13,9 @@ import { AttachmentFiles } from '../../../components/AttachmentFiles';
 import { TimeRemaining } from '../../../components/TimeRemaining';
 import { ParticipantList } from '../../../components/ParticipantList';
 import { ProgressBar } from '../../../components/ProgressBar';
+import { TimeoutModal } from '@/components/timeouts/TimeoutModal';
+import { TimeoutWarning } from '@/components/timeouts/TimeoutWarning';
+
 export default function ChapterPage({ 
   params 
 }: { 
@@ -25,12 +26,23 @@ export default function ChapterPage({
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
+  const [timeoutType, setTimeoutType] = useState<'chapter' | 'course' | null>(null);
+
   useEffect(() => {
-    const loadChapter = async () => {
+    const initializeChapter = async () => {
       try {
         setLoading(true);
-        const response = await courseApi.getChapter(params.courseId, params.chapterId);
         
+        // チャプター開始時間の記録と取得
+        const startResponse = await courseApi.startChapter(params.courseId, params.chapterId);
+        if (startResponse.success && startResponse.data.startedAt) {
+          setStartTime(new Date(startResponse.data.startedAt));
+        }
+
+        // チャプター情報の取得
+        const response = await courseApi.getChapter(params.courseId, params.chapterId);
         if (response.success && response.data) {
           const parsedChapter = {
             ...response.data,
@@ -56,8 +68,20 @@ export default function ChapterPage({
       }
     };
   
-    loadChapter();
+    initializeChapter();
   }, [params.courseId, params.chapterId]);
+
+  const handleTimeout = (type: 'chapter' | 'course') => {
+    setTimeoutType(type);
+    setShowTimeoutModal(true);
+  };
+
+  const handleTimeoutModalClose = () => {
+    setShowTimeoutModal(false);
+    if (timeoutType === 'course') {
+      router.push('/user/courses'); // コースタイムアウト時はコース一覧へ
+    }
+  };
 
   if (loading) {
     return (
@@ -81,8 +105,26 @@ export default function ChapterPage({
 
   return (
     <div className="max-w-[800px] mx-auto pb-20 px-4">
+      {/* タイムアウトモーダル */}
+      <TimeoutModal
+        isOpen={showTimeoutModal}
+        type={timeoutType || 'chapter'}
+        onClose={handleTimeoutModalClose}
+        onAction={timeoutType === 'course' ? () => router.push('/shop') : undefined}
+      />
+
       {/* ヘッダー部分 */}
       <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg mb-6`}>
+        {/* 時間警告表示 */}
+        {startTime && chapter.timeLimit && (
+          <TimeRemaining
+            startTime={startTime}
+            timeLimit={chapter.timeLimit}
+            type="chapter"
+            onTimeout={() => handleTimeout('chapter')}
+          />
+        )}
+        
         <div className="p-4 text-center">
           <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
             {chapter.title}
@@ -129,15 +171,17 @@ export default function ChapterPage({
           </div>
         )}
 
-        {/* 添付ファイル */}
-        {/* AttachmentFilesコンポーネントの実装後に追加 */}
-
         {/* 進捗と時間 */}
         <div className="mt-8 space-y-4">
           <ProgressBar progress={progress} />
-          {chapter.timeLimit && (
+          {startTime && chapter.timeLimit && (
             <div className="flex justify-between items-center">
-              <TimeRemaining initialTime={chapter.timeLimit} />
+              <TimeRemaining
+                startTime={startTime}
+                timeLimit={chapter.timeLimit}
+                type="chapter"
+                onTimeout={() => handleTimeout('chapter')}
+              />
               <ParticipantList />
             </div>
           )}

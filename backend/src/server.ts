@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { CronJob } from 'cron';
 import authRoutes from './auth/authRoutes';
 import userRoutes from './users/userRoutes';
 import badgeRoutes from './badges/badgeRoutes';
@@ -8,11 +9,29 @@ import levelMessageRoutes from './levelMessages/levelMessageRoutes';
 import { courseRoutes } from './courses/courseRoutes';
 import { userCourseRoutes } from './courses/user/userCourseRoutes';
 import { PrismaClient } from '@prisma/client';
+import { timeoutChecker } from './utils/timeoutChecker';
 
 dotenv.config();
 export const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3001;
+
+// cronジョブの初期化
+const initializeCronJobs = () => {
+  console.log('Initializing cron jobs...');
+  new CronJob('0 0 * * *', async () => {
+    try {
+      console.log('Running daily timeout check...');
+      await timeoutChecker.checkAllCourseTimeouts();
+      console.log('Daily timeout check completed');
+    } catch (error) {
+      console.error('Failed to run timeout check cron job:', error);
+    }
+  }).start();
+};
+
+// cronジョブの開始
+initializeCronJobs();
 
 // ミドルウェア
 app.use(cors());
@@ -45,6 +64,11 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// サーバー時間エンドポイントの追加
+app.get('/api/server-time', (_req, res) => {
+  res.json({ serverTime: new Date().toISOString() });
+});
+
 // エラーハンドリング
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
@@ -64,6 +88,7 @@ app.use((_req: express.Request, res: express.Response) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  console.log('Cron jobs initialized');
 });
 
 export default app;

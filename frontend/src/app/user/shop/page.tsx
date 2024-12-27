@@ -5,11 +5,13 @@ import { useTheme } from '@/contexts/theme';
 import { CourseCard } from './CourseCard';
 import { courseApi } from '@/lib/api/courses';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Course, CourseStatus } from './types';
+import { Course, CourseStatus } from '@/types/course';
 import { toast } from 'react-hot-toast';
 import { ActivationModal } from './ActivationModal';
+import { PurchaseSuccessModal } from './PurchaseSuccessModal';
+import { RepurchaseConfirmModal } from './RepurchaseConfirmModal';
 import api from '@/lib/api/auth';
-import { useRouter } from 'next/navigation';  // 追加
+import { useRouter } from 'next/navigation';
 
 interface UserDetails {
   id: string;
@@ -18,16 +20,14 @@ interface UserDetails {
   gems: number;
 }
 
-const LoadingSpinner = () => {
-  return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
-};
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-screen">
+    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 export default function ShopPage() {
-  const router = useRouter();  // 追加
+  const router = useRouter();
   const { theme } = useTheme();
   const { user: authUser } = useAuth();
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
@@ -36,8 +36,14 @@ export default function ShopPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [userLoading, setUserLoading] = useState(true);
   const [coursesLoading, setCoursesLoading] = useState(true);
+  
+  // モーダル状態管理
   const [activatingCourse, setActivatingCourse] = useState<string | null>(null);
   const [showActivationModal, setShowActivationModal] = useState(false);
+  const [showPurchaseSuccess, setShowPurchaseSuccess] = useState(false);
+  const [purchasedCourse, setPurchasedCourse] = useState<Course | null>(null);
+  const [showRepurchaseModal, setShowRepurchaseModal] = useState(false);
+  const [repurchasingCourse, setRepurchasingCourse] = useState<Course | null>(null);
 
   // ユーザー詳細情報の取得
   useEffect(() => {
@@ -67,15 +73,12 @@ export default function ShopPage() {
     }
   }, [authUser]);
 
+  // コース一覧の取得
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         setCoursesLoading(true);
         const response = await courseApi.getAvailableCourses();
-        console.log('Available courses response:', response); // デバッグ用ログ
-
-    console.log('API Response:', response);
-    console.log('Courses Data:', response.data);
         if (response.success) {
           const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
             id: apiCourse.id,
@@ -87,6 +90,7 @@ export default function ShopPage() {
             rankRequired: apiCourse.rankRequired || undefined,
             gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
             completion: apiCourse.completion || undefined,
+            archiveUntil: apiCourse.archiveUntil,
           }));
           setCourses(formattedCourses);
         }
@@ -100,95 +104,81 @@ export default function ShopPage() {
     fetchCourses();
   }, []);
 
+  // コース操作のハンドラー
   const handleUnlock = async (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
-  
-    if (course.status === 'active') {
-      try {
-        // 現在のコース情報を取得
-        const currentCourse = await courseApi.getCurrentUserCourse(courseId);
-        if (currentCourse.success && currentCourse.data) {
-          // 最初のチャプターまたは進行中のチャプターに遷移
-          const targetChapter = currentCourse.data.chapters[0];
-          router.push(`/user/courses/${courseId}/chapters/${targetChapter.id}`);
-        }
-      } catch (error) {
-        console.error('Failed to get current course:', error);
-        toast.error('コース情報の取得に失敗しました');
-      }
-      return;
-    }
-    if (course.status === 'unlocked') {
-      setActivatingCourse(courseId);
-      setShowActivationModal(true);
-    } else if (course.status === 'available') {
-      try {
-        const result = await courseApi.purchaseCourse(courseId);
-        if (result.success) {
-          toast.success('コースを解放しました！');
-          const response = await courseApi.getAvailableCourses();
-          if (response.success) {
-            const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
-              id: apiCourse.id,
-              title: apiCourse.title,
-              description: apiCourse.description,
-              status: apiCourse.status as CourseStatus,
-              gemCost: apiCourse.gemCost || undefined,
-              levelRequired: apiCourse.levelRequired || undefined,
-              rankRequired: apiCourse.rankRequired || undefined,
-              gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
-              completion: apiCourse.completion || undefined,
-            }));
-            setCourses(formattedCourses);
+
+    switch (course.status) {
+      case 'available':
+        try {
+          const result = await courseApi.purchaseCourse(courseId);
+          if (result.success) {
+            setPurchasedCourse(course);
+            setShowPurchaseSuccess(true);
+            await refreshCourses();
           }
+        } catch (error: any) {
+          toast.error(error.message || 'コースの解放に失敗しました');
         }
-      } catch (error: any) {
-        toast.error(error.message || 'コースの解放に失敗しました');
-      }
+        break;
+
+      case 'repurchasable':
+        setRepurchasingCourse(course);
+        setShowRepurchaseModal(true);
+        break;
+
+      case 'unlocked':
+        setActivatingCourse(courseId);
+        setShowActivationModal(true);
+        break;
+
+      case 'active':
+      case 'perfect':
+      case 'completed_archive':
+        try {
+          const response = await courseApi.getCurrentChapter(courseId);
+          if (response.success && response.data) {
+            router.push(`/user/courses/${courseId}/chapters/${response.data.id}`);
+          }
+        } catch (error) {
+          console.error('Error accessing course:', error);
+          toast.error('コースへのアクセスに失敗しました');
+        }
+        break;
     }
   };
 
-  const handleActivation = async () => {
-    if (!activatingCourse) return;
-    try {
-      // purchaseCoursesの代わりにstartCourseを使用
-      const result = await courseApi.startCourse(activatingCourse);
-      if (result.success) {
-        toast.success('コースを開始しました！');
-        // コース一覧を更新
-        const response = await courseApi.getAvailableCourses();
-        if (response.success) {
-          const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
-            id: apiCourse.id,
-            title: apiCourse.title,
-            description: apiCourse.description,
-            status: apiCourse.status as CourseStatus,
-            gemCost: apiCourse.gemCost || undefined,
-            levelRequired: apiCourse.levelRequired || undefined,
-            rankRequired: apiCourse.rankRequired || undefined,
-            gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
-            completion: apiCourse.completion || undefined,
-          }));
-          setCourses(formattedCourses);
-        }
-        // 開始したコースのページに遷移
-        router.push(`/user/courses/${activatingCourse}`);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'コースの開始に失敗しました');
-    } finally {
-      setShowActivationModal(false);
-      setActivatingCourse(null);
+  // コース一覧の更新
+  const refreshCourses = async () => {
+    const response = await courseApi.getAvailableCourses();
+    if (response.success) {
+      const formattedCourses: Course[] = response.data.map((apiCourse: any) => ({
+        id: apiCourse.id,
+        title: apiCourse.title,
+        description: apiCourse.description,
+        status: apiCourse.status as CourseStatus,
+        gemCost: apiCourse.gemCost || undefined,
+        levelRequired: apiCourse.levelRequired || undefined,
+        rankRequired: apiCourse.rankRequired || undefined,
+        gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
+        completion: apiCourse.completion || undefined,
+        archiveUntil: apiCourse.archiveUntil,
+      }));
+      setCourses(formattedCourses);
     }
   };
+
+  // コースの並び替えとフィルタリング
   const filteredCourses = React.useMemo(() => {
     let filtered = courses;
     
     if (filter === 'available') {
       filtered = courses.filter(course =>
-        ['unlocked', 'available'].includes(course.status));
+        ['unlocked', 'available', 'perfect', 'completed_archive'].includes(course.status)
+      );
     }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(course =>
@@ -202,10 +192,12 @@ export default function ShopPage() {
         unlocked: 1,
         available: 2,
         perfect: 3,
-        completed: 4,
-        failed: 5,level_locked: 6,
+        completed_archive: 4,
+        repurchasable: 5,
+        level_locked: 6,
         rank_locked: 7,
         complex: 8,
+        active: 0
       };
       return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
     });
@@ -217,6 +209,7 @@ export default function ShopPage() {
 
   return (
     <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
+      {/* ユーザー情報パネル */}
       <div className={theme === 'dark' ? 'bg-gray-800 rounded-lg p-4 mb-6' : 'bg-white rounded-lg p-4 mb-6 border border-[#DBEAFE] shadow-sm'}>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -245,26 +238,82 @@ export default function ShopPage() {
         </div>
       </div>
 
+      {/* コース一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCourses.map((course) => (
-         <CourseCard
-         key={course.id}
-         {...course}
-         onUnlock={() => handleUnlock(course.id)}
-         lastAccessedChapterId={course.lastAccessedChapterId} // 追加が必要
-       />
+          <CourseCard
+            key={course.id}
+            {...course}
+            onUnlock={() => handleUnlock(course.id)}
+          />
         ))}
       </div>
 
+      {/* モーダル群 */}
       <ActivationModal
         isOpen={showActivationModal}
         onClose={() => {
           setShowActivationModal(false);
           setActivatingCourse(null);
         }}
-        onConfirm={handleActivation}
-        hasCurrentCourse={courses.some(c => c.status === 'unlocked' && c.completion?.badges?.completion)}
+        onConfirm={async () => {
+          if (!activatingCourse) return;
+          try {
+            const result = await courseApi.startCourse(activatingCourse);
+            if (result.success) {
+              toast.success('コースを開始しました！');
+              await refreshCourses();
+              router.push(`/user/courses/${activatingCourse}`);
+            }
+          } catch (error: any) {
+            toast.error(error.message || 'コースの開始に失敗しました');
+          } finally {
+            setShowActivationModal(false);
+            setActivatingCourse(null);
+          }
+        }}
+        hasCurrentCourse={courses.some(c => c.status === 'active')}
       />
+
+      {purchasedCourse && (
+        <PurchaseSuccessModal
+          isOpen={showPurchaseSuccess}
+          onClose={() => setShowPurchaseSuccess(false)}
+          courseTitle={purchasedCourse.title}
+          onStart={async () => {
+            setShowPurchaseSuccess(false);
+            const result = await courseApi.startCourse(purchasedCourse.id);
+            if (result.success) {
+              router.push(`/user/courses/${purchasedCourse.id}`);
+            }
+          }}
+        />
+      )}
+
+      {repurchasingCourse && (
+        <RepurchaseConfirmModal
+          isOpen={showRepurchaseModal}
+          onClose={() => {
+            setShowRepurchaseModal(false);
+            setRepurchasingCourse(null);
+          }}
+          courseTitle={repurchasingCourse.title}
+          gemCost={Math.floor((repurchasingCourse.gemCost || 0) / 10)}
+          onConfirm={async () => {
+            try {
+              const result = await courseApi.repurchaseCourse(repurchasingCourse.id);
+              if (result.success) {
+                toast.success('コースを再購入しました！');
+                await refreshCourses();
+                setShowRepurchaseModal(false);
+                setRepurchasingCourse(null);
+              }
+            } catch (error: any) {
+              toast.error(error.message || 'コースの再購入に失敗しました');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

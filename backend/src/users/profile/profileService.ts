@@ -4,10 +4,13 @@ import { PrismaClient } from '@prisma/client';
 import { ProfileUpdateParams, ProfileResponse } from './profileTypes';
 import { v2 as cloudinary } from 'cloudinary';
 import { TokenProcessingService } from '../../token/tokenProcessingService';
+import { LevelMessageService } from '../../levelMessages/levelMessageService';
 
 const prisma = new PrismaClient();
 
 export class ProfileService {
+  private readonly levelMessageService: LevelMessageService;
+
   // クエリの共通部分を定数として定義
   private readonly USER_SELECT = {
     id: true,
@@ -52,6 +55,7 @@ export class ProfileService {
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET
     });
+    this.levelMessageService = new LevelMessageService();
   }
 
   private async uploadImageToCloudinary(base64Image: string, userId: string): Promise<string> {
@@ -73,8 +77,18 @@ export class ProfileService {
     }
   }
 
-  private formatProfileResponse(user: any, expGained: number = 0, shouldShowExpNotification: boolean = false): ProfileResponse {
-    return {
+  private formatProfileResponse(
+    user: any, 
+    additional?: { 
+      expGained?: number;
+      levelUpData?: {
+        oldLevel: number;
+        newLevel: number;
+        message: string | null;
+      };
+    }
+  ): ProfileResponse {
+    const baseResponse: ProfileResponse = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -100,12 +114,18 @@ export class ProfileService {
         weeklyLimit: user.tokenTracking.weeklyLimit,
         purchasedTokens: user.tokenTracking.purchasedTokens,
         unprocessedTokens: user.tokenTracking.unprocessedTokens
-      } : null,
-      expGained,
-      shouldShowExpNotification
+      } : null
     };
-  }
 
+    if (additional) {
+      return {
+        ...baseResponse,
+        ...additional
+      };
+    }
+
+    return baseResponse;
+  }
 
   async getProfile(userId: string): Promise<ProfileResponse> {
     try {
@@ -113,41 +133,50 @@ export class ProfileService {
         where: { id: userId },
         select: this.USER_SELECT
       });
-  
+
       if (!user) {
         throw new Error('ユーザーが見つかりません');
       }
-  
-      // トークン処理
+
+      // 経験値の処理
       let expGained = 0;
-      let shouldShowExpNotification = false;
-  
-      // Null チェックを強化
-      if (user.tokenTracking && user.tokenTracking.unprocessedTokens && 
-          user.tokenTracking.unprocessedTokens >= TokenProcessingService.TOKEN_THRESHOLD) {
+      const unprocessedTokens = user.tokenTracking?.unprocessedTokens ?? 0;
+
+      if (unprocessedTokens >= TokenProcessingService.TOKEN_THRESHOLD) {
         await TokenProcessingService.processExperiencePoints(userId);
-        expGained = Math.floor(user.tokenTracking.unprocessedTokens / TokenProcessingService.TOKENS_PER_EXP);
-        shouldShowExpNotification = true;
-  
-        // 更新後のデータを取得
+        expGained = Math.floor(unprocessedTokens / TokenProcessingService.TOKENS_PER_EXP);
+
+        // 経験値処理後の最新データを取得
         const updatedUser = await prisma.user.findUnique({
           where: { id: userId },
           select: this.USER_SELECT
         });
-  
+
         if (updatedUser) {
-          return this.formatProfileResponse(updatedUser, expGained, shouldShowExpNotification);
+          // レベルアップチェック
+          if (updatedUser.level > user.level) {
+            const levelMessage = await this.levelMessageService.getMessageForLevel(updatedUser.level);
+            return this.formatProfileResponse(updatedUser, {
+              expGained,
+              levelUpData: {
+                oldLevel: user.level,
+                newLevel: updatedUser.level,
+                message: levelMessage?.message || null
+              }
+            });
+          }
+
+          return this.formatProfileResponse(updatedUser, { expGained });
         }
       }
-  
-      return this.formatProfileResponse(user, expGained, shouldShowExpNotification);
-  
+
+      return this.formatProfileResponse(user);
+
     } catch (error) {
       console.error('Failed to get profile:', error);
       throw new Error('プロフィールの取得に失敗しました');
     }
   }
-
 
   async updateAvatar(userId: string, base64Image: string): Promise<ProfileResponse> {
     try {

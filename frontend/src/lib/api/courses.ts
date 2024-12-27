@@ -340,6 +340,14 @@ getCurrentUserCourse: async (courseId?: string) => {
   }
 },
 
+expireArchiveAccess: async (courseId: string) => {
+  try {
+    const response = await api.post(`/courses/user/${courseId}/expire-archive`);
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+},
 
   // チャプター作成
   createChapter: async (courseId: string, data: CreateChapterDTO) => {

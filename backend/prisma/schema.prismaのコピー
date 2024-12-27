@@ -1,0 +1,343 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")  // 直接接続用のURL
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  password         String
+  name             String?
+  level            Int            @default(1)
+  experience       Int            @default(0)
+  gems             Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  status           UserStatus     @default(ACTIVE)
+  mongoId          String?        @unique
+  nickname         String?
+  snsLinks         Json?
+  isRankingVisible Boolean        @default(true)
+  isProfileVisible Boolean        @default(true)
+  message          String?
+  avatarUrl        String?
+  rank             String         @default("お試し")
+  comments         Comment[]
+  forumPosts       ForumPost[]
+  purchases        Purchase[]
+  submissions      Submission[]
+  tokenTracking    TokenTracking?
+  badges           UserBadge[]
+  courses          UserCourse[]
+    chapterProgress UserChapterProgress[] // 追加
+}
+model Chapter {
+  id            String    @id @default(cuid())
+  courseId      String
+  title         String
+  subtitle      String?
+  content       Json      // contentをJSON型として保存
+  orderIndex    Int
+  timeLimit     Int?
+  releaseTime   Int?     // 新しいフィールド
+  isVisible     Boolean   @default(true)
+  isFinalExam   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  course        Course    @relation(fields: [courseId], references: [id])
+  task          Task?     @relation("ChapterTask", fields: [taskId], references: [id])
+  taskId        String?   @unique
+    userProgress UserChapterProgress[] // 追加
+
+  @@unique([courseId, orderIndex])
+}
+
+model Course {
+  id            String       @id @default(cuid())
+  title         String
+  description   String
+  level         Int          @default(1)
+  gemCost       Int          @default(0)
+  rankRequired  String?
+  levelRequired Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  products      Product[]
+  tasks         Task[]
+  users         UserCourse[]
+  isPublished   Boolean      @default(false)
+  isArchived    Boolean      @default(false)
+  publishedAt   DateTime?
+  archivedAt    DateTime?
+  thumbnail     String?
+  timeLimit     Int?
+  passingScore  Int         @default(60)
+  excellentScore Int        @default(95)
+  chapters      Chapter[]
+    chapterProgress UserChapterProgress[] // 追加
+}
+
+
+model UserCourse {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  isActive    Boolean   @default(false)
+  status    String   @default("INACTIVE") // ACTIVE, INACTIVE, COMPLETED
+  startedAt DateTime?
+  completedAt DateTime?
+  progress  Int      @default(0)
+  isTimedOut       Boolean   @default(false)
+  timeOutAt        DateTime?
+  archiveUntil     DateTime?
+  repurchasePrice  Int?
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+model Task {
+  id              String    @id @default(cuid())
+  courseId        String
+  title           String
+  description     String
+  systemMessage   String    // AI採点用指示
+  referenceText   String?   // 採点用参考テキスト
+  maxPoints       Int       @default(100)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  submissions     Submission[]
+  course          Course    @relation(fields: [courseId], references: [id])
+  chapter         Chapter?  @relation("ChapterTask")
+}
+
+
+model Submission {
+  id          String    @id @default(cuid())
+  userId      String
+  taskId      String
+  content     String
+  points      Int?
+  feedback    String?
+  submittedAt DateTime  @default(now())
+  evaluatedAt DateTime?
+  task        Task      @relation(fields: [taskId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model ForumPost {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  content   String
+  likes     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  isVisible Boolean   @default(true)
+  comments  Comment[]
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  isVisible Boolean   @default(true)
+  post      ForumPost @relation(fields: [postId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model DailyMission {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  gemReward   Int
+  expReward   Int
+  type        String
+  requirement Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Mission {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  missionType MissionType
+  duration    Int?
+  conditions  Json
+  isActive    Boolean        @default(true)
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  reward      MissionReward?
+
+  @@index([missionType])
+  @@index([isActive])
+}
+
+model MissionReward {
+  id        String   @id @default(cuid())
+  missionId String   @unique
+  gems      Int
+  exp       Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId])
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  description   String
+  type          ProductType
+  price         Int
+  gemAmount     Int?
+  courseId      String?
+  rankRequired  String?
+  levelRequired Int?
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  course        Course?     @relation(fields: [courseId], references: [id])
+  purchases     Purchase[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model Purchase {
+  id         String         @id @default(cuid())
+  userId     String
+  productId  String
+  amount     Int
+  totalPrice Int
+  status     PurchaseStatus
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  product    Product        @relation(fields: [productId], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Badge {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  iconUrl     String
+  condition   BadgeCondition
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+model TokenTracking {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  weeklyTokens      Int      @default(0)    // 週間使用量
+  weeklyLimit       Int      @default(0)    // 基本制限
+  purchasedTokens   Int      @default(0)    // 購入済みトークン
+  unprocessedTokens Int      @default(0)    // 経験値未換算分
+  lastSyncedAt      DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model LevelMessage {
+  id        String   @id @default(cuid())
+  level     Int      @unique
+  message   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENALTY
+}
+
+enum MissionType {
+  DAILY
+  MONTHLY
+  ACHIEVEMENT
+}
+
+enum MissionConditionType {
+  REPORT
+  COMMENT
+  LIKE
+  TASK_COMPLETE
+  CUSTOM
+}
+
+enum ProductType {
+  COURSE
+  GEM_PACKAGE
+  SPECIAL_ITEM
+}
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum BadgeCondition {
+  LIKES_COUNT
+  COURSE_COMPLETE
+  TASK_COMPLETE
+  POST_COUNT
+  COMMENT_COUNT
+  CUSTOM
+}
+model UserChapterProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  chapterId   String
+  status      String    @default("NOT_STARTED")
+  startedAt   DateTime?
+  completedAt DateTime?
+  score       Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isTimedOut  Boolean   @default(false)
+  timeOutAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id])
+  course      Course    @relation(fields: [courseId], references: [id])
+  chapter     Chapter   @relation(fields: [chapterId], references: [id])
+
+  @@unique([userId, courseId, chapterId])
+  @@index([userId, courseId])
+}
+
