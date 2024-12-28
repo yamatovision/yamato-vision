@@ -79,6 +79,7 @@ export class TimeoutService {
           isTimedOut: true,
           timeOutAt: now,
           status: 'repurchasable',
+          isActive: false,    // この行を追加
           repurchasePrice
         }
       });

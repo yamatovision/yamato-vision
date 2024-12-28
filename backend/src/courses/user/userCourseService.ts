@@ -174,14 +174,19 @@ export class UserCourseService {
   }
 
   // getCurrentUserCourseメソッドを更新
-  async getCurrentUserCourse(userId: string, courseId: string) {
+  async getCurrentUserCourse(userId: string, courseId?: string) {
+    const whereClause: any = {
+      userId,
+      isActive: true,
+      isTimedOut: false
+    };
+  
+    if (courseId) {
+      whereClause.courseId = courseId;
+    }
+  
     const userCourse = await prisma.userCourse.findFirst({
-      where: {
-        userId,
-        courseId,
-        isActive: true,
-        isTimedOut: false
-      },
+      where: whereClause,
       include: {
         course: {
           include: {
@@ -194,12 +199,14 @@ export class UserCourseService {
         }
       }
     });
-
+  
     if (userCourse) {
       // タイムアウトチェック
-      const timeoutCheck = await timeoutService.checkCourseTimeout(userId, courseId);
-      if (timeoutCheck.isTimedOut) {
-        return null;
+      if (userCourse.courseId) {
+        const timeoutCheck = await timeoutService.checkCourseTimeout(userId, userCourse.courseId);
+        if (timeoutCheck.isTimedOut) {
+          return null;
+        }
       }
     }
   

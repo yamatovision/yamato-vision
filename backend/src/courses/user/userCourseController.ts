@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { userCourseService } from './userCourseService';
 
-export class UserCourseController {
+const prisma = new PrismaClient();
+
+class UserCourseController {
   async getAvailableCourses(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
@@ -16,6 +19,7 @@ export class UserCourseController {
       return res.status(500).json({ message: 'Failed to fetch available courses' });
     }
   }
+
   async expireArchiveAccess(req: Request, res: Response) {
     try {
       const { courseId } = req.params;
@@ -32,7 +36,7 @@ export class UserCourseController {
       return res.status(500).json({ message: 'Failed to expire archive access' });
     }
   }
-  
+
   async purchaseCourse(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
@@ -70,7 +74,7 @@ export class UserCourseController {
     }
   }
 
-  async startCourse(req: Request, res: Response) {  // クラス内のメソッドとして定義
+  async startCourse(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
       const courseId = req.params.courseId;
@@ -91,6 +95,109 @@ export class UserCourseController {
       return res.status(500).json({ message: 'Failed to start course' });
     }
   }
+
+  async getCurrentUserCourse(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized' 
+        });
+      }
+
+      const activeCourse = await userCourseService.getCurrentUserCourse(userId);
+
+      if (!activeCourse) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: activeCourse
+      });
+    } catch (error) {
+      console.error('Error fetching current course:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch current course'
+      });
+    }
+  }
+
+  async getCurrentUserCourseById(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { courseId } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized' 
+        });
+      }
+
+      const currentCourse = await userCourseService.getCurrentUserCourse(userId, courseId);
+      
+      if (!currentCourse) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Current course not found' 
+        });
+      }
+
+      return res.json({ 
+        success: true, 
+        data: currentCourse 
+      });
+    } catch (error) {
+      console.error('Error fetching current course:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch current course' 
+      });
+    }
+  }
+
+  async getCurrentChapter(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { courseId } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Unauthorized' 
+        });
+      }
+
+      const currentChapter = await userCourseService.getCurrentChapter(userId, courseId);
+      
+      if (!currentChapter) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'No available chapter found' 
+        });
+      }
+
+      return res.json({ 
+        success: true, 
+        data: currentChapter 
+      });
+    } catch (error) {
+      console.error('Error fetching current chapter:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch current chapter' 
+      });
+    }
+  }
 }
 
+// インスタンス作成とエクスポート
 export const userCourseController = new UserCourseController();
+
