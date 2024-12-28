@@ -103,40 +103,45 @@ export const courseApi = {
     const data = await response.json();
     return { data };
   },
-
-  getCurrentChapter: async (courseId: string): Promise<APIResponse<Chapter>> => {
-    try {
-      const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
-        {
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (!response.ok) {
-        console.error('Failed to fetch current chapter:', response.status);
-        throw new Error('Failed to fetch current chapter');
+// frontend/src/lib/api/courses.ts
+// frontend/src/lib/api/courses.ts
+getCurrentChapter: async (courseId: string): Promise<APIResponse<{
+  chapterId: string;
+  courseId: string;
+  nextUrl: string;
+  chapter: Chapter;
+}>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
+      {
+        headers: getAuthHeaders(),
       }
+    );
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to fetch current chapter');
-      }
-
-      return {
-        success: true,
-        data: data.data
-      };
-    } catch (error) {
-      console.error('Error fetching current chapter:', error);
-      return { 
-        success: false, 
-        data: null,  // この行を追加
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+    if (!response.ok) {
+      throw new Error('Failed to fetch current chapter');
     }
-  },
+
+    const data = await response.json();
+    
+    if (!data.success || !data.data.nextUrl) {
+      throw new Error(data.message || 'Invalid response format');
+    }
+
+    return {
+      success: true,
+      data: data.data
+    };
+  } catch (error) {
+    console.error('Error fetching current chapter:', error);
+    return { 
+      success: false, 
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
 
   // コース作成
   createCourse: async (data: CreateCourseDTO) => {

@@ -90,17 +90,25 @@ export function CurrentCourse() {
     const mins = minutes % 60;
     return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
   };
-
   const handleContinueLearning = async () => {
     if (!courseData) return;
     
     try {
       const chapterResponse = await courseApi.getCurrentChapter(courseData.courseId);
-      if (chapterResponse.success && chapterResponse.data) {
-        router.push(`/user/courses/${courseData.courseId}/chapters/${chapterResponse.data.id}`);
-      } else {
+      
+      if (!chapterResponse.success || !chapterResponse.data) {
         toast.error('チャプター情報の取得に失敗しました');
+        return;
       }
+  
+      const { nextUrl } = chapterResponse.data;
+      
+      if (!nextUrl) {
+        toast.error('次のチャプターが見つかりません');
+        return;
+      }
+  
+      router.push(nextUrl);
     } catch (error) {
       console.error('Error navigating to current chapter:', error);
       toast.error('チャプターへの移動に失敗しました');

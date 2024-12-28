@@ -14,9 +14,13 @@ router.get('/current', userCourseController.getCurrentUserCourse);
 router.get('/:courseId/current', userCourseController.getCurrentUserCourseById);
 router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter);
 
+
+
+
 // コースのアクション
 router.post('/:courseId/purchase', userCourseController.purchaseCourse);
 router.post('/:courseId/start', userCourseController.startCourse);
 router.post('/:courseId/expire-archive', userCourseController.expireArchiveAccess);
+router.post('/:courseId/repurchase', userCourseController.repurchaseCourse);
 
 export const userCourseRoutes = router;
