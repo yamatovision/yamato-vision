@@ -33,18 +33,17 @@ const initializeCronJobs = () => {
 // cronジョブの開始
 initializeCronJobs();
 
+// CORS設定
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // ミドルウェア
-app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// セキュリティヘッダー
-app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  next();
-});
 
 // API ルート
 app.use('/api/auth', authRoutes);
@@ -53,28 +52,88 @@ app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
 
 // コース関連のルート
-// 管理者用ルート
-app.use('/api/admin/courses', courseRoutes);
-// ユーザー用ルート
-app.use('/api/courses/user', userCourseRoutes);  // ユーザー固有のコース操作
-app.use('/api/courses', courseRoutes);           // 一般的なコース操作
+app.use('/api/admin/courses', courseRoutes);    // 管理者用ルート
+app.use('/api/courses/user', userCourseRoutes); // ユーザー固有のコース操作
+app.use('/api/courses', courseRoutes);          // 一般的なコース操作
+
+// デバッグ用エンドポイント
+app.get('/api/debug/status', async (_req, res) => {
+  try {
+    // データベース接続テスト
+    await prisma.$queryRaw`SELECT 1 as test`;
+    
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      server_time: new Date().toISOString(),
+      env: {
+        node_env: process.env.NODE_ENV,
+        frontend_url: process.env.FRONTEND_URL,
+        database_url: process.env.DATABASE_URL ? 'set' : 'not set'
+      }
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// データベース接続テスト用エンドポイント
+app.get('/api/debug/database', async (_req, res) => {
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT 
+        current_database() as database_name,
+        current_user as user_name,
+        version() as version
+    `;
+    res.json({
+      success: true,
+      data: result,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // ヘルスチェック
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// サーバー時間エンドポイントの追加
+// サーバー時間エンドポイント
 app.get('/api/server-time', (_req, res) => {
-  res.json({ serverTime: new Date().toISOString() });
+  res.json({ 
+    serverTime: new Date().toISOString(),
+    timestamp: new Date().toISOString()
+  });
 });
 
 // エラーハンドリング
-app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Error:', {
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    timestamp: new Date().toISOString()
+  });
+
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal server error'
+    message: err.message || 'Internal server error',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -82,12 +141,30 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
 app.use((_req: express.Request, res: express.Response) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
+    timestamp: new Date().toISOString()
   });
 });
 
+// グレースフルシャットダウン
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received. Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+// サーバー起動
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+  console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log('Database URL is', process.env.DATABASE_URL ? 'configured' : 'not configured');
   console.log('Cron jobs initialized');
 });
 

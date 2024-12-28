@@ -3,7 +3,7 @@ import { PrismaClient, Prisma, User, Course, Chapter, Task, UserCourse, UserChap
 const sourcePrisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://postgres.coaurbpsdjkrgoemmnqi:Mikoto@123@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+      url: "postgresql://postgres:IpINzNGcoRWxToGpStQzNtukHTzZreRQ@junction.proxy.rlwy.net:19585/railway"
     }
   }
 })

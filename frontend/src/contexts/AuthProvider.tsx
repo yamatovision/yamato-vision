@@ -1,3 +1,4 @@
+// AuthProvider.tsx
 'use client';
 
 import { ReactNode, useEffect } from 'react';
@@ -8,30 +9,41 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { login, logout, initialized, setInitialized } = useAuth();
+  const { initialized, setInitialized, loading, setLoading } = useAuth();
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
+    let isMounted = true;
+
+    const init = async () => {
+      if (!initialized && isMounted) {
         try {
-          const success = await login(token);
-          if (!success) {
-            logout();
+          setLoading(true);
+          console.log('Starting initialization');
+          await new Promise(resolve => setTimeout(resolve, 0));
+          setInitialized(true);
+          console.log('Initialization complete');
+        } catch (error) {
+          console.error('Initialization failed:', error);
+        } finally {
+          if (isMounted) {
+            setLoading(false);
           }
-        } catch {
-          logout();
         }
       }
-      setInitialized(true);
     };
 
-    initAuth();
-  }, [login, logout, setInitialized]);
+    init();
 
-  if (!initialized) {
-    return null; // または適切なローディング表示
-  }
+    return () => {
+      isMounted = false;
+    };
+  }, [initialized, setInitialized, setLoading]);
+
+  console.log('AuthProvider render:', {
+    initialized,
+    loading,
+    timestamp: new Date().toISOString()
+  });
 
   return <>{children}</>;
 }
