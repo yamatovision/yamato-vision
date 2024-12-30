@@ -1,95 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { courseApi } from '@/lib/api/courses';
+import { useCurrentCourse } from './hooks/useCurrentCourse';
+import { CourseHeader } from './CurrentCourse/CourseHeader';
+import { ProgressStages } from './CurrentCourse/ProgressStages';
+import { ChapterPreview } from './CurrentCourse/ChapterPreview';
+import { ActiveUsers } from './CurrentCourse/ActiveUsers';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-
-// APIレスポンスの型定義
-interface CourseData {
-  id: string;
-  userId: string;
-  courseId: string;
-  isActive: boolean;
-  status: string;
-  startedAt: string;
-  completedAt: null | string;
-  progress: number;
-  course: {
-    id: string;
-    title: string;
-    description: string;
-    level: number;
-    gemCost: number;
-    rankRequired: string;
-    levelRequired: number;
-    timeLimit: number;
-    chapters: Array<{
-      id: string;
-      courseId: string;
-      title: string;
-      subtitle: string;
-      orderIndex: number;
-      timeLimit: number;
-      isVisible: boolean;
-    }>;
-  };
-}
+import { courseApi } from '@/lib/api/courses';
 
 export function CurrentCourse() {
   const { theme } = useTheme();
   const router = useRouter();
-  const [courseData, setCourseData] = useState<CourseData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { courseData, loading, determineChapterProgress } = useCurrentCourse();
 
-  useEffect(() => {
-    const loadCurrentCourse = async () => {
-      try {
-        const response = await courseApi.getCurrentUserCourse();
-        if (response.success && response.data) {
-          setCourseData(response.data);
-        }
-      } catch (error) {
-        console.error('Failed to load current course:', error);
-        toast.error('コース情報の取得に失敗しました');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCurrentCourse();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!courseData || !courseData.course) {
-    return (
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-        <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          現在受講中のコースはありません
-        </p>
-      </div>
-    );
-  }
-
-  const currentChapter = courseData.course.chapters[0];
-  const timeRemaining = courseData.course.timeLimit || 0;
-
-  const formatTimeRemaining = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-  };
   const handleContinueLearning = async () => {
     if (!courseData) return;
     
@@ -115,37 +40,63 @@ export function CurrentCourse() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!courseData || !courseData.course) {
+    return (
+      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
+        <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+          現在受講中のコースはありません
+        </p>
+      </div>
+    );
+  }
+
+  // 最初の3つのチャプターの進捗状態を取得
+  const activeChapters = courseData.course.chapters
+    .slice(0, 3)
+    .map(chapter => ({
+      status: determineChapterProgress(chapter),
+      title: chapter.title
+    }));
+
+  // 現在のチャプターを取得（最初のチャプターを使用）
+  const currentChapter = courseData.course.chapters[0];
+
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h2 className={`text-xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}`}>
-            現在のコース
-          </h2>
-          <p className="text-blue-400">
-            {courseData.course.title}
-          </p>
-        </div>
-        {timeRemaining > 0 && (
-          <div className="text-right">
-            <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              残り時間
-            </div>
-            <div className="text-xl font-bold text-orange-400">
-              {formatTimeRemaining(timeRemaining)}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* ヘッダー部分 */}
+      <CourseHeader courseData={courseData} />
 
-      {/* Progress indicator */}
-      <div className={`w-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded-full h-2 mb-4`}>
-        <div 
-          className="bg-blue-500 h-2 rounded-full transition-all duration-500" 
-          style={{width: `${courseData.progress}%`}}
-        ></div>
-      </div>
+      {/* 進捗トラッカー */}
+      <ProgressStages stages={activeChapters} />
 
+      {/* チャプタープレビュー */}
+      <ChapterPreview
+        chapter={currentChapter}
+        currentContent={{
+          type: 'video', // この部分は実際のデータに応じて変更
+          url: '', // 実際のURLを設定
+          duration: '12:30' // 実際の動画/音声の長さを設定
+        }}
+      />
+
+      {/* アクティブユーザー */}
+      <ActiveUsers
+        users={[]} // 実際のユーザーデータを設定
+        totalCount={0} // 実際の総数を設定
+      />
+
+      {/* 続きから学習するボタン */}
       <button 
         onClick={handleContinueLearning}
         className={`w-full mt-4 ${
