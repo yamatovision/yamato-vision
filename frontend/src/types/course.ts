@@ -191,6 +191,13 @@ export interface CurrentUserCourse {
   progress: number;
   startedAt: Date;
 }
+export interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  totalDays: number;
+  timeOutAt: string;
+}
 
 export interface CourseData {
   id: string;
@@ -209,6 +216,7 @@ export interface CourseData {
     gemCost: number;
     rankRequired: string;
     levelRequired: number;
+    timeRemaining?: TimeRemaining;
     timeLimit: number;
     chapters: Array<{
       id: string;

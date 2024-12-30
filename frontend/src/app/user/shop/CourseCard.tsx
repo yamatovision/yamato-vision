@@ -17,6 +17,7 @@ interface CourseCardProps {
   levelRequired?: number;
   rankRequired?: string;
   gradient: string;
+  thumbnail?: string; // thumbnailプロパティを追加
   onUnlock: () => void;
   lastAccessedChapterId?: string;
   archiveUntil?: string;
@@ -36,6 +37,7 @@ export function CourseCard({
   gemCost,
   levelRequired,
   rankRequired,
+  thumbnail, // thumbnailプロパティを追加
   gradient,
   onUnlock,
   lastAccessedChapterId,
@@ -91,6 +93,24 @@ export function CourseCard({
         ${status === 'perfect' ? 'animate-pulse' : ''}`}>
         {badge.text}
       </span>
+    );
+  };
+  const renderThumbnailOrGradient = () => {
+    if (thumbnail) {
+      return (
+        <div className="relative h-40 w-full">
+          <img
+            src={thumbnail}
+            alt={title}
+            className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-20 rounded-t-lg" /> {/* オーバーレイ */}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`h-40 ${getGradientStyle()} relative`} />
     );
   };
 
@@ -232,12 +252,13 @@ const handleArchiveExpire = async () => {
       !['unlocked', 'available', 'completed_archive', 'perfect', 'repurchasable', 'active'].includes(status) ? 'opacity-75' : ''
     }`}>
       <div className={`h-40 ${getGradientStyle()} relative`}>
-        {getStatusBadge()}
-        {completion?.badges && (
-          <div className="absolute bottom-2 left-2 flex space-x-2">
-            {completion.badges.completion && (
-              <span className={`text-2xl ${!completion.badges.excellence ? 'grayscale-[50%]' : ''}`}>
-                🏆
+      {renderThumbnailOrGradient()}
+      {getStatusBadge()}
+      {completion?.badges && (
+        <div className="absolute bottom-2 left-2 flex space-x-2">
+          {completion.badges.completion && (
+            <span className={`text-2xl ${!completion.badges.excellence ? 'grayscale-[50%]' : ''}`}>
+              🏆
               </span>
             )}
             {completion.badges.excellence && (

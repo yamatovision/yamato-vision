@@ -158,19 +158,25 @@ getCurrentChapter: async (courseId: string): Promise<APIResponse<{
   },
 
   // コース更新
-  updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/admin/courses/${courseId}`,
-      {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
-      }
-    );
-    const result = await response.json();
-    return { data: result.data };
-  },
+// lib/api/courses.ts
+updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
+  const response = await fetch(
+    `${FRONTEND_API_BASE}/admin/courses/${courseId}`,
+    {
+      method: 'PUT', // PATCHからPUTに変更
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    }
+  );
 
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update course');
+  }
+
+  const result = await response.json();
+  return result;
+},
   // コース削除
   deleteCourse: async (courseId: string) => {
     await fetch(

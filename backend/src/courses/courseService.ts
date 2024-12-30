@@ -14,8 +14,8 @@ export class CourseService {
       rankRequired: data.rankRequired,
       isPublished: false,
       isArchived: false,
-      timeLimit: data.timeLimit,
-      passingScore: data.passingScore || 60,
+      timeLimit: data.timeLimit, // 日単位
+      passingScore: data.passingScore || 70, // デフォルト値を70に変更
       excellentScore: data.excellentScore || 95,
       thumbnail: data.thumbnail
     };

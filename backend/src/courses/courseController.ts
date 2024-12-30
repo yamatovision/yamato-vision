@@ -23,6 +23,30 @@ export class CourseController {
     }
   }
 
+  async updateCourseThumbnail(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { thumbnail } = req.body;
+  
+      if (!thumbnail) {
+        return res.status(400).json({ message: 'Thumbnail URL is required' });
+      }
+  
+      const course = await courseService.updateCourse(id, { thumbnail });
+      
+      return res.json({
+        success: true,
+        data: course
+      });
+    } catch (error) {
+      console.error('Error updating course thumbnail:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Failed to update course thumbnail' 
+      });
+    }
+  }
+  
   async getCourse(req: Request<{ id: string }>, res: Response) {
     try {
       const course = await courseService.getCourseById(req.params.id);

@@ -10,53 +10,71 @@ interface CourseHeaderProps {
 
 export function CourseHeader({ courseData }: CourseHeaderProps) {
   const { theme } = useTheme();
-  const [timeRemaining, setTimeRemaining] = useState<number>(
-    courseData.course.timeLimit * 60 * 1000 // ミリ秒に変換
-  );
+  const [timeRemaining, setTimeRemaining] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    // 1日以上ある場合は1分ごとに更新、1日未満は1秒ごとに更新
-    const interval = timeRemaining > 24 * 60 * 60 * 1000 ? 60000 : 1000;
-    
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => Math.max(0, prev - interval));
-    }, interval);
+    const calculateTimeRemaining = () => {
+      if (!courseData.startedAt || !courseData.course.timeLimit) return;
+
+      const startDate = new Date(courseData.startedAt);
+      const timeOutAt = new Date(startDate);
+      timeOutAt.setDate(timeOutAt.getDate() + courseData.course.timeLimit);
+      
+      const now = new Date();
+      const total = timeOutAt.getTime() - now.getTime();
+      
+      if (total <= 0) {
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(total / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((total % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((total % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((total % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ days, hours, minutes, seconds });
+    };
+
+    // 初回計算
+    calculateTimeRemaining();
+
+    // 1秒ごとに更新
+    const timer = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining]);
+  }, [courseData]);
 
-  const formatTimeDisplay = (milliseconds: number) => {
-    const days = Math.floor(milliseconds / (24 * 60 * 60 * 1000));
-    
-    if (days > 0) {
-      const timeColor = 
-        days <= 3 ? 'text-red-400' :
-        days <= 10 ? 'text-yellow-400' :
+  const formatTimeDisplay = () => {
+    if (timeRemaining.days > 0) {
+      const color = 
+        timeRemaining.days <= 3 ? 'text-red-400' :
+        timeRemaining.days <= 10 ? 'text-yellow-400' :
         'text-orange-400';
-
+      
       return (
-        <div className={`font-bold ${timeColor}`}>
-          最終試験まで残り{days}日
+        <div className={`font-bold ${color}`}>
+          最終試験まで残り{timeRemaining.days}日
         </div>
       );
     }
 
-    // 1日未満の場合はカウントダウン表示
-    const hours = Math.floor((milliseconds / (60 * 60 * 1000)) % 24);
-    const minutes = Math.floor((milliseconds / (60 * 1000)) % 60);
-    const seconds = Math.floor((milliseconds / 1000) % 60);
-
     return (
       <div className="text-red-400 font-bold">
-        {String(hours).padStart(2, '0')}:
-        {String(minutes).padStart(2, '0')}:
-        {String(seconds).padStart(2, '0')}
+        {String(timeRemaining.hours).padStart(2, '0')}:
+        {String(timeRemaining.minutes).padStart(2, '0')}:
+        {String(timeRemaining.seconds).padStart(2, '0')}
       </div>
     );
   };
 
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="flex justify-between items-start mb-4">
       <div>
         <h2 className={`text-xl font-bold mb-1 ${
           theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
@@ -65,9 +83,9 @@ export function CourseHeader({ courseData }: CourseHeaderProps) {
         </h2>
       </div>
 
-      {timeRemaining > 0 && (
+      {(timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) && (
         <div className="flex items-center space-x-4">
-          {formatTimeDisplay(timeRemaining)}
+          {formatTimeDisplay()}
           <button className={`px-4 py-2 ${
             theme === 'dark' 
               ? 'bg-gray-700 hover:bg-gray-600' 

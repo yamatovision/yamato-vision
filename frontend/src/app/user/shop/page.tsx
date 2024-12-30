@@ -92,6 +92,7 @@ export default function ShopPage() {
             levelRequired: apiCourse.levelRequired,
             rankRequired: apiCourse.rankRequired,
             gradient: apiCourse.gradient,
+            thumbnail: apiCourse.thumbnail, // thumbnailフィールドを追加
             completion: apiCourse.completion,
             archiveUntil: apiCourse.archiveUntil,
             // ShopCourse の必須フィールドを追加

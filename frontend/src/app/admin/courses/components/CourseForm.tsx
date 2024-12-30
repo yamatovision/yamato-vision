@@ -27,7 +27,7 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
     levelRequired: initialData?.levelRequired || 0,
     rankRequired: initialData?.rankRequired || '',
     timeLimit: initialData?.timeLimit || 0,
-    passingScore: initialData?.passingScore || 60,
+    passingScore: initialData?.passingScore || 70,
     excellentScore: initialData?.excellentScore || 95,
   });
 
@@ -46,37 +46,39 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
     }
     return true;
   };
+// frontend/src/app/admin/courses/components/CourseForm.tsx
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  setIsSubmitting(true);
 
-    setIsSubmitting(true);
-
-    try {
-      let thumbnailUrl = formData.thumbnail;
-      if (thumbnailFile) {
-        thumbnailUrl = await uploadToCloudinary(thumbnailFile, 'course-thumbnails');
-      }
-
-      const dataToSubmit = {
-        ...formData,
-        thumbnail: thumbnailUrl,
-      };
-
-      const response = isEdit 
-        ? await courseApi.updateCourse(initialData!.id, dataToSubmit)
-        : await courseApi.createCourse(dataToSubmit);
-
-      toast.success(isEdit ? 'コースを更新しました' : 'コースを作成しました');
-      router.push(`/admin/courses/${response.data.id}`);
-    } catch (error) {
-      console.error('Error saving course:', error);
-      toast.error(isEdit ? 'コースの更新に失敗しました' : 'コースの作成に失敗しました');
-    } finally {
-      setIsSubmitting(false);
+  try {
+    let thumbnailUrl = formData.thumbnail;
+    if (thumbnailFile) {
+      thumbnailUrl = await uploadToCloudinary(thumbnailFile, 'course-thumbnails');
     }
-  };
+
+    const dataToSubmit = {
+      ...formData,
+      thumbnail: thumbnailUrl,
+    };
+
+    if (isEdit && initialData?.id) {
+      const response = await courseApi.updateCourse(initialData.id, dataToSubmit);
+      toast.success('コースを更新しました');
+    } else {
+      const response = await courseApi.createCourse(dataToSubmit);
+      toast.success('コースを作成しました');
+      router.push(`/admin/courses/${response.data.id}`);
+    }
+  } catch (error) {
+    console.error('Error saving course:', error);
+    toast.error(isEdit ? 'コースの更新に失敗しました' : 'コースの作成に失敗しました');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const rankOptions = [
     { value: '', label: '選択してください' },
@@ -216,26 +218,28 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
 
       {/* 制限時間と合格点の設定 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label 
-            className={`block text-sm font-medium mb-2 ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-            }`}
-          >
-            制限時間（分）
-          </label>
-          <input
-            type="number"
-            value={formData.timeLimit}
-            onChange={(e) => setFormData(prev => ({ ...prev, timeLimit: parseInt(e.target.value) }))}
-            className={`w-full rounded-lg p-3 ${
-              theme === 'dark' 
-                ? 'bg-gray-700 text-white border-gray-600' 
-                : 'bg-white text-gray-900 border-gray-200'
-            } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-            min="0"
-          />
-        </div>
+      <div>
+  <label 
+    className={`block text-sm font-medium mb-2 ${
+      theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+    }`}
+  >
+    制限時間（日）  {/* 「分」から「日」に変更 */}
+  </label>
+  <input
+    type="number"
+    value={formData.timeLimit}
+    onChange={(e) => setFormData(prev => ({ ...prev, timeLimit: parseInt(e.target.value) }))}
+    className={`w-full rounded-lg p-3 ${
+      theme === 'dark' 
+        ? 'bg-gray-700 text-white border-gray-600' 
+        : 'bg-white text-gray-900 border-gray-200'
+    } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+    min="0"
+  />
+</div>
+
+
 
         <div>
           <label 

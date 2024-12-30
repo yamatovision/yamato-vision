@@ -1,21 +1,19 @@
-// frontend/src/contexts/toast.tsx
 'use client';
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { Toast } from '@/app/user/shared/Toast';
-import { ToastType, LevelUpData } from '@/types/toast';  // LevelUpDataをインポート
-
+import { ToastType, LevelUpData, ExperienceGainData } from '@/types/toast';
 
 interface ToastMessage {
   id: number;
   message: string;
   type: ToastType;
   levelUpData?: LevelUpData;
+  experienceData?: ExperienceGainData;
 }
 
-
 interface ToastContextType {
-  showToast: (message: string, type: ToastType, levelUpData?: LevelUpData) => void;
+  showToast: (message: string, type: ToastType, data?: LevelUpData | ExperienceGainData) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -23,11 +21,18 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = (message: string, type: ToastType, levelUpData?: LevelUpData) => {
+  const showToast = (message: string, type: ToastType, data?: LevelUpData | ExperienceGainData) => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type, levelUpData }]);
-
-    // レベルアップ通知の場合は自動で消えないようにする
+    const newToast: ToastMessage = { id, message, type };
+  
+    if (type === 'levelUp' && data) {
+      newToast.levelUpData = data as LevelUpData;
+    } else if (type === 'experienceGain' && data) {
+      newToast.experienceData = data as ExperienceGainData;
+    }
+  
+    setToasts(prev => [...prev, newToast]);
+    
     if (type !== 'levelUp') {
       setTimeout(() => {
         setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -45,6 +50,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             message={toast.message}
             type={toast.type}
             levelUpData={toast.levelUpData}
+            experienceData={toast.experienceData}
             onClose={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
           />
         ))}

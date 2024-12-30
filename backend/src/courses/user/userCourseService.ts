@@ -89,16 +89,22 @@ export class UserCourseService {
     });
   }
 
-  // startCourseメソッドを更新
+
+
+
+
+
   async startCourse(userId: string, courseId: string) {
     return await prisma.$transaction(async (tx) => {
+      // 既存のアクティブなコースを確認
       const existingActiveCourse = await tx.userCourse.findFirst({
         where: {
           userId,
           isActive: true,
         },
       });
-
+  
+      // 購入済みコースの確認と詳細取得
       const purchasedCourse = await tx.userCourse.findUnique({
         where: {
           userId_courseId: {
@@ -110,15 +116,18 @@ export class UserCourseService {
           course: true
         }
       });
-
+  
+      // コース未購入チェック
       if (!purchasedCourse) {
         return { error: 'Course not purchased' };
       }
-
+  
+      // タイムアウトチェック
       if (purchasedCourse.isTimedOut) {
         return { error: 'Course has timed out. Please repurchase.' };
       }
-
+  
+      // 最初のチャプターを取得
       const firstChapter = await tx.chapter.findFirst({
         where: {
           courseId,
@@ -128,6 +137,7 @@ export class UserCourseService {
         },
       });
       
+      // 最初のチャプターの進捗を作成
       if (firstChapter) {
         await tx.userChapterProgress.create({
           data: {
@@ -140,7 +150,8 @@ export class UserCourseService {
           },
         });
       }
-
+  
+      // 既存のアクティブコースを非アクティブに設定
       if (existingActiveCourse) {
         await tx.userCourse.update({
           where: { id: existingActiveCourse.id },
@@ -149,7 +160,18 @@ export class UserCourseService {
           },
         });
       }
-
+  
+      // 開始日時とタイムアウト日時の設定
+      const startedAt = new Date();
+      let timeOutAt: Date | null = null;
+  
+      // コースに制限時間が設定されている場合、タイムアウト日時を計算
+      if (purchasedCourse.course.timeLimit) {
+        timeOutAt = new Date(startedAt);
+        timeOutAt.setDate(timeOutAt.getDate() + purchasedCourse.course.timeLimit); // 日単位での計算
+      }
+  
+      // コースの状態を更新
       const updatedCourse = await tx.userCourse.update({
         where: {
           userId_courseId: {
@@ -159,19 +181,57 @@ export class UserCourseService {
         },
         data: {
           isActive: true,
-          startedAt: new Date(),
+          startedAt: startedAt,
           isTimedOut: false,
-          timeOutAt: null,
+          timeOutAt: timeOutAt, // 計算したタイムアウト日時または null
           status: 'ACTIVE'
         },
         include: {
-          course: true,
+          course: {
+            include: {
+              chapters: {
+                orderBy: {
+                  orderIndex: 'asc'
+                }
+              }
+            }
+          },
         },
       });
-
-      return { success: true, data: updatedCourse };
+  
+      // コース開始ログの記録（オプション）
+      await tx.experienceLog.create({
+        data: {
+          userId,
+          amount: 0, // コース開始時の経験値付与がある場合は適切な値に変更
+          source: 'COURSE_START',
+          detail: {
+            courseId,
+            courseTitle: purchasedCourse.course.title,
+            startedAt: startedAt.toISOString(),
+            timeOutAt: timeOutAt?.toISOString() || null
+          }
+        }
+      });
+  
+      return { 
+        success: true, 
+        data: {
+          ...updatedCourse,
+          timeOutAt: timeOutAt, // タイムアウト日時を明示的に含める
+          startedAt: startedAt // 開始日時を明示的に含める
+        }
+      };
     });
   }
+
+
+
+
+
+
+
+  
 
   // getCurrentUserCourseメソッドを更新
   async getCurrentUserCourse(userId: string, courseId?: string) {

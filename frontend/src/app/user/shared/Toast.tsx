@@ -1,29 +1,41 @@
 'use client';
 
-interface LevelUpData {
-  oldLevel: number;  // 追加
-  newLevel: number;
-  message: string | null;  // 管理画面で設定したメッセージ用
-  experienceGained?: number;  // 追加：獲得経験値表示用
-}
+import { useState, useEffect } from 'react';
+import { ToastType, LevelUpData, ExperienceGainData } from '@/types/toast';
 
 interface ToastProps {
   message: string;
-  type: 'success' | 'error' | 'info' | 'warning' | 'levelUp';
+  type: ToastType;
   onClose: () => void;
   levelUpData?: LevelUpData;
+  experienceData?: ExperienceGainData;
 }
 
-export function Toast({ message, type, onClose, levelUpData }: ToastProps) {
-  const baseStyle = "p-4 rounded-md shadow-lg flex items-center justify-between";
-  const typeStyles = {
-    success: "bg-green-500 text-white",
-    error: "bg-red-500 text-white",
-    info: "bg-blue-500 text-white",
-    warning: "bg-yellow-500 text-white",
-    levelUp: "bg-gradient-to-r from-yellow-600 to-yellow-400 text-white"
-  };
+export function Toast({ message, type, onClose, levelUpData, experienceData }: ToastProps) {
+  // 自動で消える経験値通知用
+  useEffect(() => {
+    if (type === 'experienceGain') {
+      const timer = setTimeout(onClose, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [type, onClose]);
 
+  // 経験値獲得通知
+  if (type === 'experienceGain' && experienceData) {
+    return (
+      <div className="animate-slide-up fixed bottom-4 right-4 bg-gradient-to-r from-green-600 to-green-400 text-white p-4 rounded-lg shadow-lg">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">✨</span>
+          <div>
+            <div className="text-sm font-medium">経験値獲得！</div>
+            <div className="text-xl font-bold">+{experienceData.amount} EXP</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // レベルアップモーダル（既存の実装を活用）
   if (type === 'levelUp' && levelUpData) {
     return (
       <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -36,7 +48,6 @@ export function Toast({ message, type, onClose, levelUpData }: ToastProps) {
               Lv.{levelUpData.oldLevel} → Lv.{levelUpData.newLevel}
             </div>
 
-            {/* 獲得経験値の表示（オプション） */}
             {levelUpData.experienceGained && (
               <div className="bg-yellow-500/30 rounded-lg p-3 mb-4">
                 <div className="text-lg font-bold">獲得経験値</div>
@@ -46,12 +57,10 @@ export function Toast({ message, type, onClose, levelUpData }: ToastProps) {
               </div>
             )}
             
-            {/* レベルメッセージ */}
             <div className="text-lg bg-yellow-500/30 rounded-lg p-3 mb-6">
               {levelUpData.message || 'おめでとうございます！'}
             </div>
             
-            {/* アクションボタン */}
             <button
               onClick={onClose}
               className="w-full bg-white text-yellow-600 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
@@ -64,9 +73,17 @@ export function Toast({ message, type, onClose, levelUpData }: ToastProps) {
     );
   }
 
-  // 通常のトースト表示（変更なし）
+  // その他の通常のトースト通知
+  const baseStyle = "p-4 rounded-md shadow-lg flex items-center justify-between";
+  const typeStyles = {
+    success: "bg-green-500 text-white",
+    error: "bg-red-500 text-white",
+    info: "bg-blue-500 text-white",
+    warning: "bg-yellow-500 text-white"
+  };
+
   return (
-    <div className={`${baseStyle} ${typeStyles[type]}`}>
+    <div className={`${baseStyle} ${typeStyles[type as keyof typeof typeStyles]}`}>
       <span>{message}</span>
       <button
         onClick={onClose}

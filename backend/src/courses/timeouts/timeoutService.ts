@@ -3,6 +3,8 @@ import { TimeoutCheckResult } from './timeoutTypes';
 
 const prisma = new PrismaClient();
 
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export class TimeoutService {
   // チャプターのタイムアウトチェック
   async checkChapterTimeout(userId: string, courseId: string, chapterId: string): Promise<TimeoutCheckResult> {
@@ -24,7 +26,8 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    const timeLimit = progress.chapter.timeLimit * 60 * 1000; // minutes to milliseconds
+    // 日数をミリ秒に変換
+    const timeLimit = progress.chapter.timeLimit * MILLISECONDS_PER_DAY;
     const timeDiff = now.getTime() - progress.startedAt.getTime();
 
     if (timeDiff > timeLimit && !progress.isTimedOut) {
@@ -66,11 +69,12 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    const timeLimit = userCourse.course.timeLimit * 60 * 1000; // minutes to milliseconds
+    // 日数をミリ秒に変換
+    const timeLimit = userCourse.course.timeLimit * MILLISECONDS_PER_DAY;
     const timeDiff = now.getTime() - userCourse.startedAt.getTime();
 
     if (timeDiff > timeLimit && !userCourse.isTimedOut) {
-      const repurchasePrice = Math.floor(userCourse.course.gemCost * 0.1); // 10分の1の価格
+      const repurchasePrice = Math.floor(userCourse.course.gemCost * 0.1);
 
       // コースのタイムアウト状態を記録
       await prisma.userCourse.update({
@@ -79,7 +83,7 @@ export class TimeoutService {
           isTimedOut: true,
           timeOutAt: now,
           status: 'repurchasable',
-          isActive: false,    // この行を追加
+          isActive: false,
           repurchasePrice
         }
       });
@@ -94,11 +98,37 @@ export class TimeoutService {
     return { isTimedOut: false, type: 'course' };
   }
 
-  // 残り時間の計算（秒単位）
+  // 残り時間の計算（日単位）
   calculateRemainingTime(startTime: Date, timeLimit: number): number {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
-    return Math.max(0, timeLimit - Math.floor(timeDiff / 1000));
+    // ミリ秒を日数に変換（小数点以下を切り捨て）
+    return Math.max(0, Math.floor(timeLimit - (timeDiff / MILLISECONDS_PER_DAY)));
+  }
+
+  // 残り時間の詳細計算（日、時間、分）
+  calculateRemainingTimeDetailed(startTime: Date, timeLimit: number) {
+    const now = new Date();
+    const timeDiff = now.getTime() - startTime.getTime();
+    const remainingMs = Math.max(0, (timeLimit * MILLISECONDS_PER_DAY) - timeDiff);
+    
+    const days = Math.floor(remainingMs / MILLISECONDS_PER_DAY);
+    const hours = Math.floor((remainingMs % MILLISECONDS_PER_DAY) / (60 * 60 * 1000));
+    const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+
+    return {
+      days,
+      hours,
+      minutes,
+      totalDays: days + (hours / 24) + (minutes / (24 * 60))
+    };
+  }
+
+  // タイムアウト日時の計算
+  calculateTimeOutDate(startDate: Date, timeLimit: number): Date {
+    const timeOutDate = new Date(startDate);
+    timeOutDate.setDate(timeOutDate.getDate() + timeLimit);
+    return timeOutDate;
   }
 }
 
