@@ -1,67 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';  // useEffect を追加
 import { useTheme } from '@/contexts/theme';
 import { ProfileEditModal } from './ProfileEditModal';
 import { useProfile } from '@/lib/hooks/useProfile';
 import { getRankStyle } from '@/lib/utils/rankStyles';
-import { useToast } from '@/contexts/toast';  // 追加
-import { LevelUpData } from '@/types/toast';  // 追加
+import { useNotification } from '@/contexts/notification';
+import { useState, useEffect } from 'react';
 
 export function HomeProfile() {
   const { theme } = useTheme();
+  const { showExperienceGain, showLevelUp } = useNotification();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { userData, loading, error, updateProfile, updateAvatar, refreshProfile } = useProfile();  // refreshProfile を追加
-  const [showExpGain, setShowExpGain] = useState(false);  // この行を追加
-  const { showToast } = useToast();  // 追加
-  
+  const { userData, loading, error, updateProfile, updateAvatar } = useProfile();
   const rankStyle = getRankStyle(userData?.rank || 'お試し', theme);
-  const [previousUnprocessedTokens, setPreviousUnprocessedTokens] = useState<number>(0);
 
-  interface LevelUpToastData {
-    oldLevel: number;
-    newLevel: number;
-    message: string;
-    experienceGained: number;
-  }
-
-
- useEffect(() => {
-    if (userData?.shouldShowExpNotification && userData.expGained) {
-      setShowExpGain(true);
-      // 5秒後に通知を非表示
-      const timer = setTimeout(() => {
-        setShowExpGain(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [userData]);
-
-  
-  // レベルアップの監視も同様に修正
-  const [previousLevel, setPreviousLevel] = useState<number | undefined>(undefined);
-  
+  // 経験値通知
   useEffect(() => {
     if (userData?.expGained && userData.expGained > 0) {
-      showToast(
-        `+${userData.expGained} EXP を獲得!`, 
-        'success'  // 'expGained'を'success'に変更
-      );
+      showExperienceGain(userData.expGained);
     }
-  }, [userData?.expGained]);
-  
-  // 別途レベルアップの処理
+  }, [userData?.expGained, showExperienceGain]);
+
+  // レベルアップ通知
   useEffect(() => {
     if (userData?.levelUpData) {
-      const levelUpData: LevelUpToastData = {  // 明示的に定義した型を使用
+      showLevelUp({
         oldLevel: userData.levelUpData.oldLevel,
         newLevel: userData.levelUpData.currentLevel,
         message: userData.levelUpData.levelUpMessage || 'レベルアップしました！',
-        experienceGained: userData.levelUpData.experienceGained || 0  // デフォルト値を設定
-      };
-      showToast('', 'levelUp', levelUpData);
+        experienceGained: userData.levelUpData.experienceGained
+      });
     }
-  }, [userData?.levelUpData]);
+  }, [userData?.levelUpData, showLevelUp]);
+
+
 
   const handleProfileClick = () => {
     setIsEditModalOpen(true);
@@ -146,143 +118,120 @@ export function HomeProfile() {
     ? Math.min((weeklyTokens / weeklyLimit) * 100, 100)
     : 0;
 
-  return (
-    <>
-       <div className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
-        onClick={handleProfileClick}
-      >
-        {/* 経験値獲得通知 */}
-        {showExpGain && (
-          <div className="absolute top-4 right-4 bg-yellow-400 text-white px-3 py-1 rounded-full font-bold animate-bounce">
-            +{userData?.expGained} EXP
-          </div>
-        )}
-        <div className="flex">
-          {/* 左カラム: アバター、階級バッジ */}
-          <div className="flex flex-col items-center w-24">
-            <div className="relative mb-4">
-              <div className={`w-24 h-24 rounded-full overflow-hidden ${rankStyle.avatarBorder} bg-white`}>
-                {userData?.avatarUrl && (
-                  <img 
-                    src={userData.avatarUrl} 
-                    alt="アバター" 
-                    className="w-full h-full object-cover" 
+    return (
+      <>
+        <div className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
+          onClick={handleProfileClick}
+        >
+          <div className="flex">
+            {/* 左カラム: アバター、階級バッジ */}
+            <div className="flex flex-col items-center w-24">
+              <div className="relative mb-4">
+                <div className={`w-24 h-24 rounded-full overflow-hidden ${rankStyle.avatarBorder} bg-white`}>
+                  {userData?.avatarUrl && (
+                    <img 
+                      src={userData.avatarUrl} 
+                      alt="アバター" 
+                      className="w-full h-full object-cover" 
+                    />
+                  )}
+                </div>
+              </div>
+              {/* 階級バッジ */}
+              <div className={`mb-3 ${rankStyle.rankBadge} px-3 py-1 rounded-full text-sm font-bold flex items-center space-x-1 border border-white dark:border-gray-800`}>
+                <span className="text-xs">階級</span>
+                <span>{userData?.rank}</span>
+              </div>
+            </div>
+  
+            {/* 右カラム: ユーザー情報 */}
+            <div className="flex-grow pl-6">
+              <div className="flex items-start mb-4">
+                <div className="flex items-center w-full space-x-4">
+                  <div className="min-w-0 flex-shrink">
+                    <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
+                      {userData?.nickname || userData?.name || '名無しさん'}
+                    </h1>
+                  </div>
+  
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">
+                        {userData?.level || 1}
+                      </span>
+                    </div>
+                  
+                    <div className="relative w-32">
+                      <div className={`h-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} overflow-hidden`}>
+                        <div 
+                          className={`h-full rounded-full ${theme === 'dark' ? 'bg-blue-500' : 'bg-blue-400'} transition-all duration-300`}
+                          style={{width: `${levelProgress}%`}}
+                        />
+                        <span className={`
+                          absolute inset-0 
+                          flex items-center justify-end pr-2
+                          text-xs font-medium
+                          ${theme === 'dark' ? 'text-sky-300' : 'text-blue-700'}
+                          drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]
+                        `}>
+                          {currentLevelExp.toLocaleString()} / {expToNextLevel.toLocaleString()} 
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+  
+              {/* トークンゲージ */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className={rankStyle.tokenText}>トークン残高</span>
+                  <span className={`${rankStyle.tokenText} font-medium`}>
+                    {(weeklyLimit - weeklyTokens).toLocaleString()} / {weeklyLimit.toLocaleString()}
+                  </span>
+                </div>
+                <div className={`relative h-3 rounded-full overflow-hidden ${
+                  theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'
+                }`}>
+                  <div
+                    className={`absolute top-0 left-0 h-full transition-all duration-300 ${
+                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
+                    }`}
+                    style={{ width: `${consumedPercentage}%` }}
                   />
-                )}
+                </div>
               </div>
-            </div>
-            {/* 階級バッジ */}
-            <div className={`mb-3 ${rankStyle.rankBadge} px-3 py-1 rounded-full text-sm font-bold flex items-center space-x-1 border border-white dark:border-gray-800`}>
-              <span className="text-xs">階級</span>
-              <span>{userData?.rank}</span>
-            </div>
-          </div>
-
-          {/* 右カラム: ユーザー情報 */}
-          <div className="flex-grow pl-6">
-            {/* 上段: 名前とレベル */}
-
-            {/* 上段: 名前とレベル */}
-<div className="flex items-start mb-4">
-  <div className="flex items-center w-full space-x-4">
-    <div className="min-w-0 flex-shrink">
-      <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
-        {userData?.nickname || userData?.name || '名無しさん'}
-      </h1>
-    </div>
-
-
-    <div className="flex items-center space-x-2 flex-shrink-0">
-  <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
-    <span className="text-xs font-bold text-white">
-      {userData?.level || 1}
-    </span>
-  </div>
- 
-  <div className="relative w-32">
-    {/* ここの bg-gray-100 dark:bg-gray-600 を変更することで背景色を変更できます */}
-
-
-    <div className={`h-5 rounded-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'} overflow-hidden`}>
-  <div 
-    className={`h-full rounded-full ${theme === 'dark' ? 'bg-blue-500' : 'bg-blue-400'} transition-all duration-300`}
-    style={{width: `${levelProgress}%`}}
-  />
-  <span className={`
-    absolute inset-0 
-    flex items-center justify-end pr-2
-    text-xs font-medium
-    ${theme === 'dark' ? 'text-sky-300' : 'text-blue-700'}
-    drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]
-  `}>
-    {currentLevelExp.toLocaleString()} / {expToNextLevel.toLocaleString()} 
-  </span>
-</div>
-  </div>
-</div>
-
-
-
-
-
-
-
-  </div>
-</div>
-
-
-
-
-            {/* 中段: トークンゲージ */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center text-sm mb-2">
-                <span className={rankStyle.tokenText}>トークン残高</span>
-                <span className={`${rankStyle.tokenText} font-medium`}>
-                  {(weeklyLimit - weeklyTokens).toLocaleString()} / {weeklyLimit.toLocaleString()}
-                </span>
-              </div>
-              <div className={`relative h-3 rounded-full overflow-hidden ${
-                theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'
-              }`}>
-                <div
-                  className={`absolute top-0 left-0 h-full transition-all duration-300 ${
-                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
-                  }`}
-                  style={{ width: `${consumedPercentage}%` }}
-                />
-              </div>
-            </div>
-
-            {/* 下段: バッジとジェム */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-400 text-lg">💎</span>
-                <span className={`text-base ${rankStyle.gemText}`}>
-                  {userData?.gems?.toLocaleString() || 0}
-                </span>
-              </div>
-              <div className={`flex-grow ml-6 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                <span className={`text-sm ${rankStyle.linkText}`}>
-                  バッジ
-                </span>
+  
+              {/* ジェムとバッジ */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="text-yellow-400 text-lg">💎</span>
+                  <span className={`text-base ${rankStyle.gemText}`}>
+                    {userData?.gems?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className={`flex-grow ml-6 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <span className={`text-sm ${rankStyle.linkText}`}>
+                    バッジ
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <ProfileEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        profileData={{
-          nickname: userData?.nickname || '',
-          avatarUrl: userData?.avatarUrl || '',
-          message: userData?.message || '',
-          snsLinks: userData?.snsLinks || {}
-        }}
-        onSave={handleSaveProfile}
-        onAvatarUpdate={handleAvatarUpdate}
-      />
-    </>
-  );
-}
+  
+        <ProfileEditModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          profileData={{
+            nickname: userData?.nickname || '',
+            avatarUrl: userData?.avatarUrl || '',
+            message: userData?.message || '',
+            snsLinks: userData?.snsLinks || {}
+          }}
+          onSave={handleSaveProfile}
+          onAvatarUpdate={handleAvatarUpdate}
+        />
+      </>
+    );
+  }
