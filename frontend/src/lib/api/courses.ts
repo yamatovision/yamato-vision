@@ -88,13 +88,30 @@ export const courseApi = {
       }
   
       const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      throw error;
-    }
-  },
+    console.log('getCurrentChapter response:', data); // デバッグ用
 
+    if (!data.success || !data.data || !data.data.chapterId) {
+      throw new Error(data.message || 'Invalid response format');
+    }
+
+    return {
+      success: true,
+      data: {
+        chapterId: data.data.chapterId,
+        courseId: courseId,
+        nextUrl: `/user/courses/${courseId}/chapters/${data.data.chapterId}`,
+        chapter: data.data.chapter
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching current chapter:', error);
+    return { 
+      success: false, 
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
   // 個別のコース取得
   getCourse: async (courseId: string) => {
     const response = await fetch(
@@ -103,19 +120,25 @@ export const courseApi = {
     const data = await response.json();
     return { data };
   },
-// frontend/src/lib/api/courses.ts
-// frontend/src/lib/api/courses.ts
-getCurrentChapter: async (courseId: string): Promise<APIResponse<{
+
+
+
+
+
+
+  getCurrentChapter: async (courseId: string): Promise<APIResponse<{
   chapterId: string;
   courseId: string;
   nextUrl: string;
   chapter: Chapter;
 }>> => {
   try {
+    // APIのベースURLを修正
     const response = await fetch(
       `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
       {
         headers: getAuthHeaders(),
+        credentials: 'include'
       }
     );
 
@@ -124,14 +147,19 @@ getCurrentChapter: async (courseId: string): Promise<APIResponse<{
     }
 
     const data = await response.json();
-    
-    if (!data.success || !data.data.nextUrl) {
+    if (!data.success || !data.data) {
       throw new Error(data.message || 'Invalid response format');
     }
 
+    const currentChapter = data.data;
     return {
       success: true,
-      data: data.data
+      data: {
+        chapterId: currentChapter.id,
+        courseId: courseId,
+        nextUrl: `/user/courses/${courseId}/chapters/${currentChapter.id}`,
+        chapter: currentChapter
+      }
     };
   } catch (error) {
     console.error('Error fetching current chapter:', error);
@@ -236,24 +264,36 @@ updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
 
   // コース開始
   startCourse: async (courseId: string): Promise<APIResponse<{ success: boolean; data: any }>> => {
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/user/${courseId}/start`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
+    try {
+      console.log('Sending start course request for:', courseId);
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/start`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+      
+      const result = await response.json();
+      console.log('Start course response:', result);
+  
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to start course');
       }
-    );
-    
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result.message || 'Failed to start course');
+      return { 
+        success: true, 
+        data: result 
+      };
+    } catch (error) {
+      console.error('Error in startCourse:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
-    return { 
-      success: true, 
-      data: result 
-    };
   },
-
   // ユーザーの受講コース一覧取得
   getUserCourses: async (): Promise<CourseListResponse> => {
     const response = await fetch(

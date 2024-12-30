@@ -189,7 +189,16 @@ class UserCourseController {
       const userId = req.user?.id;
       const { courseId } = req.params;
   
+      console.log('getCurrentChapter called with:', {
+        userId,
+        courseId,
+        params: req.params,
+        path: req.path,
+        url: req.url
+      });
+  
       if (!userId) {
+        console.log('No userId found in request');
         return res.status(401).json({ 
           success: false,
           message: 'Unauthorized' 
@@ -197,8 +206,10 @@ class UserCourseController {
       }
   
       const currentChapter = await userCourseService.getCurrentChapter(userId, courseId);
+      console.log('getCurrentChapter result:', currentChapter);
       
       if (!currentChapter) {
+        console.log('No chapter found');
         return res.status(404).json({ 
           success: false, 
           message: 'No available chapter found' 
@@ -206,17 +217,20 @@ class UserCourseController {
       }
   
       // チャプターの詳細情報を含むレスポンスを返す
-      return res.json({ 
-        success: true, 
+      const response = {
+        success: true,
         data: {
           chapterId: currentChapter.id,
           courseId: courseId,
           nextUrl: `/user/courses/${courseId}/chapters/${currentChapter.id}`,
           chapter: currentChapter
         }
-      });
+      };
+      console.log('Sending response:', response);
+  
+      return res.json(response);
     } catch (error) {
-      console.error('Error fetching current chapter:', error);
+      console.error('Error in getCurrentChapter:', error);
       return res.status(500).json({ 
         success: false, 
         message: 'Failed to fetch current chapter' 

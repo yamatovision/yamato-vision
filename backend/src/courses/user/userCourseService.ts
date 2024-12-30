@@ -89,142 +89,128 @@ export class UserCourseService {
     });
   }
 
-
-
-
-
-
   async startCourse(userId: string, courseId: string) {
+    console.log('Starting course with:', { userId, courseId });
+    
     return await prisma.$transaction(async (tx) => {
-      // 既存のアクティブなコースを確認
-      const existingActiveCourse = await tx.userCourse.findFirst({
-        where: {
-          userId,
-          isActive: true,
-        },
-      });
-  
-      // 購入済みコースの確認と詳細取得
-      const purchasedCourse = await tx.userCourse.findUnique({
-        where: {
-          userId_courseId: {
+      try {
+        // 既存のアクティブなコースを確認
+        const existingActiveCourse = await tx.userCourse.findFirst({
+          where: {
             userId,
-            courseId,
+            isActive: true,
           },
-        },
-        include: {
-          course: true
+        });
+        console.log('Existing active course:', existingActiveCourse);
+  
+        // 購入済みコースの確認と詳細取得
+        const purchasedCourse = await tx.userCourse.findUnique({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId,
+            },
+          },
+          include: {
+            course: true
+          }
+        });
+        console.log('Purchased course:', purchasedCourse);
+  
+        if (!purchasedCourse) {
+          console.log('Course not purchased');
+          return { error: 'Course not purchased' };
         }
-      });
   
-      // コース未購入チェック
-      if (!purchasedCourse) {
-        return { error: 'Course not purchased' };
-      }
+        if (purchasedCourse.isTimedOut) {
+          console.log('Course is timed out');
+          return { error: 'Course has timed out. Please repurchase.' };
+        }
   
-      // タイムアウトチェック
-      if (purchasedCourse.isTimedOut) {
-        return { error: 'Course has timed out. Please repurchase.' };
-      }
-  
-      // 最初のチャプターを取得
-      const firstChapter = await tx.chapter.findFirst({
-        where: {
-          courseId,
-        },
-        orderBy: {
-          orderIndex: 'asc',
-        },
-      });
-      
-      // 最初のチャプターの進捗を作成
-      if (firstChapter) {
-        await tx.userChapterProgress.create({
-          data: {
-            userId,
-            courseId,
-            chapterId: firstChapter.id,
-            status: 'IN_PROGRESS',
-            startedAt: new Date(),
-            isTimedOut: false,
-          },
-        });
-      }
-  
-      // 既存のアクティブコースを非アクティブに設定
-      if (existingActiveCourse) {
-        await tx.userCourse.update({
-          where: { id: existingActiveCourse.id },
-          data: { 
-            isActive: false
-          },
-        });
-      }
-  
-      // 開始日時とタイムアウト日時の設定
-      const startedAt = new Date();
-      let timeOutAt: Date | null = null;
-  
-      // コースに制限時間が設定されている場合、タイムアウト日時を計算
-      if (purchasedCourse.course.timeLimit) {
-        timeOutAt = new Date(startedAt);
-        timeOutAt.setDate(timeOutAt.getDate() + purchasedCourse.course.timeLimit); // 日単位での計算
-      }
-  
-      // コースの状態を更新
-      const updatedCourse = await tx.userCourse.update({
-        where: {
-          userId_courseId: {
-            userId,
+        // 最初のチャプターを取得
+        const firstChapter = await tx.chapter.findFirst({
+          where: {
             courseId,
           },
-        },
-        data: {
-          isActive: true,
-          startedAt: startedAt,
-          isTimedOut: false,
-          timeOutAt: timeOutAt, // 計算したタイムアウト日時または null
-          status: 'ACTIVE'
-        },
-        include: {
-          course: {
-            include: {
-              chapters: {
-                orderBy: {
-                  orderIndex: 'asc'
-                }
+          orderBy: {
+            orderIndex: 'asc',
+          },
+        });
+        console.log('First chapter:', firstChapter);
+  
+        if (firstChapter) {
+          // 既存の進捗を確認
+          const existingProgress = await tx.userChapterProgress.findUnique({
+            where: {
+              userId_courseId_chapterId: {
+                userId,
+                courseId,
+                chapterId: firstChapter.id
               }
             }
-          },
-        },
-      });
+          });
   
-      // コース開始ログの記録（オプション）
-      await tx.experienceLog.create({
-        data: {
-          userId,
-          amount: 0, // コース開始時の経験値付与がある場合は適切な値に変更
-          source: 'COURSE_START',
-          detail: {
-            courseId,
-            courseTitle: purchasedCourse.course.title,
-            startedAt: startedAt.toISOString(),
-            timeOutAt: timeOutAt?.toISOString() || null
+          // 進捗が存在しない場合のみ作成
+          if (!existingProgress) {
+            const chapterProgress = await tx.userChapterProgress.create({
+              data: {
+                userId,
+                courseId,
+                chapterId: firstChapter.id,
+                status: 'IN_PROGRESS',
+                startedAt: new Date(),
+                isTimedOut: false,
+              },
+            });
+            console.log('Created chapter progress:', chapterProgress);
+          } else {
+            console.log('Chapter progress already exists');
           }
         }
-      });
   
-      return { 
-        success: true, 
-        data: {
-          ...updatedCourse,
-          timeOutAt: timeOutAt, // タイムアウト日時を明示的に含める
-          startedAt: startedAt // 開始日時を明示的に含める
+        // 既存のアクティブコースを非アクティブに設定
+        if (existingActiveCourse) {
+          await tx.userCourse.update({
+            where: { id: existingActiveCourse.id },
+            data: { isActive: false },
+          });
+          console.log('Deactivated existing course');
         }
-      };
+  
+        // 新しいコースをアクティブに設定
+        const updatedCourse = await tx.userCourse.update({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId,
+            },
+          },
+          data: {
+            isActive: true,
+            startedAt: new Date(),
+            status: 'ACTIVE'
+          },
+          include: {
+            course: {
+              include: {
+                chapters: {
+                  orderBy: {
+                    orderIndex: 'asc'
+                  }
+                }
+              }
+            },
+          },
+        });
+        console.log('Updated course:', updatedCourse);
+  
+        return { success: true, data: updatedCourse };
+      } catch (error) {
+        console.error('Error in startCourse transaction:', error);
+        throw error;
+      }
     });
   }
-
 
 
 
@@ -405,8 +391,9 @@ export class UserCourseService {
     });
   }
 
-
   async getCurrentChapter(userId: string, courseId: string) {
+    console.log('userCourseService.getCurrentChapter called with:', { userId, courseId });
+  
     // Get all chapter progress for this course
     const chapterProgress = await prisma.userChapterProgress.findMany({
       where: {
@@ -422,6 +409,7 @@ export class UserCourseService {
         },
       },
     });
+    console.log('Chapter progress found:', chapterProgress);
   
     // Get all chapters for this course
     const courseChapters = await prisma.chapter.findMany({
@@ -432,16 +420,24 @@ export class UserCourseService {
         orderIndex: 'asc',
       },
     });
+    console.log('Course chapters found:', courseChapters);
   
     // Find the first incomplete chapter
     const nextChapter = courseChapters.find(chapter => {
       const progress = chapterProgress.find(p => p.chapterId === chapter.id);
-      return !progress || progress.status !== 'COMPLETED';  // 文字列リテラルのままで問題ありません
+      return !progress || progress.status !== 'COMPLETED';
     });
+    console.log('Next chapter found:', nextChapter);
   
     // If all chapters are completed, return the last chapter
-    return nextChapter || courseChapters[courseChapters.length - 1];
+    const resultChapter = nextChapter || courseChapters[courseChapters.length - 1];
+    console.log('Returning chapter:', resultChapter);
+  
+    return resultChapter;
   }
+
+
+
 
   async expireArchiveAccess(userId: string, courseId: string) {
     return await prisma.userCourse.update({

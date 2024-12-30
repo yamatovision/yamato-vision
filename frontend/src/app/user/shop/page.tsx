@@ -271,44 +271,50 @@ export default function ShopPage() {
 
       {/* モーダル群 */}
       <ActivationModal
-        isOpen={showActivationModal}
-        onClose={() => {
-          setShowActivationModal(false);
-          setActivatingCourse(null);
-        }}
-        onConfirm={async () => {
-          if (!activatingCourse) return;
-          try {
-            const result = await courseApi.startCourse(activatingCourse);
-            if (result.success) {
-              toast.success('コースを開始しました！');
-              await refreshCourses();
-              router.push(`/user/courses/${activatingCourse}`);
-            }
-          } catch (error: any) {
-            toast.error(error.message || 'コースの開始に失敗しました');
-          } finally {
-            setShowActivationModal(false);
-            setActivatingCourse(null);
-          }
-        }}
-        hasCurrentCourse={courses.some(c => c.status === 'active')}
-      />
-
-      {purchasedCourse && (
-        <PurchaseSuccessModal
-          isOpen={showPurchaseSuccess}
-          onClose={() => setShowPurchaseSuccess(false)}
-          courseTitle={purchasedCourse.title}
-          onStart={async () => {
-            setShowPurchaseSuccess(false);
-            const result = await courseApi.startCourse(purchasedCourse.id);
-            if (result.success) {
-              router.push(`/user/courses/${purchasedCourse.id}`);
-            }
-          }}
-        />
-      )}
+  isOpen={showActivationModal}
+  onClose={() => {
+    setShowActivationModal(false);
+    setActivatingCourse(null);
+  }}
+  onConfirm={async () => {
+    if (!activatingCourse) return;
+    try {
+      const result = await courseApi.startCourse(activatingCourse);
+      if (result.success) {
+        toast.success('コースを開始しました！');
+        await refreshCourses();
+        
+        // 現在のチャプターを取得して直接そこにリダイレクト
+        const currentChapterResponse = await courseApi.getCurrentChapter(activatingCourse);
+        if (currentChapterResponse.success && currentChapterResponse.data) {
+          router.push(`/user/courses/${activatingCourse}/chapters/${currentChapterResponse.data.chapterId}`);
+        } else {
+          throw new Error('Failed to get current chapter');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error starting course:', error);
+      toast.error(error.message || 'コースの開始に失敗しました');
+    } finally {
+      setShowActivationModal(false);
+      setActivatingCourse(null);
+    }
+  }}
+  hasCurrentCourse={courses.some(c => c.status === 'active')}
+/>
+{purchasedCourse && (
+  <PurchaseSuccessModal
+    isOpen={showPurchaseSuccess}
+    onClose={() => setShowPurchaseSuccess(false)}
+    courseTitle={purchasedCourse.title}
+    onStart={() => {
+      setShowPurchaseSuccess(false);
+      // アクティベーションモーダルを表示
+      setActivatingCourse(purchasedCourse.id);
+      setShowActivationModal(true);
+    }}
+  />
+)}
 
       {repurchasingCourse && (
         <RepurchaseConfirmModal
@@ -320,16 +326,29 @@ export default function ShopPage() {
           courseTitle={repurchasingCourse.title}
           gemCost={Math.floor((repurchasingCourse.gemCost || 0) / 10)}
           onConfirm={async () => {
+            if (!activatingCourse) return;
             try {
-              const result = await courseApi.repurchaseCourse(repurchasingCourse.id);
+              const result = await courseApi.startCourse(activatingCourse);
               if (result.success) {
-                toast.success('コースを再購入しました！');
+                toast.success('コースを開始しました！');
                 await refreshCourses();
-                setShowRepurchaseModal(false);
-                setRepurchasingCourse(null);
+                
+                // 現在のチャプターを取得して直接そこにリダイレクト
+                const currentChapterResponse = await courseApi.getCurrentChapter(activatingCourse);
+                console.log('Current chapter response:', currentChapterResponse); // デバッグ用
+          
+                if (currentChapterResponse.success && currentChapterResponse.data?.chapter?.id) {
+                  router.push(`/user/courses/${activatingCourse}/chapters/${currentChapterResponse.data.chapter.id}`);
+                } else {
+                  throw new Error('Failed to get current chapter');
+                }
               }
             } catch (error: any) {
-              toast.error(error.message || 'コースの再購入に失敗しました');
+              console.error('Error starting course:', error);
+              toast.error(error.message || 'コースの開始に失敗しました');
+            } finally {
+              setShowActivationModal(false);
+              setActivatingCourse(null);
             }
           }}
         />

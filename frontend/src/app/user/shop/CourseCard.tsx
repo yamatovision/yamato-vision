@@ -123,37 +123,63 @@ export function CourseCard({
     }
     return gradient;
   };
+  // frontend/src/app/shop/CourseCard.tsx の handleUnlock 関数を修正
+
   const handleUnlock = async () => {
     switch (status) {
+      
       case 'active':
       case 'perfect':
       case 'completed_archive':
         try {
-          const currentChapterResponse = await courseApi.getCurrentChapter(id);
-          if (currentChapterResponse.success && currentChapterResponse.data) {
-            router.push(`/user/courses/${id}/chapters/${currentChapterResponse.data.id}`);
+          console.log('Starting handleUnlock for course:', id);
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/courses/user/${id}/current-chapter`,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+              },
+              credentials: 'include'
+            }
+          );
+  
+          if (!response.ok) {
+            throw new Error('Failed to fetch current chapter');
+          }
+  
+          const data = await response.json();
+          console.log('Current chapter response:', data);
+  
+          if (data.success && data.data && data.data.chapterId) {
+            console.log('Redirecting to chapter:', data.data.chapterId);
+            router.push(`/user/courses/${id}/chapters/${data.data.chapterId}`);
+          } else {
+            throw new Error('Invalid response format');
           }
         } catch (error) {
-          console.error('Error accessing course:', error);
+          console.error('Error in handleUnlock:', error);
           toast.error('コースへのアクセスに失敗しました');
         }
         break;
-      case 'repurchasable':
-        try {
-          const result = await courseApi.repurchaseCourse(id);
-          if (result.success) {
-            toast.success('コースを再購入しました！');
-            onUnlock();
-          }
-        } catch (error) {
-          console.error('Error repurchasing course:', error);
-          toast.error('コースの再購入に失敗しました');
+      
+    // 他のケースは変更なし
+    case 'repurchasable':
+      try {
+        const result = await courseApi.repurchaseCourse(id);
+        if (result.success) {
+          toast.success('コースを再購入しました！');
+          onUnlock();
         }
-        break;
-      default:
-        onUnlock();
-    }
-  };
+      } catch (error) {
+        console.error('Error repurchasing course:', error);
+        toast.error('コースの再購入に失敗しました');
+      }
+      break;
+    default:
+      onUnlock();
+  }
+};
   const getButtonLabel = () => {
     switch (status) {
       case 'active':

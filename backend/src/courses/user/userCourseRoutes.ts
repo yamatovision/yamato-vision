@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { userCourseController } from './userCourseController';  // 名前付きインポートのみを使用
+import { userCourseController } from './userCourseController';
 import { authMiddleware } from '../../auth/authMiddleware';
 
 const router = Router();
@@ -12,10 +12,7 @@ router.get('/available', userCourseController.getAvailableCourses);
 router.get('/user-courses', userCourseController.getUserCourses);
 router.get('/current', userCourseController.getCurrentUserCourse);
 router.get('/:courseId/current', userCourseController.getCurrentUserCourseById);
-router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter);
-
-
-
+router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter); // 修正
 
 // コースのアクション
 router.post('/:courseId/purchase', userCourseController.purchaseCourse);
