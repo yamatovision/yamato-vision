@@ -3,7 +3,7 @@
 import { PrismaClient } from '@prisma/client';
 import { ProfileUpdateParams, ProfileResponse } from './profileTypes';
 import { v2 as cloudinary } from 'cloudinary';
-import { TokenProcessingService } from '../../token/tokenProcessingService';
+import { TokenSyncService } from '../../sync/token/tokenSyncService';
 import { LevelMessageService } from '../../levelMessages/levelMessageService';
 
 const prisma = new PrismaClient();
@@ -142,9 +142,10 @@ export class ProfileService {
       let expGained = 0;
       const unprocessedTokens = user.tokenTracking?.unprocessedTokens ?? 0;
 
-      if (unprocessedTokens >= TokenProcessingService.TOKEN_THRESHOLD) {
-        await TokenProcessingService.processExperiencePoints(userId);
-        expGained = Math.floor(unprocessedTokens / TokenProcessingService.TOKENS_PER_EXP);
+      const tokenSyncService = new TokenSyncService();
+      if (unprocessedTokens > 0) {
+        const result = await tokenSyncService.processExperienceUpdate(userId, unprocessedTokens);
+        expGained = result.experienceGained || 0;
 
         // 経験値処理後の最新データを取得
         const updatedUser = await prisma.user.findUnique({

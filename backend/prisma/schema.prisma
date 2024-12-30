@@ -8,24 +8,24 @@ datasource db {
 }
 
 model User {
-  id               String                @id @default(cuid())
-  email            String                @unique
+  id               String                     @id @default(cuid())
+  email            String                     @unique
   password         String
   name             String?
-  level            Int                   @default(1)
-  experience       Int                   @default(0)
-  gems             Int                   @default(0)
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  status           UserStatus            @default(ACTIVE)
-  mongoId          String?               @unique
+  level            Int                        @default(1)
+  experience       Int                        @default(0)
+  gems             Int                        @default(0)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  status           UserStatus                 @default(ACTIVE)
+  mongoId          String?                    @unique
   nickname         String?
   snsLinks         Json?
-  isRankingVisible Boolean               @default(true)
-  isProfileVisible Boolean               @default(true)
+  isRankingVisible Boolean                    @default(true)
+  isProfileVisible Boolean                    @default(true)
   message          String?
   avatarUrl        String?
-  rank             String                @default("お試し")
+  rank             String                     @default("お試し")
   comments         Comment[]
   forumPosts       ForumPost[]
   purchases        Purchase[]
@@ -34,26 +34,29 @@ model User {
   badges           UserBadge[]
   chapterProgress  UserChapterProgress[]
   courses          UserCourse[]
+  mediaProgress    UserChapterMediaProgress[]
+  experienceLogs   ExperienceLog[] // この行を追加
 }
 
 model Chapter {
-  id            String                @id @default(cuid())
+  id            String                     @id @default(cuid())
   courseId      String
   title         String
   subtitle      String?
   orderIndex    Int
   timeLimit     Int?
-  isVisible     Boolean               @default(true)
-  isFinalExam   Boolean               @default(false)
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  taskId        String?               @unique
+  isVisible     Boolean                    @default(true)
+  isFinalExam   Boolean                    @default(false)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  taskId        String?                    @unique
   releaseTime   Int?
   content       Json
-  isPerfectOnly Boolean               @default(false)
-  course        Course                @relation(fields: [courseId], references: [id])
-  task          Task?                 @relation("ChapterTask", fields: [taskId], references: [id])
+  isPerfectOnly Boolean                    @default(false)
+  course        Course                     @relation(fields: [courseId], references: [id])
+  task          Task?                      @relation("ChapterTask", fields: [taskId], references: [id])
   userProgress  UserChapterProgress[]
+  mediaProgress UserChapterMediaProgress[]
 
   @@unique([courseId, orderIndex])
 }
@@ -255,17 +258,47 @@ model UserBadge {
   @@unique([userId, badgeId])
 }
 
+model UserChapterMediaProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  chapterId String
+  position  Int      @default(0)
+  deviceId  String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([userId, chapterId])
+}
+
 model TokenTracking {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  weeklyTokens      Int      @default(0)
-  unprocessedTokens Int      @default(0)
-  lastSyncedAt      DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  purchasedTokens   Int      @default(0)
-  weeklyLimit       Int      @default(0)
-  user              User     @relation(fields: [userId], references: [id])
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  weeklyTokens        Int      @default(0)
+  weeklyLimit         Int      @default(0)
+  purchasedTokens     Int      @default(0)
+  unprocessedTokens   Int      @default(0)
+  lastSyncedAt        DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  totalTokensConsumed Int      @default(0) // 新規追加
+  user                User     @relation(fields: [userId], references: [id])
+}
+
+// 新規モデル追加
+model ExperienceLog {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  source    String // String型で定義
+  detail    Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([source])
 }
 
 model LevelMessage {

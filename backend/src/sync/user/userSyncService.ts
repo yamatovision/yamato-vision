@@ -1,0 +1,300 @@
+import { MongoClient, ChangeStream } from 'mongodb';
+import { PrismaClient } from '@prisma/client';
+
+import { 
+  UserMongoChangeEvent,
+  UserSyncResult,
+  UserChangeEventData 
+} from './userTypes';
+
+export class UserSyncService {
+  private static readonly MAX_RETRY_ATTEMPTS = 3;
+  private static readonly PROCESSING_TIMEOUT = 30000; // 30秒
+
+  private mongoClient: MongoClient;
+  private prisma: PrismaClient;
+  private changeStream: ChangeStream | null = null;
+  private isConnected: boolean = false;
+  private processingUpdates: Set<string> = new Set();
+
+  constructor() {
+    this.mongoClient = new MongoClient(process.env.MONGODB_URI!);
+    this.prisma = new PrismaClient();
+  }
+
+  async getConnectionStatus() {
+    let mongodbConnected = false;
+    try {
+      await this.mongoClient.db().admin().ping();
+      mongodbConnected = true;
+    } catch (error) {
+      mongodbConnected = false;
+    }
+
+    return {
+      isConnected: this.isConnected,
+      lastSync: new Date().toISOString(),
+      mongodb: mongodbConnected
+    };
+  }
+
+  async initialize() {
+    try {
+      await this.mongoClient.connect();
+      const collection = this.mongoClient.db().collection('users');
+      
+      this.changeStream = collection.watch(
+        [{ $match: { operationType: { $in: ['insert', 'update'] } } }],
+        { fullDocument: 'updateLookup' }
+      );
+
+      this.changeStream.on('change', async (change: UserMongoChangeEvent) => {
+        const documentId = change.documentKey._id.toString();
+        
+        if (this.processingUpdates.has(documentId)) {
+          console.log(`Skip processing for document ${documentId} - already in progress`);
+          return;
+        }
+
+        await this.processChangeWithRetry(change);
+      });
+
+      this.changeStream.on('error', async (error: Error) => {
+        console.error('ChangeStream error:', error);
+        this.isConnected = false;
+        await this.reconnect();
+      });
+
+      this.isConnected = true;
+      console.log('User ChangeStream initialized successfully');
+
+      setInterval(() => this.healthCheck(), 60000);
+      
+    } catch (error) {
+      console.error('Failed to initialize User ChangeStream:', error);
+      this.isConnected = false;
+      throw error;
+    }
+  }
+
+  private async processChangeWithRetry(change: UserMongoChangeEvent) {
+    const documentId = change.documentKey._id.toString();
+    this.processingUpdates.add(documentId);
+
+    const processingTimeout = setTimeout(() => {
+      if (this.processingUpdates.has(documentId)) {
+        console.error(`Processing timeout for document ${documentId}`);
+        this.processingUpdates.delete(documentId);
+      }
+    }, UserSyncService.PROCESSING_TIMEOUT);
+
+    try {
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= UserSyncService.MAX_RETRY_ATTEMPTS; attempt++) {
+        try {
+          console.log(`Processing attempt ${attempt} for user document ${documentId}`);
+          
+          const result = await this.handleUserUpdate(change);
+          if (result.success) {
+            console.log(`Successfully processed user document ${documentId} on attempt ${attempt}`);
+            break;
+          } else {
+            lastError = new Error(result.error);
+            if (attempt < UserSyncService.MAX_RETRY_ATTEMPTS) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+          }
+        } catch (error) {
+          lastError = error as Error;
+          if (attempt < UserSyncService.MAX_RETRY_ATTEMPTS) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
+
+    } catch (error) {
+      console.error(`Failed to process user document ${documentId} after ${UserSyncService.MAX_RETRY_ATTEMPTS} attempts:`, error);
+    } finally {
+      clearTimeout(processingTimeout);
+      this.processingUpdates.delete(documentId);
+    }
+  }
+
+  private async handleUserUpdate(change: UserMongoChangeEvent): Promise<UserSyncResult> {
+    const startTime = Date.now();
+    try {
+      const userData = change.fullDocument;
+      if (!userData) {
+        throw new Error('No user document data available');
+      }
+  
+      const existingUser = await this.prisma.user.findFirst({
+        where: { mongoId: userData._id.toString() }
+      });
+  
+      // パスワード処理の準備
+      const passwordData = userData.password ? {
+        password: userData.password  // MongoDBから渡されるハッシュ済みパスワード
+      } : {};
+  
+      // 新規ユーザー作成
+      if (change.operationType === 'insert' && !existingUser) {
+        try {
+          const newUser = await this.prisma.user.create({
+            data: {
+              mongoId: userData._id.toString(),
+              email: userData.email,
+              name: userData.name || '',
+              rank: userData.userRank,
+              password: userData.password || '',  // 空文字をデフォルト値として設定
+              level: 1,
+              experience: 0,
+              gems: 0,
+              status: 'ACTIVE',
+              isRankingVisible: true,
+              isProfileVisible: true,
+              tokenTracking: {
+                create: {
+                  weeklyTokens: 0,
+                  weeklyLimit: 0,
+                  purchasedTokens: 0,
+                  unprocessedTokens: 0,
+                  lastSyncedAt: new Date()
+                }
+              }
+            }
+          });
+  
+          console.log('New user created:', {
+            mongoId: userData._id,
+            postgresId: newUser.id,
+            rank: newUser.rank,
+            duration: Date.now() - startTime
+          });
+  
+          return { 
+            success: true, 
+            mongoId: userData._id.toString(),
+            postgresId: newUser.id 
+          };
+        } catch (error) {
+          console.error('Failed to create new user:', error);
+          throw error;
+        }
+  
+      // 既存ユーザーの更新
+      } else if (existingUser) {
+        try {
+          // 現在のユーザー情報を取得して変更を検出
+          const currentRank = existingUser.rank;
+          const newRank = userData.userRank;
+          const isRankChanged = currentRank !== newRank;
+  
+          const updatedUser = await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              email: userData.email,
+              name: userData.name || existingUser.name,
+              rank: userData.userRank,
+              ...passwordData,
+              // 最終更新日時を更新
+              updatedAt: new Date()
+            }
+          });
+  
+          // ランク変更のログ記録
+          if (isRankChanged) {
+            console.log('User rank changed:', {
+              userId: existingUser.id,
+              mongoId: userData._id,
+              oldRank: currentRank,
+              newRank: newRank,
+              timestamp: new Date()
+            });
+          }
+  
+          // パスワード変更の検出とログ記録
+          if (passwordData.password) {
+            console.log('User password updated:', {
+              userId: existingUser.id,
+              mongoId: userData._id,
+              timestamp: new Date()
+            });
+          }
+  
+          console.log('User updated:', {
+            mongoId: userData._id,
+            postgresId: updatedUser.id,
+            rank: updatedUser.rank,
+            duration: Date.now() - startTime,
+            changes: {
+              rankChanged: isRankChanged,
+              passwordChanged: !!passwordData.password
+            }
+          });
+  
+          return { 
+            success: true, 
+            mongoId: userData._id.toString(),
+            postgresId: updatedUser.id 
+          };
+        } catch (error) {
+          console.error('Failed to update user:', error);
+          throw error;
+        }
+      }
+  
+      throw new Error(`Unexpected state for user ${userData._id}`);
+  
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('User sync failed:', {
+        error: errorMessage,
+        duration: Date.now() - startTime,
+        documentId: change.documentKey._id,
+        operationType: change.operationType
+      });
+      
+      return {
+        success: false,
+        mongoId: change.documentKey._id.toString(),
+        error: errorMessage
+      };
+    }
+  }
+
+  private async healthCheck() {
+    try {
+      await this.mongoClient.db().admin().ping();
+    } catch (error) {
+      console.error('Health check failed:', error);
+      await this.reconnect();
+    }
+  }
+
+  private async reconnect() {
+    try {
+      console.log('Attempting to reconnect user sync service...');
+      await this.cleanup();
+      await this.initialize();
+    } catch (error) {
+      console.error('User sync service reconnection failed:', error);
+    }
+  }
+
+  async cleanup() {
+    if (this.changeStream) {
+      await this.changeStream.close();
+    }
+    await this.mongoClient.close();
+    await this.prisma.$disconnect();
+    this.isConnected = false;
+    this.processingUpdates.clear();
+    console.log('User sync service cleaned up successfully');
+  }
+}

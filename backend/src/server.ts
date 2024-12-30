@@ -10,11 +10,29 @@ import { courseRoutes } from './courses/courseRoutes';
 import { userCourseRoutes } from './courses/user/userCourseRoutes';
 import { PrismaClient } from '@prisma/client';
 import { timeoutChecker } from './utils/timeoutChecker';
+import { TokenSyncService } from './sync/token/tokenSyncService';
+import { UserSyncService } from './sync/user/userSyncService';
 
 dotenv.config();
 export const prisma = new PrismaClient();
-const app = express();
+
+const tokenSyncService = new TokenSyncService();
+const userSyncService = new UserSyncService();const app = express();
 const port = process.env.PORT || 3001;
+
+// 同期サービスの初期化
+const initializeSyncServices = async () => {
+  try {
+    console.log('Initializing sync services...');
+    await Promise.all([
+      tokenSyncService.initialize(),
+      userSyncService.initialize()
+    ]);
+    console.log('Sync services initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize sync services:', error);
+  }
+};
 
 // cronジョブの初期化
 const initializeCronJobs = () => {
@@ -29,9 +47,6 @@ const initializeCronJobs = () => {
     }
   }).start();
 };
-
-// cronジョブの開始
-initializeCronJobs();
 
 // CORS設定
 app.use(cors({
@@ -50,11 +65,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
-
-// コース関連のルート
-app.use('/api/admin/courses', courseRoutes);    // 管理者用ルート
-app.use('/api/courses/user', userCourseRoutes); // ユーザー固有のコース操作
-app.use('/api/courses', courseRoutes);          // 一般的なコース操作
+app.use('/api/admin/courses', courseRoutes);
+app.use('/api/courses/user', userCourseRoutes);
+app.use('/api/courses', courseRoutes);
 
 // デバッグ用エンドポイント
 app.get('/api/debug/status', async (_req, res) => {
@@ -62,18 +75,36 @@ app.get('/api/debug/status', async (_req, res) => {
     // データベース接続テスト
     await prisma.$queryRaw`SELECT 1 as test`;
     
+    // 同期サービスのステータスを取得
+  
+    const tokenSyncStatus = await tokenSyncService.getConnectionStatus();
+    const userSyncStatus = await userSyncService.getConnectionStatus();
+    
     res.json({
       status: 'ok',
       database: 'connected',
+      sync_services: {
+        token: {
+          status: tokenSyncStatus.isConnected ? 'connected' : 'disconnected',
+          last_sync: tokenSyncStatus.lastSync,
+          mongodb_status: tokenSyncStatus.mongodb ? 'connected' : 'disconnected'
+        },
+        user: {
+          status: userSyncStatus.isConnected ? 'connected' : 'disconnected',
+          last_sync: userSyncStatus.lastSync,
+          mongodb_status: userSyncStatus.mongodb ? 'connected' : 'disconnected'
+        }
+      },
       server_time: new Date().toISOString(),
       env: {
         node_env: process.env.NODE_ENV,
         frontend_url: process.env.FRONTEND_URL,
-        database_url: process.env.DATABASE_URL ? 'set' : 'not set'
+        database_url: process.env.DATABASE_URL ? 'set' : 'not set',
+        mongodb_uri: process.env.MONGODB_URI ? 'set' : 'not set'
       }
     });
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error('Status check error:', error);
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -82,7 +113,6 @@ app.get('/api/debug/status', async (_req, res) => {
   }
 });
 
-// データベース接続テスト用エンドポイント
 app.get('/api/debug/database', async (_req, res) => {
   try {
     const result = await prisma.$queryRaw`
@@ -106,15 +136,19 @@ app.get('/api/debug/database', async (_req, res) => {
   }
 });
 
-// ヘルスチェック
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
+  const tokenStatus = await tokenSyncService.getConnectionStatus();
+  const userStatus = await userSyncService.getConnectionStatus();
   res.json({ 
     status: 'ok',
+    sync_status: {
+      token: tokenStatus.isConnected ? 'ok' : 'error',
+      user: userStatus.isConnected ? 'ok' : 'error'
+    },
     timestamp: new Date().toISOString()
   });
 });
 
-// サーバー時間エンドポイント
 app.get('/api/server-time', (_req, res) => {
   res.json({ 
     serverTime: new Date().toISOString(),
@@ -149,23 +183,39 @@ app.use((_req: express.Request, res: express.Response) => {
 // グレースフルシャットダウン
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received. Shutting down gracefully...');
+  await Promise.all([
+    tokenSyncService.cleanup(),
+    userSyncService.cleanup()
+  ]);
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received. Shutting down gracefully...');
+  await Promise.all([
+    tokenSyncService.cleanup(),
+    userSyncService.cleanup()
+  ]);
   await prisma.$disconnect();
   process.exit(0);
 });
 
 // サーバー起動
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Server is running on port ${port}`);
   console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log('Database URL is', process.env.DATABASE_URL ? 'configured' : 'not configured');
-  console.log('Cron jobs initialized');
+  console.log('MongoDB URI is', process.env.MONGODB_URI ? 'configured' : 'not configured');
+  
+  // 同期サービスの初期化
+  await initializeSyncServices();  // 新しい関数名に変更
+
+  
+  // Cronジョブの初期化
+  initializeCronJobs();
+  console.log('All services initialized');
 });
 
 export default app;
