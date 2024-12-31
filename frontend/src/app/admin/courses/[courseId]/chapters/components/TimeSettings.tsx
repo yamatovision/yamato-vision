@@ -1,8 +1,7 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { useState, useEffect } from 'react';  // useEffectを追加
-import { toast } from 'react-hot-toast';
 
 interface TimeSettingsProps {
   timeLimit?: number;
@@ -10,6 +9,7 @@ interface TimeSettingsProps {
   onUpdate: (settings: { timeLimit?: number; releaseTime?: number }) => Promise<void>;
   disabled?: boolean;
 }
+
 export function TimeSettings({
   timeLimit: initialTimeLimit,
   releaseTime: initialReleaseTime,
@@ -20,13 +20,22 @@ export function TimeSettings({
   const [timeLimit, setTimeLimit] = useState(initialTimeLimit || 0);
   const [releaseTime, setReleaseTime] = useState(initialReleaseTime || 0);
 
-  // 値が変更されたらすぐに親コンポーネントに通知
-  useEffect(() => {
+  // 値の更新をdebounce
+  const debouncedUpdate = useCallback(() => {
     onUpdate({
       timeLimit,
       releaseTime
     });
   }, [timeLimit, releaseTime, onUpdate]);
+
+  // 初期値の設定
+  useEffect(() => {
+    setTimeLimit(initialTimeLimit || 0);
+  }, [initialTimeLimit]);
+
+  useEffect(() => {
+    setReleaseTime(initialReleaseTime || 0);
+  }, [initialReleaseTime]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -41,7 +50,10 @@ export function TimeSettings({
           <input
             type="number"
             value={timeLimit}
-            onChange={(e) => setTimeLimit(Math.max(0, parseInt(e.target.value) || 0))}
+            onChange={(e) => {
+              const newValue = Math.max(0, parseInt(e.target.value) || 0);
+              setTimeLimit(newValue);
+            }}
             min="0"
             className={`w-full rounded-lg pl-3 pr-12 py-2 ${
               theme === 'dark'
@@ -74,7 +86,10 @@ export function TimeSettings({
           <input
             type="number"
             value={releaseTime}
-            onChange={(e) => setReleaseTime(Math.max(0, parseInt(e.target.value) || 0))}
+            onChange={(e) => {
+              const newValue = Math.max(0, parseInt(e.target.value) || 0);
+              setReleaseTime(newValue);
+            }}
             min="0"
             className={`w-full rounded-lg pl-3 pr-12 py-2 ${
               theme === 'dark'

@@ -208,15 +208,10 @@ export class TokenSyncService {
 
 
 
-
-
-
-
   private async updateTokenTracking(
     userId: string,
     tokenData: ChangeEventData
   ): Promise<TokenUpdate> {
-    // 現在のトークン追跡データを取得
     const currentTracking = await this.prisma.tokenTracking.findUnique({
       where: { userId }
     });
@@ -225,7 +220,6 @@ export class TokenSyncService {
     const weeklyLimit = tokenData.weeklyUsage?.baseLimit || 0;
     const purchasedTokens = tokenData.purchasedTokens?.amount || 0;
   
-    // トークンの差分を計算
     const tokenDifference = currentTracking
       ? weeklyTokens - currentTracking.weeklyTokens
       : weeklyTokens;
@@ -244,7 +238,6 @@ export class TokenSyncService {
         weeklyTokens,
         weeklyLimit,
         purchasedTokens,
-        // 差分のみを未処理トークンに追加
         unprocessedTokens: {
           increment: Math.max(0, tokenDifference)
         },
@@ -253,53 +246,61 @@ export class TokenSyncService {
     });
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   public async processExperienceUpdate(
     userId: string,
     unprocessedTokens: number
   ) {
+    console.log('Processing experience update:', {
+      userId,
+      unprocessedTokens,
+      timestamp: new Date().toISOString()
+    });
+  
     if (unprocessedTokens <= 0) {
+      console.log('No unprocessed tokens to handle');
       return { experienceGained: 0 };
     }
-
+  
     const expToAdd = Math.floor(unprocessedTokens / TokenSyncService.TOKENS_PER_EXP);
     const remainingTokens = unprocessedTokens % TokenSyncService.TOKENS_PER_EXP;
-
+  
+    console.log('Calculated experience:', {
+      expToAdd,
+      remainingTokens,
+      tokensPerExp: TokenSyncService.TOKENS_PER_EXP
+    });
+  
     if (expToAdd === 0) {
+      console.log('No experience to add');
       return { experienceGained: 0 };
     }
-
+  
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
     });
-
+  
     if (!user) {
       throw new Error('User not found');
     }
-
+  
     const oldLevel = user.level;
     const newExp = user.experience + expToAdd;
     const newLevel = Math.floor(newExp / TokenSyncService.EXP_PER_LEVEL) + 1;
-
+  
+    console.log('Experience update details:', {
+      oldExp: user.experience,
+      newExp,
+      oldLevel,
+      newLevel,
+      expToAdd
+    });
+  
     let levelUpMessage = null;
     if (newLevel > oldLevel) {
       const message = await this.levelMessageService.getMessageForLevel(newLevel);
       levelUpMessage = message?.message || null;
     }
-
+  
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
@@ -315,8 +316,8 @@ export class TokenSyncService {
         }
       })
     ]);
-
-    return {
+  
+    const result = {
       experienceGained: expToAdd,
       levelUp: newLevel > oldLevel ? {
         oldLevel,
@@ -324,9 +325,12 @@ export class TokenSyncService {
         message: levelUpMessage
       } : undefined
     };
+  
+    console.log('Experience update result:', result);
+    return result;
   }
 
-  async cleanup() {
+  public async cleanup() {
     if (this.changeStream) {
       await this.changeStream.close();
     }

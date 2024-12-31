@@ -99,8 +99,8 @@ export function ChapterForm({
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,
-      timeLimit: settings.timeLimit || 0,
-      releaseTime: settings.releaseTime || 0
+      timeLimit: settings.timeLimit ?? prev.timeLimit,
+      releaseTime: settings.releaseTime ?? prev.releaseTime
     }));
   };
   return (

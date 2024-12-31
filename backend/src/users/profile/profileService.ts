@@ -1,7 +1,7 @@
 // backend/src/users/profile/profileService.ts
 
 import { PrismaClient } from '@prisma/client';
-import { ProfileUpdateParams, ProfileResponse } from './profileTypes';
+import { ProfileUpdateParams, ProfileResponse, ExpStatus } from './profileTypes';
 import { v2 as cloudinary } from 'cloudinary';
 import { TokenSyncService } from '../../sync/token/tokenSyncService';
 import { LevelMessageService } from '../../levelMessages/levelMessageService';
@@ -9,9 +9,9 @@ import { LevelMessageService } from '../../levelMessages/levelMessageService';
 const prisma = new PrismaClient();
 
 export class ProfileService {
+  private static readonly EXP_PER_LEVEL = 1000;
   private readonly levelMessageService: LevelMessageService;
 
-  // クエリの共通部分を定数として定義
   private readonly USER_SELECT = {
     id: true,
     email: true,
@@ -56,6 +56,18 @@ export class ProfileService {
       api_secret: process.env.CLOUDINARY_API_SECRET
     });
     this.levelMessageService = new LevelMessageService();
+  }
+
+  private calculateExpStatus(experience: number, level: number): ExpStatus {
+    const currentLevelExp = experience % ProfileService.EXP_PER_LEVEL;
+    
+    return {
+      currentExp: experience,
+      currentLevelExp,
+      expToNextLevel: ProfileService.EXP_PER_LEVEL,
+      remainingExp: ProfileService.EXP_PER_LEVEL - currentLevelExp,
+      levelProgress: (currentLevelExp / ProfileService.EXP_PER_LEVEL) * 100
+    };
   }
 
   private async uploadImageToCloudinary(base64Image: string, userId: string): Promise<string> {
@@ -114,7 +126,8 @@ export class ProfileService {
         weeklyLimit: user.tokenTracking.weeklyLimit,
         purchasedTokens: user.tokenTracking.purchasedTokens,
         unprocessedTokens: user.tokenTracking.unprocessedTokens
-      } : null
+      } : null,
+      expStatus: this.calculateExpStatus(user.experience, user.level)
     };
 
     if (additional) {
@@ -129,6 +142,8 @@ export class ProfileService {
 
   async getProfile(userId: string): Promise<ProfileResponse> {
     try {
+      console.log('Getting profile for user:', userId);
+      
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: this.USER_SELECT
@@ -138,40 +153,60 @@ export class ProfileService {
         throw new Error('ユーザーが見つかりません');
       }
 
-      // 経験値の処理
-      let expGained = 0;
       const unprocessedTokens = user.tokenTracking?.unprocessedTokens ?? 0;
+      console.log('Current user state:', {
+        experience: user.experience,
+        level: user.level,
+        unprocessedTokens,
+        expStatus: this.calculateExpStatus(user.experience, user.level)
+      });
 
-      const tokenSyncService = new TokenSyncService();
       if (unprocessedTokens > 0) {
+        const tokenSyncService = new TokenSyncService();
         const result = await tokenSyncService.processExperienceUpdate(userId, unprocessedTokens);
-        expGained = result.experienceGained || 0;
-
-        // 経験値処理後の最新データを取得
+        
         const updatedUser = await prisma.user.findUnique({
           where: { id: userId },
           select: this.USER_SELECT
         });
 
-        if (updatedUser) {
-          // レベルアップチェック
-          if (updatedUser.level > user.level) {
-            const levelMessage = await this.levelMessageService.getMessageForLevel(updatedUser.level);
-            return this.formatProfileResponse(updatedUser, {
-              expGained,
-              levelUpData: {
-                oldLevel: user.level,
-                newLevel: updatedUser.level,
-                message: levelMessage?.message || null
-              }
-            });
-          }
-
-          return this.formatProfileResponse(updatedUser, { expGained });
+        if (!updatedUser) {
+          throw new Error('更新後のユーザーデータの取得に失敗しました');
         }
+
+        const expGained = updatedUser.experience - user.experience;
+        const hasLevelUp = updatedUser.level > user.level;
+
+        console.log('Experience update result:', {
+          previousExp: user.experience,
+          newExp: updatedUser.experience,
+          expGained,
+          previousLevel: user.level,
+          newLevel: updatedUser.level,
+          hasLevelUp,
+          expStatus: this.calculateExpStatus(updatedUser.experience, updatedUser.level)
+        });
+
+        let levelUpData;
+        if (hasLevelUp) {
+          const message = await this.levelMessageService.getMessageForLevel(updatedUser.level);
+          levelUpData = {
+            oldLevel: user.level,
+            newLevel: updatedUser.level,
+            message: message?.message || null
+          };
+          console.log('Level up data:', levelUpData);
+        }
+
+        return this.formatProfileResponse(updatedUser, {
+          expGained: expGained > 0 ? expGained : 0,
+          levelUpData
+        });
       }
 
-      return this.formatProfileResponse(user);
+      return this.formatProfileResponse(user, {
+        expGained: 0
+      });
 
     } catch (error) {
       console.error('Failed to get profile:', error);

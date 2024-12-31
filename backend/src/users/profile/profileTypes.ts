@@ -7,6 +7,14 @@ export interface ProfileUpdateParams {
   isProfileVisible?: boolean;
 }
 
+export interface ExpStatus {
+  currentExp: number;          // 現在の累計経験値
+  currentLevelExp: number;     // 現在レベルでの経験値
+  expToNextLevel: number;      // 次のレベルまでに必要な経験値
+  remainingExp: number;        // レベルアップまでの残り経験値
+  levelProgress: number;       // 現在レベルでの進捗率
+}
+
 export interface ProfileResponse {
   id: string;
   email: string;
@@ -41,6 +49,7 @@ export interface ProfileResponse {
     purchasedTokens: number;
     unprocessedTokens: number;
   } | null;
+  expStatus: ExpStatus;  // 追加
 }
 
 export interface ProfileListResponse {

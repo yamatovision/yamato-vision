@@ -6,7 +6,6 @@ import { useProfile } from '@/lib/hooks/useProfile';
 import { getRankStyle } from '@/lib/utils/rankStyles';
 import { useNotification } from '@/contexts/notification';
 import { useState, useEffect } from 'react';
-import { ExperiencePopup } from './HomeProfile/ExperiencePopup';
 
 export function HomeProfile() {
   const { theme } = useTheme();
@@ -14,37 +13,10 @@ export function HomeProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { userData, loading, error, updateProfile, updateAvatar } = useProfile();
   const rankStyle = getRankStyle(userData?.rank || 'お試し', theme);
-
-  // 経験値表示の状態管理
-  const [showExpGain, setShowExpGain] = useState(false);
-  const [expGainAmount, setExpGainAmount] = useState(0);
-
-  // 経験値通知
-  useEffect(() => {
-    if (userData?.expGained && userData.expGained > 0) {
-      setExpGainAmount(userData.expGained);
-      setShowExpGain(true);
-      
-      // 3秒後に非表示
-      const timer = setTimeout(() => {
-        setShowExpGain(false);
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [userData?.expGained]);
-
-  // レベルアップ通知
-  useEffect(() => {
-    if (userData?.levelUpData) {
-      showLevelUp({
-        currentLevel: userData.levelUpData.oldLevel, // 型に合わせて修正
-        newLevel: userData.levelUpData.currentLevel,
-        message: userData.levelUpData.levelUpMessage || null,
-        experienceGained: userData.levelUpData.experienceGained
-      });
-    }
-  }, [userData?.levelUpData, showLevelUp]);
+  const [previousState, setPreviousState] = useState<{
+    experience: number;
+    level: number;
+  } | null>(null);
 
   const handleProfileClick = () => {
     setIsEditModalOpen(true);
@@ -66,6 +38,64 @@ export function HomeProfile() {
       console.error('Failed to update avatar:', error);
     }
   };
+  useEffect(() => {
+    if (!userData) return;
+
+    // LocalStorageから前回の値を取得
+    const previousStateStr = localStorage.getItem('userStatus');
+    const previousState = previousStateStr ? JSON.parse(previousStateStr) : null;
+
+    console.log('Status check:', {
+      previous: previousState,
+      current: {
+        experience: userData.experience,
+        level: userData.level
+      }
+    });
+
+    if (previousState) {
+      // 経験値の増加をチェック
+      const expDiff = userData.experience - previousState.experience;
+      if (expDiff > 0) {
+        console.log('経験値獲得:', {
+          expDiff,
+          previous: previousState.experience,
+          current: userData.experience,
+          timestamp: new Date().toISOString()
+        });
+        showExperienceGain(expDiff);
+      }
+
+      // レベルアップをチェック
+      if (userData.level > previousState.level) {
+        console.log('レベルアップ検知:', {
+          from: previousState.level,
+          to: userData.level,
+          expGained: expDiff,
+          timestamp: new Date().toISOString()
+        });
+        showLevelUp({
+          oldLevel: previousState.level,
+          newLevel: userData.level,
+          message: null,
+          experienceGained: expDiff
+        });
+      }
+    }
+
+    // 新しい状態を保存
+    localStorage.setItem('userStatus', JSON.stringify({
+      experience: userData.experience,
+      level: userData.level,
+      timestamp: new Date().toISOString()
+    }));
+
+  }, [userData, showExperienceGain, showLevelUp]);
+
+
+
+
+
 
   if (loading) {
     return (
@@ -129,8 +159,6 @@ export function HomeProfile() {
       <div className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
         onClick={handleProfileClick}
       >
-        {/* 経験値ポップアップ */}
-        {showExpGain && <ExperiencePopup amount={expGainAmount} />}
 
         <div className="flex">
           {/* 左カラム: アバター、階級バッジ */}
