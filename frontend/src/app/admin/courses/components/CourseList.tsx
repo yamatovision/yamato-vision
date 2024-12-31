@@ -6,7 +6,6 @@ import { CourseCard } from './CourseCard';
 import { Course } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
-
 export function CourseList() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,18 +20,23 @@ export function CourseList() {
     try {
       setIsLoading(true);
       const response = await courseApi.getCourses();
-      setCourses(response?.data || []); // nullish coalescing operatorを使用
+      if (response.success && response.data) {
+        setCourses(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch courses');
+      }
     } catch (error) {
       toast.error('コースの取得に失敗しました');
       console.error('Failed to fetch courses:', error);
-      setCourses([]); // エラー時は空配列を設定
+      setCourses([]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 編集ハンドラーを追加
   const handleEdit = (courseId: string) => {
-    router.push(`/admin/courses/${courseId}`);
+    router.push(`/admin/courses/${courseId}/edit`);
   };
 
   const handleDelete = async (courseId: string) => {

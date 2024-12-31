@@ -74,7 +74,7 @@ const getAuthHeaders = () => {
 
 export const courseApi = {
   // コース一覧取得
-  getCourses: async () => {
+  getCourses: async (): Promise<APIResponse<Course[]>> => {
     try {
       const response = await fetch(
         `${FRONTEND_API_BASE}/admin/courses?published=all`, 
@@ -87,42 +87,37 @@ export const courseApi = {
         throw new Error('Failed to fetch courses');
       }
   
-      const data = await response.json();
-    console.log('getCurrentChapter response:', data); // デバッグ用
-
-    if (!data.success || !data.data || !data.data.chapterId) {
-      throw new Error(data.message || 'Invalid response format');
-    }
-
-    return {
-      success: true,
-      data: {
-        chapterId: data.data.chapterId,
-        courseId: courseId,
-        nextUrl: `/user/courses/${courseId}/chapters/${data.data.chapterId}`,
-        chapter: data.data.chapter
+      const courses = await response.json();
+      
+      // レスポンスが配列であることを確認
+      if (!Array.isArray(courses)) {
+        console.error('Unexpected response format:', courses);
+        throw new Error('Invalid courses data format');
       }
-    };
-  } catch (error) {
-    console.error('Error fetching current chapter:', error);
-    return { 
-      success: false, 
-      data: null,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-},
-  // 個別のコース取得
-  getCourse: async (courseId: string) => {
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/admin/courses/${courseId}`
-    );
-    const data = await response.json();
-    return { data };
+  
+      // 各コースオブジェクトの必須フィールドを確認
+      const validatedCourses = courses.map(course => {
+        if (!course.id || !course.title || typeof course.description !== 'string') {
+          console.error('Invalid course data:', course);
+          throw new Error('Invalid course data structure');
+        }
+        return course as Course;
+      });
+  
+      return {
+        success: true,
+        data: validatedCourses
+      };
+  
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      return { 
+        success: false, 
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   },
-
-
-
 
 
 
