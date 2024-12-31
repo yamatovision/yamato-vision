@@ -103,75 +103,58 @@ export function ChapterForm({
       releaseTime: settings.releaseTime || 0
     }));
   };
-
   return (
-    <div className="space-y-6">
-      {/* タブナビゲーション */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {['basic', 'media', 'task'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab
-                  ? `${theme === 'dark' 
-                      ? 'border-blue-500 text-blue-400' 
-                      : 'border-blue-500 text-blue-600'}`
-                  : `${theme === 'dark'
-                      ? 'border-transparent text-gray-400 hover:text-gray-300'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'}`
-              }`}
-            >
-              {tab === 'basic' ? '基本情報' : tab === 'media' ? 'メディア' : '課題'}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {activeTab === 'basic' && (
-          <div className="space-y-6">
-            {/* 基本情報入力フォーム */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                }`}>
-                  チャプタータイトル *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className={`w-full rounded-lg p-3 ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-white text-gray-900 border-gray-200'
-                  } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                }`}>
-                  サブタイトル
-                </label>
-                <input
-                  type="text"
-                  value={formData.subtitle}
-                  onChange={(e) => setFormData(prev => ({ ...prev, subtitle: e.target.value }))}
-                  className={`w-full rounded-lg p-3 ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-white text-gray-900 border-gray-200'
-                  } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                />
-              </div>
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* 基本情報セクション */}
+        <section className={`p-6 rounded-lg ${
+          theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+        }`}>
+          <h3 className={`text-lg font-medium mb-4 ${
+            theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+          }`}>
+            基本情報
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+              }`}>
+                チャプタータイトル *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                className={`w-full rounded-lg p-3 ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 text-white border-gray-600'
+                    : 'bg-white text-gray-900 border-gray-200'
+                } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+                required
+              />
             </div>
 
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+              }`}>
+                サブタイトル
+              </label>
+              <input
+                type="text"
+                value={formData.subtitle}
+                onChange={(e) => setFormData(prev => ({ ...prev, subtitle: e.target.value }))}
+                className={`w-full rounded-lg p-3 ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 text-white border-gray-600'
+                    : 'bg-white text-gray-900 border-gray-200'
+                } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
             <TimeSettings
               timeLimit={formData.timeLimit}
               releaseTime={formData.releaseTime}
@@ -179,10 +162,18 @@ export function ChapterForm({
               disabled={isSubmitting}
             />
           </div>
-        )}
+        </section>
 
-        {activeTab === 'media' && (
-          <div className="space-y-6">
+        {/* メディアセクション */}
+        <section className={`p-6 rounded-lg ${
+          theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+        }`}>
+          <h3 className={`text-lg font-medium mb-4 ${
+            theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+          }`}>
+            メディアコンテンツ
+          </h3>
+          <div className="space-y-4">
             <div>
               <label className={`block text-sm font-medium mb-2 ${
                 theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
@@ -223,9 +214,17 @@ export function ChapterForm({
               chapterId={initialData?.id || 'new'}
             />
           </div>
-        )}
+        </section>
 
-        {activeTab === 'task' && (
+        {/* 課題セクション */}
+        <section className={`p-6 rounded-lg ${
+          theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+        }`}>
+          <h3 className={`text-lg font-medium mb-4 ${
+            theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+          }`}>
+            課題設定
+          </h3>
           <div className="space-y-6">
             <div>
               <label className={`block text-sm font-medium mb-2 ${
@@ -287,9 +286,10 @@ export function ChapterForm({
               />
             </div>
           </div>
-        )}
+        </section>
 
-        <div className="flex justify-end space-x-4 pt-6">
+        {/* 操作ボタン */}
+        <div className="flex justify-end space-x-4">
           <button
             type="button"
             onClick={onCancel}
@@ -303,16 +303,16 @@ export function ChapterForm({
             キャンセル
           </button>
           <button
-            type="submit"
-            className={`px-6 py-2 rounded-lg ${
-              theme === 'dark'
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-blue-500 hover:bg-blue-600'
-            } text-white transition-colors`}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? '保存中...' : (initialData ? '更新' : '作成')}
-          </button>
+  type="submit"
+  className={`px-6 py-2 rounded-lg ${
+    theme === 'dark'
+      ? 'bg-blue-600 hover:bg-blue-700'
+      : 'bg-blue-500 hover:bg-blue-600'
+  } text-white transition-colors`}
+  disabled={isSubmitting}
+>
+  {isSubmitting ? '保存中...' : '保存'}
+</button>
         </div>
       </form>
 
@@ -322,5 +322,13 @@ export function ChapterForm({
         </div>
       )}
     </div>
-  );
+);
+
+
+
+
+
+
+
+
 }
