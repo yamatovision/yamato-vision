@@ -1,7 +1,7 @@
 {
-  "/admin/notices/page": "app/admin/notices/page.js",
-  "/user/shop/page": "app/user/shop/page.js",
   "/admin/courses/page": "app/admin/courses/page.js",
   "/admin/users/page": "app/admin/users/page.js",
+  "/user/shop/page": "app/user/shop/page.js",
+  "/admin/courses/[courseId]/page": "app/admin/courses/[courseId]/page.js",
   "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js"
 }

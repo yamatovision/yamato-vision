@@ -65,8 +65,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     };
 
     if (isEdit && initialData?.id) {
-      const response = await courseApi.updateCourse(initialData.id, dataToSubmit);
+      await courseApi.updateCourse(initialData.id, dataToSubmit);
       toast.success('コースを更新しました');
+      router.refresh(); // ページを更新
     } else {
       const response = await courseApi.createCourse(dataToSubmit);
       toast.success('コースを作成しました');

@@ -74,6 +74,10 @@ const getAuthHeaders = () => {
 
 export const courseApi = {
   // コース一覧取得
+
+
+
+
   getCourses: async (): Promise<APIResponse<Course[]>> => {
     try {
       const response = await fetch(
@@ -87,26 +91,18 @@ export const courseApi = {
         throw new Error('Failed to fetch courses');
       }
   
-      const courses = await response.json();
-      
-      // レスポンスが配列であることを確認
-      if (!Array.isArray(courses)) {
-        console.error('Unexpected response format:', courses);
+      const result = await response.json();
+      console.log('Courses API response:', result); // デバッグ用
+  
+      // レスポンス形式のチェック
+      if (!result || !result.success || !Array.isArray(result.data)) {
+        console.error('Unexpected response format:', result);
         throw new Error('Invalid courses data format');
       }
   
-      // 各コースオブジェクトの必須フィールドを確認
-      const validatedCourses = courses.map(course => {
-        if (!course.id || !course.title || typeof course.description !== 'string') {
-          console.error('Invalid course data:', course);
-          throw new Error('Invalid course data structure');
-        }
-        return course as Course;
-      });
-  
       return {
         success: true,
-        data: validatedCourses
+        data: result.data
       };
   
     } catch (error) {
@@ -120,6 +116,34 @@ export const courseApi = {
   },
 
 
+
+
+
+
+  getCourse: async (courseId: string): Promise<APIResponse<Course>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/admin/courses/${courseId}`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error(`Failed to fetch course: ${response.statusText}`);
+      }
+  
+      const data = await response.json();
+      return data; // レスポンスをそのまま返せる
+    } catch (error) {
+      console.error('Error in getCourse:', error);
+      return { 
+        success: false, 
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
 
   getCurrentChapter: async (courseId: string): Promise<APIResponse<{
   chapterId: string;

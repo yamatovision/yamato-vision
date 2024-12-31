@@ -36,7 +36,7 @@ export function CourseList() {
 
   // 編集ハンドラーを追加
   const handleEdit = (courseId: string) => {
-    router.push(`/admin/courses/${courseId}/edit`);
+    router.push(`/admin/courses/${courseId}`);  // /edit を削除
   };
 
   const handleDelete = async (courseId: string) => {
