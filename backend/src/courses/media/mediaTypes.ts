@@ -39,6 +39,7 @@ export interface CreateVideoResponse extends BunnyVideoResponse {
 export interface UploadUrlResponse {
   id: string;
   uploadUrl: string;
+  cdnUrl: string;  // CDN URLを追加
 }
 
 // データベースとの連携のための型

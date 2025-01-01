@@ -7,7 +7,8 @@ import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaUpload } from './MediaUpload';
-import { TimeSettings } from './TimeSettings';
+import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
+import { TIME_VALIDATION } from '@/types/timeout';  // 追加
 
 interface ChapterFormProps {
   initialData?: Chapter;
@@ -31,7 +32,8 @@ export function ChapterForm({
     subtitle: initialData?.subtitle || '',
     content: {
       type: initialData?.content?.type || 'video',
-      url: '', // 空文字列を許容
+      url: initialData?.content?.url || '', // 初期値を追加
+      thumbnailUrl: initialData?.content?.thumbnailUrl || '', // サムネイル用に追加
       transcription: initialData?.content?.transcription || ''
     },
     timeLimit: initialData?.timeLimit || 0,
@@ -45,6 +47,7 @@ export function ChapterForm({
       type: initialData?.task?.type || 'standard'
     }
   });
+
   const validateForm = () => {
     if (!formData.title.trim()) {
       toast.error('コースタイトルを入力してください');
@@ -52,29 +55,30 @@ export function ChapterForm({
     }
     return true;
   };
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  console.log('Submit button clicked');
-  setIsSubmitting(true);
 
-  try {
-    if (initialData) {
-      console.log('Updating chapter...');
-      await courseApi.updateChapter(courseId, initialData.id, formData);
-      toast.success('チャプターを更新しました');
-    } else {
-      console.log('Creating chapter...', formData);
-      await courseApi.createChapter(courseId, formData);
-      toast.success('チャプターを作成しました');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+
+    try {
+      if (initialData) {
+        await courseApi.updateChapter(courseId, initialData.id, formData);
+        toast.success('チャプターを更新しました');
+      } else {
+        await courseApi.createChapter(courseId, formData);
+        toast.success('チャプターを作成しました');
+      }
+      onSuccess();
+    } catch (error) {
+      console.error('Error saving chapter:', error);
+      toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
+    } finally {
+      setIsSubmitting(false);
     }
-    onSuccess();
-  } catch (error) {
-    console.error('Error saving chapter:', error);
-    toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
+
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,
@@ -82,6 +86,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       releaseTime: settings.releaseTime ?? prev.releaseTime
     }));
   };
+
+
+
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -134,7 +141,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
 
           <div className="mt-6">
-            <TimeSettings
+          <ChapterTimeSettings  // ここを変更
               timeLimit={formData.timeLimit}
               releaseTime={formData.releaseTime}
               onUpdate={handleTimeSettingsUpdate}
@@ -183,15 +190,13 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
 
             <MediaUpload
-              type={formData.content.type}
-              currentUrl={formData.content.url}
-              onUpload={(url) => setFormData(prev => ({
-                ...prev,
-                content: { ...prev.content, url }
-              }))}
-              courseId={courseId}
-              chapterId={initialData?.id || 'new'}
-            />
+            type={formData.content.type}
+  currentUrl={formData.content.url}
+  onUpload={(url) => setFormData(prev => ({
+    ...prev,
+    content: { ...prev.content, url }
+  }))}
+/>
           </div>
         </section>
 

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 interface MediaUploadProps {
   type: 'video' | 'audio';
@@ -20,6 +21,7 @@ export function MediaUpload({
   chapterId
 }: MediaUploadProps) {
   const { theme } = useTheme();
+  const { token } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -39,21 +41,32 @@ export function MediaUpload({
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    // ファイルタイプの検証
     const validTypes = type === 'video' 
-      ? ['video/mp4', 'video/quicktime', 'video/webm']
+      ? ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v']
       : ['audio/mpeg', 'audio/wav', 'audio/mp3'];
 
-    if (!validTypes.includes(file.type)) {
+    const validExtensions = type === 'video'
+      ? ['.mp4', '.mov', '.webm', '.m4v']
+      : ['.mp3', '.wav'];
+
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
       toast.error(`無効なファイル形式です。${type === 'video' ? '動画' : '音声'}ファイルを選択してください。`);
       return;
     }
 
     setIsUploading(true);
     setProgress(0);
-
     try {
-      // 1. アップロードURLの取得
+      console.log('Starting upload process for file:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+    
+      // Step 1: アップロードURLの取得
+      console.log('Requesting upload URL...');
       const response = await fetch('/api/media/upload-url', {
         method: 'POST',
         headers: {
@@ -61,64 +74,51 @@ export function MediaUpload({
         },
         body: JSON.stringify({
           filename: file.name,
-          contentType: file.type,
-          courseId,
-          chapterId
+          contentType: file.type
         })
       });
-
+    
+      console.log('Upload URL response status:', response.status);
+      const responseData = await response.json();
+      console.log('Upload URL response data:', responseData);
+    
       if (!response.ok) {
-        throw new Error('Failed to get upload URL');
+        throw new Error(`Failed to get upload URL: ${JSON.stringify(responseData)}`);
       }
-
-      const { id, uploadUrl } = await response.json();
-
-      // 2. ファイルのアップロード
-      const formData = new FormData();
-      formData.append('file', file);
-
+    
+      const { id, uploadUrl, cdnUrl } = responseData;
+      console.log('Received upload details:', { id, uploadUrl, cdnUrl });
+    
+      // Step 2: 実際のファイルアップロード
+      console.log('Starting file upload to Bunny.net...');
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
-          'AccessKey': process.env.NEXT_PUBLIC_BUNNY_API_KEY!,
+          'AccessKey': '55f77d60-a593-4210-be4ec78e69bc-5ea3-4168',
+          'Content-Type': 'application/octet-stream'
         },
         body: file
       });
-
+    
+      console.log('Upload response status:', uploadResponse.status);
+      const uploadResponseText = await uploadResponse.text();
+      console.log('Upload response body:', uploadResponseText);
+    
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error(`Failed to upload file: ${uploadResponseText}`);
       }
-
-      // 3. アップロード完了を待つ
-      let encodingComplete = false;
-      while (!encodingComplete) {
-        const statusResponse = await fetch(`/api/media/status/${id}`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!statusResponse.ok) {
-          throw new Error('Failed to check encoding status');
-        }
-
-        const statusData = await statusResponse.json();
-        setProgress(statusData.encodeProgress);
-
-        if (statusData.status === 4) { // エンコード完了
-          encodingComplete = true;
-        } else {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2秒待機
-        }
-      }
-
-      // 4. CDN URLの生成と返却
-      const cdnUrl = `${process.env.NEXT_PUBLIC_BUNNY_CDN_URL}/play/${id}`;
+    
+      // Step 3: CDN URLを使用
+      console.log('Upload successful, using CDN URL:', cdnUrl);
       onUpload(cdnUrl);
-      
       toast.success('ファイルのアップロードが完了しました');
+    
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Upload error:', {
+        message: error.message,
+        stack: error.stack,
+        error
+      });
       toast.error('ファイルのアップロードに失敗しました');
     } finally {
       setIsUploading(false);
@@ -162,7 +162,9 @@ export function MediaUpload({
           <div className="space-y-2">
             <input
               type="file"
-              accept={type === 'video' ? 'video/*' : 'audio/*'}
+              accept={type === 'video' 
+                ? 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm' 
+                : 'audio/mpeg,audio/wav,audio/mp3,.mp3,.wav'}
               onChange={handleFileSelect}
               className="hidden"
               id="media-upload"

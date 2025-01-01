@@ -1,12 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { TimeoutCheckResult } from './timeoutTypes';
+import { TimeoutCheckResult, TimeCalculation, TimeWarningLevel } from './timeoutTypes';
 
 const prisma = new PrismaClient();
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+const MILLISECONDS_PER_MINUTE = 60 * 1000;
 
 export class TimeoutService {
-  // チャプターのタイムアウトチェック
+  // 既存のメソッドはそのまま維持
   async checkChapterTimeout(userId: string, courseId: string, chapterId: string): Promise<TimeoutCheckResult> {
     const progress = await prisma.userChapterProgress.findUnique({
       where: {
@@ -26,12 +28,10 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    // 日数をミリ秒に変換
     const timeLimit = progress.chapter.timeLimit * MILLISECONDS_PER_DAY;
     const timeDiff = now.getTime() - progress.startedAt.getTime();
 
     if (timeDiff > timeLimit && !progress.isTimedOut) {
-      // タイムアウト状態を記録
       await prisma.userChapterProgress.update({
         where: { id: progress.id },
         data: {
@@ -50,7 +50,6 @@ export class TimeoutService {
     return { isTimedOut: false, type: 'chapter' };
   }
 
-  // コース全体のタイムアウトチェック
   async checkCourseTimeout(userId: string, courseId: string): Promise<TimeoutCheckResult> {
     const userCourse = await prisma.userCourse.findUnique({
       where: {
@@ -69,14 +68,12 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    // 日数をミリ秒に変換
     const timeLimit = userCourse.course.timeLimit * MILLISECONDS_PER_DAY;
     const timeDiff = now.getTime() - userCourse.startedAt.getTime();
 
     if (timeDiff > timeLimit && !userCourse.isTimedOut) {
       const repurchasePrice = Math.floor(userCourse.course.gemCost * 0.1);
 
-      // コースのタイムアウト状態を記録
       await prisma.userCourse.update({
         where: { id: userCourse.id },
         data: {
@@ -98,37 +95,53 @@ export class TimeoutService {
     return { isTimedOut: false, type: 'course' };
   }
 
-  // 残り時間の計算（日単位）
+  // 既存のメソッドを維持しながら、新しい計算メソッドを追加
   calculateRemainingTime(startTime: Date, timeLimit: number): number {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
-    // ミリ秒を日数に変換（小数点以下を切り捨て）
     return Math.max(0, Math.floor(timeLimit - (timeDiff / MILLISECONDS_PER_DAY)));
   }
 
-  // 残り時間の詳細計算（日、時間、分）
-  calculateRemainingTimeDetailed(startTime: Date, timeLimit: number) {
+  calculateRemainingTimeDetailed(startTime: Date, timeLimit: number): TimeCalculation {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
     const remainingMs = Math.max(0, (timeLimit * MILLISECONDS_PER_DAY) - timeDiff);
     
     const days = Math.floor(remainingMs / MILLISECONDS_PER_DAY);
-    const hours = Math.floor((remainingMs % MILLISECONDS_PER_DAY) / (60 * 60 * 1000));
-    const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+    const hours = Math.floor((remainingMs % MILLISECONDS_PER_DAY) / MILLISECONDS_PER_HOUR);
+    const minutes = Math.floor((remainingMs % MILLISECONDS_PER_HOUR) / MILLISECONDS_PER_MINUTE);
+    const seconds = Math.floor((remainingMs % MILLISECONDS_PER_MINUTE) / 1000);
 
     return {
       days,
       hours,
       minutes,
-      totalDays: days + (hours / 24) + (minutes / (24 * 60))
+      seconds,
+      totalDays: days + (hours / 24) + (minutes / (24 * 60)),
+      timeOutAt: this.calculateTimeOutDate(startTime, timeLimit).toISOString()
     };
   }
 
-  // タイムアウト日時の計算
   calculateTimeOutDate(startDate: Date, timeLimit: number): Date {
     const timeOutDate = new Date(startDate);
     timeOutDate.setDate(timeOutDate.getDate() + timeLimit);
     return timeOutDate;
+  }
+
+  // 新しいユーティリティメソッド
+  getWarningLevel(remainingTime: TimeCalculation): TimeWarningLevel {
+    const totalHours = (remainingTime.days * 24) + remainingTime.hours;
+    
+    if (totalHours <= 6) return 'danger';
+    if (totalHours <= 24) return 'warning';
+    return 'none';
+  }
+
+  formatTimeDisplay(timeCalc: TimeCalculation): string {
+    if (timeCalc.days > 0) {
+      return `${timeCalc.days}日 ${timeCalc.hours.toString().padStart(2, '0')}:${timeCalc.minutes.toString().padStart(2, '0')}`;
+    }
+    return `${timeCalc.hours.toString().padStart(2, '0')}:${timeCalc.minutes.toString().padStart(2, '0')}:${timeCalc.seconds.toString().padStart(2, '0')}`;
   }
 }
 

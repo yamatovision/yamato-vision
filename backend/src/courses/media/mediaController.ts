@@ -5,9 +5,9 @@ import { mediaService } from './mediaService';
 export const mediaController = {
   async getUploadUrl(req: Request, res: Response): Promise<void> {
     try {
-      const { filename, contentType, courseId, chapterId } = req.body;
+      const { filename, contentType } = req.body;
       
-      if (!filename || !contentType || !courseId || !chapterId) {
+      if (!filename || !contentType) {
         res.status(400).json({ 
           error: 'Missing required fields' 
         });
@@ -16,9 +16,7 @@ export const mediaController = {
 
       const uploadData = await mediaService.getUploadUrl(
         filename,
-        contentType,
-        courseId,
-        chapterId
+        contentType
       );
       res.json(uploadData);
     } catch (error) {

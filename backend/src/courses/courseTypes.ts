@@ -19,7 +19,7 @@ export interface CreateCourseDTO {
   gemCost: number;
   levelRequired?: number;
   rankRequired?: string;
-  timeLimit?: number;
+  timeLimit?: number;  // 日数単位
   passingScore?: number;
   excellentScore?: number;
 }
@@ -28,14 +28,26 @@ export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
   content: any;
-  timeLimit?: number;
-  releaseTime?: number;
+  timeLimit?: number;  // 日数単位
+  releaseTime?: number;  // コース開始からの経過日数
   orderIndex: number;
+}
+
+export interface TimeSettings {
+  timeLimit?: number;  // 日数単位
+  releaseTime?: number;  // コース開始からの経過日数
 }
 
 export interface UpdateCourseDTO extends Partial<CreateCourseDTO> {
   isPublished?: boolean;
   isArchived?: boolean;
+}
+
+export interface CourseTimeInfo {
+  timeLimit: number;  // 日数単位
+  startedAt?: Date;
+  timeOutAt?: Date;
+  remainingDays?: number;
 }
 
 export type CourseStatus = 
@@ -57,6 +69,8 @@ export interface CourseResponse {
   gemCost?: number;
   levelRequired?: number;
   rankRequired?: string;
+  timeLimit?: number;  // 日数単位
+  timeInfo?: CourseTimeInfo;  // 時間関連の詳細情報
   gradient?: string;
   archiveUntil?: string;
   completion?: {
@@ -97,6 +111,9 @@ export interface ChapterProgressStatus {
   completed: boolean;
   score?: number;
   submittedAt?: Date;
+  timeLimit?: number;  // 日数単位
+  startedAt?: Date;
+  timeOutAt?: Date;
 }
 
 export interface CourseProgress {
@@ -105,4 +122,15 @@ export interface CourseProgress {
   currentChapterId?: string;
   startedAt?: Date;
   completedAt?: Date;
+  timeLimit?: number;  // 日数単位
+  remainingDays?: number;
+}
+
+// 時間計算用のユーティリティ型
+export interface TimeCalculation {
+  days: number;
+  hours: number;
+  minutes: number;
+  totalDays: number;
+  timeOutAt: string;
 }
