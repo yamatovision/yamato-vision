@@ -2,6 +2,7 @@
 
 import { useTheme } from '@/contexts/theme';
 import { Chapter } from '@/types/course';
+import { useRouter } from 'next/navigation'; // 追加
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useState } from 'react';
 
@@ -12,6 +13,7 @@ interface ChapterListProps {
   onOrderUpdate: (chapters: Chapter[]) => void;
   onToggleVisibility: (chapterId: string, isVisible: boolean) => void;
   onTogglePerfectOnly: (chapterId: string, isPerfectOnly: boolean) => void;
+  courseId: string; // 追加
 }
 
 export function ChapterList({ 
@@ -20,9 +22,11 @@ export function ChapterList({
   onEdit, 
   onOrderUpdate,
   onToggleVisibility,
-  onTogglePerfectOnly 
+  onTogglePerfectOnly,
+  courseId  // 追加
 }: ChapterListProps) {
   const { theme } = useTheme();
+  const router = useRouter(); // 追加
   const [isReordering, setIsReordering] = useState(false);
 
   const handleDragEnd = async (result: DropResult) => {
@@ -224,31 +228,31 @@ export function ChapterList({
 
                           {/* 編集ボタン */}
                           <button
-                            onClick={() => onEdit(chapter.id)}
-                            className={`p-2 rounded group ${
-                              theme === 'dark' 
-                                ? 'hover:bg-blue-900/30' 
-                                : 'hover:bg-blue-100'
-                            }`}
-                          >
-                            <svg
-                              className={`w-5 h-5 ${
-                                theme === 'dark' 
-                                  ? 'text-blue-400 group-hover:text-blue-300'
-                                  : 'text-blue-500 group-hover:text-blue-600'
-                              }`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              />
-                            </svg>
-                          </button>
+    onClick={() => router.push(`/admin/courses/${courseId}/chapters/${chapter.id}`)}
+    className={`p-2 rounded group ${
+      theme === 'dark' 
+        ? 'hover:bg-blue-900/30' 
+        : 'hover:bg-blue-100'
+    }`}
+  >
+    <svg
+      className={`w-5 h-5 ${
+        theme === 'dark' 
+          ? 'text-blue-400 group-hover:text-blue-300'
+          : 'text-blue-500 group-hover:text-blue-600'
+      }`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
+    </svg>
+  </button>
 
                           {/* 削除ボタン */}
                           <button

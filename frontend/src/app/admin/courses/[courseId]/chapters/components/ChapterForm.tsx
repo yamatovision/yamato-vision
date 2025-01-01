@@ -190,12 +190,18 @@ export function ChapterForm({
             </div>
 
             <MediaUpload
-            type={formData.content.type}
+  type={formData.content.type}
   currentUrl={formData.content.url}
-  onUpload={(url) => setFormData(prev => ({
+  onUpload={({ url, thumbnailUrl }) => setFormData(prev => ({
     ...prev,
-    content: { ...prev.content, url }
+    content: { 
+      ...prev.content, 
+      url,
+      thumbnailUrl 
+    }
   }))}
+  courseId={courseId}
+  chapterId={initialData?.id || ''}
 />
           </div>
         </section>

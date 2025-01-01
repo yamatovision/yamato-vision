@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { Chapter } from '@/types/course';
+import { ChapterProgress, MaterialProgress } from '@/types/progress';
 import { courseApi } from '@/lib/api/courses';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,13 @@ import { ProgressBar } from '../../../components/ProgressBar';
 import { TimeoutModal } from '@/app/user/courses/components/TimeoutModal';
 import { TimeoutWarning } from '@/app/user/courses/components/TimeoutWarning';
 
+interface ChapterState {
+  chapter: Chapter | null;
+  progress: ChapterProgress | null;
+  materials: MaterialProgress[];
+  loading: boolean;
+}
+
 export default function ChapterPage({ 
   params 
 }: { 
@@ -23,12 +31,19 @@ export default function ChapterPage({
 }) {
   const router = useRouter();
   const { theme } = useTheme();
+  
+  // 既存の状態
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
   const [timeoutType, setTimeoutType] = useState<'chapter' | 'course' | null>(null);
+
+  // 新しい状態
+  const [mediaCompleted, setMediaCompleted] = useState(false);
+  const [chapterProgress, setChapterProgress] = useState<ChapterProgress | null>(null);
+  const [materials, setMaterials] = useState<MaterialProgress[]>([]);
 
   useEffect(() => {
     const initializeChapter = async () => {
@@ -39,27 +54,38 @@ export default function ChapterPage({
         const startResponse = await courseApi.startChapter(params.courseId, params.chapterId);
         if (startResponse.success && startResponse.data.startedAt) {
           setStartTime(new Date(startResponse.data.startedAt));
+          setChapterProgress(startResponse.data.progress);
         }
 
-        // チャプター情報の取得
-        const response = await courseApi.getChapter(params.courseId, params.chapterId);
-        if (response.success && response.data) {
+        // チャプター情報と進捗を並行して取得
+        const [chapterResponse, progressResponse] = await Promise.all([
+          courseApi.getChapter(params.courseId, params.chapterId),
+          courseApi.getCurrentUserCourse(params.courseId)
+        ]);
+
+        if (chapterResponse.success && chapterResponse.data) {
           const parsedChapter = {
-            ...response.data,
-            content: response.data.content ? 
-              (typeof response.data.content === 'string' ? 
-                JSON.parse(response.data.content) : 
-                response.data.content
+            ...chapterResponse.data,
+            content: chapterResponse.data.content ? 
+              (typeof chapterResponse.data.content === 'string' ? 
+                JSON.parse(chapterResponse.data.content) : 
+                chapterResponse.data.content
               ) : null
           };
           setChapter(parsedChapter);
-          
-          // プログレスの取得
-          const progressResponse = await courseApi.getCurrentUserCourse(params.courseId);
-          if (progressResponse.success && progressResponse.data) {
-            setProgress(progressResponse.data.progress);
-          }
         }
+
+        if (progressResponse.success && progressResponse.data) {
+          setProgress(progressResponse.data.progress);
+          setMaterials(progressResponse.data.materials || []);
+          
+          // メディアの完了状態を確認
+          const currentMaterial = progressResponse.data.materials?.find(
+            m => m.materialId === chapterResponse.data?.content?.id
+          );
+          setMediaCompleted(!!currentMaterial?.completed);
+        }
+
       } catch (error) {
         console.error('Failed to load chapter:', error);
         toast.error('チャプターの読み込みに失敗しました');
@@ -71,6 +97,64 @@ export default function ChapterPage({
     initializeChapter();
   }, [params.courseId, params.chapterId]);
 
+  // メディア完了時のハンドラー
+  const handleMediaCompletion = async () => {
+    try {
+      if (!chapter?.content?.id) return;
+
+      const response = await courseApi.updateMaterialProgress(
+        params.courseId,
+        params.chapterId,
+        chapter.content.id,
+        {
+          completed: true,
+          lastAccessedAt: new Date(),
+        }
+      );
+
+      if (response.success) {
+        setMediaCompleted(true);
+        toast.success('メディアコンテンツを完了しました！');
+
+        // タスクがない場合はチャプター完了
+        if (!chapter.task) {
+          await handleChapterCompletion();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update media progress:', error);
+      toast.error('進捗の更新に失敗しました');
+    }
+  };
+
+  // チャプター完了のハンドラー
+  const handleChapterCompletion = async () => {
+    try {
+      const response = await courseApi.completeChapter(
+        params.courseId,
+        params.chapterId
+      );
+
+      if (response.success) {
+        toast.success('チャプターを完了しました！');
+        
+        // 進捗の更新
+        const progressResponse = await courseApi.getCurrentUserCourse(params.courseId);
+        if (progressResponse.success) {
+          setProgress(progressResponse.data.progress);
+        }
+
+        // 次のチャプターが存在する場合は自動的に移動
+        if (response.data.nextChapterId) {
+          router.push(`/user/courses/${params.courseId}/chapters/${response.data.nextChapterId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to complete chapter:', error);
+      toast.error('チャプター完了の処理に失敗しました');
+    }
+  };
+
   const handleTimeout = (type: 'chapter' | 'course') => {
     setTimeoutType(type);
     setShowTimeoutModal(true);
@@ -79,7 +163,7 @@ export default function ChapterPage({
   const handleTimeoutModalClose = () => {
     setShowTimeoutModal(false);
     if (timeoutType === 'course') {
-      router.push('/user/courses'); // コースタイムアウト時はコース一覧へ
+      router.push('/user/courses');
     }
   };
 
@@ -105,7 +189,6 @@ export default function ChapterPage({
 
   return (
     <div className="max-w-[800px] mx-auto pb-20 px-4">
-      {/* タイムアウトモーダル */}
       <TimeoutModal
         isOpen={showTimeoutModal}
         type={timeoutType || 'chapter'}
@@ -113,9 +196,7 @@ export default function ChapterPage({
         onAction={timeoutType === 'course' ? () => router.push('/shop') : undefined}
       />
 
-      {/* ヘッダー部分 */}
       <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg rounded-lg mb-6`}>
-        {/* 時間警告表示 */}
         {startTime && chapter.timeLimit && (
           <TimeRemaining
             startTime={startTime}
@@ -137,14 +218,16 @@ export default function ChapterPage({
         </div>
       </div>
 
-      {/* コンテンツ部分 */}
       <div className="space-y-6">
-        {/* メディアプレイヤー */}
         {chapter.content?.type === 'video' && (
           <div className="mb-6">
             <VideoPlayer 
               url={chapter.content.url} 
+              courseId={params.courseId}
+              chapterId={params.chapterId}
               transcription={chapter.content.transcription}
+              onCompletion={handleMediaCompletion}
+              completed={mediaCompleted}
             />
           </div>
         )}
@@ -153,12 +236,15 @@ export default function ChapterPage({
           <div className="mb-6">
             <AudioPlayer 
               url={chapter.content.url}
+              courseId={params.courseId}
+              chapterId={params.chapterId}
               transcription={chapter.content.transcription}
+              onCompletion={handleMediaCompletion}
+              completed={mediaCompleted}
             />
           </div>
         )}
 
-        {/* タスク部分 */}
         {chapter.task && (
           <div className="mb-6">
             <TaskDescription
@@ -171,9 +257,12 @@ export default function ChapterPage({
           </div>
         )}
 
-        {/* 進捗と時間 */}
         <div className="mt-8 space-y-4">
-          <ProgressBar progress={progress} />
+          <ProgressBar 
+            progress={progress}
+            mediaCompleted={mediaCompleted}
+            materials={materials}
+          />
           {startTime && chapter.timeLimit && (
             <div className="flex justify-between items-center">
               <TimeRemaining
