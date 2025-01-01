@@ -10,19 +10,18 @@ export interface ChapterContent {
   url: string;
   transcription?: string;
 }
-
 export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
-  content: ChapterContent;
+  content?: ChapterContent;  // オプショナルに変更
   timeLimit?: number;
   releaseTime?: number;
-  orderIndex: number;
-  task: {
-    description: string;
-    systemMessage: string;
+  orderIndex?: number;  // オプショナルに変更
+  task?: {  // オプショナルに変更
+    description?: string;
+    systemMessage?: string;
     referenceText?: string;
-    maxPoints: number;
+    maxPoints?: number;
   };
 }
 

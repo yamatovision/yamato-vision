@@ -14,89 +14,114 @@ const prisma = new PrismaClient();
 
 export class ChapterService {
   // チャプター作成
-  async createChapter(courseId: string, data: CreateChapterDTO) {
-    try {
-      // トランザクションで Chapter と Task を作成
-      const result = await prisma.$transaction(async (tx) => {
-        // 現在のコースの最大 orderIndex を取得
-        const maxOrderIndex = await tx.chapter.findFirst({
-          where: { courseId },
-          orderBy: { orderIndex: 'desc' },
-          select: { orderIndex: true }
-        });
+  // chapterService.ts の createChapter メソッドを修正
 
-        // 新しい orderIndex を設定（既存の最大値 + 1、または 0）
-        const newOrderIndex = (maxOrderIndex?.orderIndex ?? -1) + 1;
-
-        // 1. まずChapterを作成
-        const chapter = await tx.chapter.create({
-          data: {
-            courseId,
-            title: data.title,
-            subtitle: data.subtitle,
-            content: JSON.stringify(data.content),
-            timeLimit: data.timeLimit || 0,
-            releaseTime: data.releaseTime || 0,
-            orderIndex: newOrderIndex,
-            isVisible: true
-          }
-        });
-
-        // 2. 次にTaskを作成し、Chapterと関連付け
-        const task = await tx.task.create({
-          data: {
-            courseId,
-            title: data.title,
-            description: data.task.description,
-            systemMessage: data.task.systemMessage,
-            referenceText: data.task.referenceText,
-            maxPoints: data.task.maxPoints || 100,
-            chapter: {
-              connect: { id: chapter.id }
-            }
-          }
-        });
-
-        // 3. ChapterのtaskIdを更新
-        return tx.chapter.update({
-          where: { id: chapter.id },
-          data: { taskId: task.id },
-          include: { task: true }
-        });
+async createChapter(courseId: string, data: CreateChapterDTO) {
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 最大 orderIndex の取得
+      const maxOrderIndex = await tx.chapter.findFirst({
+        where: { courseId },
+        orderBy: { orderIndex: 'desc' },
+        select: { orderIndex: true }
       });
 
-      return result;
-    } catch (error) {
-      console.error('Error in createChapter:', error);
-      throw error;
-    }
-  }
+      const newOrderIndex = (maxOrderIndex?.orderIndex ?? -1) + 1;
 
+      // 1. Chapter作成 - 必須フィールドを最小限に
+      const chapter = await tx.chapter.create({
+        data: {
+          courseId,
+          title: data.title,
+          subtitle: data.subtitle || '',
+          content: JSON.stringify(data.content || { type: 'video', url: '' }), // デフォルト値を設定
+          timeLimit: data.timeLimit || 0,
+          releaseTime: data.releaseTime || 0,
+          orderIndex: newOrderIndex,
+          isVisible: true
+        }
+      });
+
+      // 2. Task作成 - 必須フィールドを最小限に
+      const task = await tx.task.create({
+        data: {
+          courseId,
+          title: data.title,
+          description: data.task?.description || '',
+          systemMessage: data.task?.systemMessage || '',
+          referenceText: data.task?.referenceText || '',
+          maxPoints: data.task?.maxPoints || 100,
+          chapter: {
+            connect: { id: chapter.id }
+          }
+        }
+      });
+
+      // 3. ChapterのtaskId更新
+      return tx.chapter.update({
+        where: { id: chapter.id },
+        data: { taskId: task.id },
+        include: { task: true }
+      });
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error in createChapter:', error);
+    throw error;
+  }
+}
 
   // チャプター更新
-  async updateChapter(chapterId: string, data: UpdateChapterDTO) {
+// chapterService.ts の updateChapter メソッドを修正
+
+async updateChapter(chapterId: string, data: UpdateChapterDTO) {
+  try {
+    // Chapter更新データの準備
     const updateData: any = {
-      ...(data.title && { title: data.title }),
+      ...(data.title !== undefined && { title: data.title }),
       ...(data.subtitle !== undefined && { subtitle: data.subtitle }),
-      ...(data.content && { content: JSON.stringify(data.content) }),
+      ...(data.content && { 
+        content: typeof data.content === 'string' 
+          ? data.content 
+          : JSON.stringify(data.content) 
+      }),
       ...(data.timeLimit !== undefined && { timeLimit: data.timeLimit }),
       ...(data.releaseTime !== undefined && { releaseTime: data.releaseTime }),
       ...(data.isVisible !== undefined && { isVisible: data.isVisible }),
-      ...(data.isFinalExam !== undefined && { isFinalExam: data.isFinalExam })
+      ...(data.isFinalExam !== undefined && { isFinalExam: data.isFinalExam }),
+      ...(data.isPerfectOnly !== undefined && { isPerfectOnly: data.isPerfectOnly })
     };
 
+    // Taskの更新が含まれている場合のみ実行
     if (data.task) {
-      await prisma.task.update({
-        where: { id: await this.getTaskIdByChapterId(chapterId) },
-        data: {
-          description: data.task.description,
-          systemMessage: data.task.systemMessage,
-          referenceText: data.task.referenceText,
-          maxPoints: data.task.maxPoints
-        }
+      const chapter = await prisma.chapter.findUnique({
+        where: { id: chapterId },
+        select: { taskId: true }
       });
+
+      if (chapter?.taskId) {
+        await prisma.task.update({
+          where: { id: chapter.taskId },
+          data: {
+            ...(data.task.description !== undefined && { 
+              description: data.task.description 
+            }),
+            ...(data.task.systemMessage !== undefined && { 
+              systemMessage: data.task.systemMessage 
+            }),
+            ...(data.task.referenceText !== undefined && { 
+              referenceText: data.task.referenceText 
+            }),
+            ...(data.task.maxPoints !== undefined && { 
+              maxPoints: data.task.maxPoints 
+            })
+          }
+        });
+      }
     }
 
+    // Chapterの更新を実行
     return prisma.chapter.update({
       where: { id: chapterId },
       data: updateData,
@@ -104,8 +129,11 @@ export class ChapterService {
         task: true
       }
     });
+  } catch (error) {
+    console.error('Error in updateChapter:', error);
+    throw error;
   }
-
+}
   // Helper method to get taskId by chapterId
   private async getTaskIdByChapterId(chapterId: string): Promise<string> {
     const chapter = await prisma.chapter.findUnique({

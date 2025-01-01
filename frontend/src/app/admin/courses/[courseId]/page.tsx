@@ -308,13 +308,20 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                   新規チャプター作成
-                </h2>
-                <ChapterForm
-                  courseId={course.id}
-                  onCancel={() => setIsAddingChapter(false)}
-                  onSuccess={handleAddChapterSuccess}
-                />
-              </div>
+                  </h2>
+    <ChapterForm
+      courseId={course.id}
+      initialData={editingChapterId 
+        ? course.chapters?.find(chapter => chapter.id === editingChapterId)
+        : undefined}
+      onCancel={() => {
+        setIsAddingChapter(false);
+        setEditingChapterId(null); // 追加
+      }}
+      onSuccess={editingChapterId ? handleEditSuccess : handleAddChapterSuccess}
+    />
+  </div>
+
             )}
           </div>
         )}

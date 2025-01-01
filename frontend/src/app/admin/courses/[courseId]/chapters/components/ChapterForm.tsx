@@ -31,7 +31,7 @@ export function ChapterForm({
     subtitle: initialData?.subtitle || '',
     content: {
       type: initialData?.content?.type || 'video',
-      url: initialData?.content?.url || '',
+      url: '', // 空文字列を許容
       transcription: initialData?.content?.transcription || ''
     },
     timeLimit: initialData?.timeLimit || 0,
@@ -46,56 +46,35 @@ export function ChapterForm({
     }
   });
   const validateForm = () => {
-    console.log('Validating form with data:', formData); // 追加
-    
     if (!formData.title.trim()) {
-        console.log('Title validation failed'); // 追加
-        toast.error('チャプタータイトルを入力してください');
-        return false;
+      toast.error('コースタイトルを入力してください');
+      return false;
     }
-    if (!formData.content.url) {
-        console.log('Media URL validation failed'); // 追加
-        toast.error('メディアコンテンツをアップロードしてください');
-        return false;
-    }
-    if (!formData.task.description.trim()) {
-        console.log('Task description validation failed'); // 追加
-        toast.error('課題説明を入力してください');
-        return false;
-    }
-    if (!formData.task.systemMessage.trim()) {
-        console.log('System message validation failed'); // 追加
-        toast.error('システムメッセージを入力してください');
-        return false;
-    }
-    console.log('All validations passed'); // 追加
     return true;
-};
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Submit button clicked'); // 追加
-    if (!validateForm()) return;
-
-    console.log('Form validation passed'); // 追加
-    setIsSubmitting(true);
-    try {
-      if (initialData) {
-        console.log('Updating chapter...'); // 追加
-        await courseApi.updateChapter(courseId, initialData.id, formData);
-        toast.success('チャプターを更新しました');
-      } else {
-        console.log('Creating chapter...', formData); // 追加
-        await courseApi.createChapter(courseId, formData);
-        toast.success('チャプターを作成しました');
-      }
-      onSuccess();
-    } catch (error) {
-      console.error('Error saving chapter:', error);
-      toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  console.log('Submit button clicked');
+  setIsSubmitting(true);
+
+  try {
+    if (initialData) {
+      console.log('Updating chapter...');
+      await courseApi.updateChapter(courseId, initialData.id, formData);
+      toast.success('チャプターを更新しました');
+    } else {
+      console.log('Creating chapter...', formData);
+      await courseApi.createChapter(courseId, formData);
+      toast.success('チャプターを作成しました');
+    }
+    onSuccess();
+  } catch (error) {
+    console.error('Error saving chapter:', error);
+    toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,
