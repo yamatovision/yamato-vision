@@ -20,28 +20,37 @@ export function CurrentCourse() {
   const { theme } = useTheme();
   const router = useRouter();
   const { courseData, loading, determineChapterProgress } = useCurrentCourse();
-
   const handleContinueLearning = async () => {
     if (!courseData) return;
     
     try {
-      const chapterResponse = await courseApi.getCurrentChapter(courseData.courseId);
-      
-      if (!chapterResponse.success || !chapterResponse.data) {
-        toast.error('チャプター情報の取得に失敗しました');
-        return;
+      console.log('Starting handleContinueLearning for course:', courseData.courseId);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/courses/user/${courseData.courseId}/current-chapter`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          },
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch current chapter');
       }
   
-      const { nextUrl } = chapterResponse.data;
-      
-      if (!nextUrl) {
-        toast.error('次のチャプターが見つかりません');
-        return;
-      }
+      const data = await response.json();
+      console.log('Current chapter response:', data);
   
-      router.push(nextUrl);
+      if (data.success && data.data && data.data.chapterId) {
+        console.log('Redirecting to chapter:', data.data.chapterId);
+        router.push(`/user/courses/${courseData.courseId}/chapters/${data.data.chapterId}`);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
-      console.error('チャプターへの移動エラー:', error);
+      console.error('Error in handleContinueLearning:', error);
       toast.error('チャプターへの移動に失敗しました');
     }
   };
