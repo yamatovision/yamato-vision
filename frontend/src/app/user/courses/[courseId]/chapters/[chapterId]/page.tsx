@@ -64,6 +64,7 @@ export default function ChapterPage({
         ]);
 
         if (chapterResponse.success && chapterResponse.data) {
+          console.log('チャプtー情報:', chapterResponse.data.content);
           const parsedChapter = {
             ...chapterResponse.data,
             content: chapterResponse.data.content ? 
@@ -219,18 +220,19 @@ export default function ChapterPage({
       </div>
 
       <div className="space-y-6">
-        {chapter.content?.type === 'video' && (
-          <div className="mb-6">
-            <VideoPlayer 
-              url={chapter.content.url} 
-              courseId={params.courseId}
-              chapterId={params.chapterId}
-              transcription={chapter.content.transcription}
-              onCompletion={handleMediaCompletion}
-              completed={mediaCompleted}
-            />
-          </div>
-        )}
+      {chapter.content?.type === 'video' && (
+  <div className="mb-6">
+    <VideoPlayer 
+      videoId={chapter.content.videoId}
+      courseId={params.courseId}
+      chapterId={params.chapterId}
+      transcription={chapter.content.transcription}
+      onCompletion={handleMediaCompletion}
+      completed={mediaCompleted}
+    />
+  </div>
+)}
+
 
         {chapter.content?.type === 'audio' && (
           <div className="mb-6">
