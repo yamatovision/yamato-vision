@@ -1,7 +1,7 @@
 // 基本的なチャプターの内容定義
 export interface ChapterContent {
   type: 'video' | 'audio';
-  url: string;
+  videoId?: string;  // URLの代わりにvideoIdを保存
   transcription?: string;
 }
 

@@ -10,6 +10,12 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { courseApi } from '@/lib/api/courses';
 
+interface ChapterContent {
+  type: 'video' | 'audio';
+  videoId: string;
+  transcription?: string;
+}
+
 export function CurrentCourse() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -35,11 +41,12 @@ export function CurrentCourse() {
   
       router.push(nextUrl);
     } catch (error) {
-      console.error('Error navigating to current chapter:', error);
+      console.error('チャプターへの移動エラー:', error);
       toast.error('チャプターへの移動に失敗しました');
     }
   };
 
+  // ローディング中の表示
   if (loading) {
     return (
       <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -51,6 +58,7 @@ export function CurrentCourse() {
     );
   }
 
+  // コースデータが存在しない場合の表示
   if (!courseData || !courseData.course) {
     return (
       <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -69,8 +77,51 @@ export function CurrentCourse() {
       title: chapter.title
     }));
 
-  // 現在のチャプターを取得（最初のチャプターを使用）
+  // コンテンツのパース関数
+  const parseContent = (contentString: string): ChapterContent => {
+    console.group('コンテンツ解析処理');
+    console.log('解析前のコンテンツ:', contentString);
+
+    try {
+      const parsed = JSON.parse(contentString);
+      const result = {
+        type: parsed.type || 'video',
+        videoId: parsed.videoId || '',
+        transcription: parsed.transcription || ''
+      };
+
+      console.log('解析結果:', result);
+      console.groupEnd();
+      return result;
+    } catch (error) {
+      console.error('コンテンツ解析エラー:', error);
+      console.groupEnd();
+      return {
+        type: 'video',
+        videoId: '',
+        transcription: ''
+      };
+    }
+  };
+
+  // 現在のチャプターを取得と処理
   const currentChapter = courseData.course.chapters[0];
+  console.group('チャプター情報');
+  console.log('取得したチャプター:', {
+    ID: currentChapter.id,
+    タイトル: currentChapter.title,
+    コンテンツ: currentChapter.content
+  });
+  console.log('コンテンツ型:', typeof currentChapter.content);
+
+  // パース処理
+  const parsedChapter = {
+    ...currentChapter,
+    content: parseContent(currentChapter.content as string)
+  };
+  
+  console.log('パース後のチャプター:', parsedChapter);
+  console.groupEnd();
 
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -82,18 +133,19 @@ export function CurrentCourse() {
 
       {/* チャプタープレビュー */}
       <ChapterPreview
-        chapter={currentChapter}
-        currentContent={{
-          type: 'video', // この部分は実際のデータに応じて変更
-          url: '', // 実際のURLを設定
-          duration: '12:30' // 実際の動画/音声の長さを設定
+        chapter={parsedChapter}
+        progress={{
+          status: determineChapterProgress(currentChapter),
+          startedAt: courseData.startedAt,
+          completedAt: courseData.completedAt,
+          timeOutAt: courseData.course.timeRemaining?.timeOutAt
         }}
       />
 
       {/* アクティブユーザー */}
       <ActiveUsers
-        users={[]} // 実際のユーザーデータを設定
-        totalCount={0} // 実際の総数を設定
+        users={[]} 
+        totalCount={0}
       />
 
       {/* 続きから学習するボタン */}

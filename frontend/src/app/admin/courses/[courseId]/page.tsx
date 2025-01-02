@@ -299,6 +299,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
                 onOrderUpdate={handleChapterOrderUpdate}
                 onToggleVisibility={handleToggleVisibility}
                 onTogglePerfectOnly={handleTogglePerfectOnly}
+                courseId={params.courseId} // 追加
               />
                 )}
               </>

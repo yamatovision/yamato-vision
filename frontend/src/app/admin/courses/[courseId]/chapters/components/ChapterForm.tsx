@@ -32,8 +32,7 @@ export function ChapterForm({
     subtitle: initialData?.subtitle || '',
     content: {
       type: initialData?.content?.type || 'video',
-      url: initialData?.content?.url || '', // 初期値を追加
-      thumbnailUrl: initialData?.content?.thumbnailUrl || '', // サムネイル用に追加
+      videoId: initialData?.content?.videoId || '',
       transcription: initialData?.content?.transcription || ''
     },
     timeLimit: initialData?.timeLimit || 0,
@@ -191,13 +190,12 @@ export function ChapterForm({
 
             <MediaUpload
   type={formData.content.type}
-  currentUrl={formData.content.url}
-  onUpload={({ url, thumbnailUrl }) => setFormData(prev => ({
+  currentVideoId={formData.content.videoId}
+  onUpload={({ videoId }) => setFormData(prev => ({
     ...prev,
-    content: { 
-      ...prev.content, 
-      url,
-      thumbnailUrl 
+    content: {
+      ...prev.content,
+      videoId
     }
   }))}
   courseId={courseId}

@@ -9,8 +9,7 @@ export type ChapterWithTask = PrismaChapter & {
 // メディアコンテンツの定義
 export interface ChapterContent {
   type: 'video' | 'audio';
-  url: string;
-  thumbnailUrl?: string;  // サムネイル用に追加
+  videoId: string;  // urlの代わりにvideoIdに変更
   transcription?: string;
 }
 

@@ -34,7 +34,11 @@ async createChapter(courseId: string, data: CreateChapterDTO) {
           courseId,
           title: data.title,
           subtitle: data.subtitle || '',
-          content: JSON.stringify(data.content || { type: 'video', url: '' }), // デフォルト値を設定
+          content: {
+            type: data.content?.type || 'video',
+            videoId: data.content?.videoId || '',
+            transcription: data.content?.transcription || ''
+          },
           timeLimit: data.timeLimit || 0,
           releaseTime: data.releaseTime || 0,
           orderIndex: newOrderIndex,
@@ -397,10 +401,7 @@ async getChapter(chapterId: string): Promise<ChapterWithTask | null> {
 
     return chapter;
   } catch (error) {
-    console.error('Error in getChapter service:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      chapterId
-    });
+    console.error('Error in getChapter service:', error);
     throw error;
   }
 }
