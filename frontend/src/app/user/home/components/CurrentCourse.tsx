@@ -20,6 +20,7 @@ export function CurrentCourse() {
   const { theme } = useTheme();
   const router = useRouter();
   const { courseData, loading, determineChapterProgress } = useCurrentCourse();
+  
   const handleContinueLearning = async () => {
     if (!courseData) return;
     
@@ -43,9 +44,13 @@ export function CurrentCourse() {
       const data = await response.json();
       console.log('Current chapter response:', data);
   
-      if (data.success && data.data && data.data.chapterId) {
-        console.log('Redirecting to chapter:', data.data.chapterId);
-        router.push(`/user/courses/${courseData.courseId}/chapters/${data.data.chapterId}`);
+      if (data.success && data.data) {
+        const chapterId = data.data.id || data.data.chapterId;
+        if (!chapterId) {
+          throw new Error('Chapter ID not found in response');
+        }
+        console.log('Redirecting to chapter:', chapterId);
+        router.push(`/user/courses/${courseData.courseId}/chapters/${chapterId}`);
       } else {
         throw new Error('Invalid response format');
       }
@@ -115,22 +120,27 @@ export function CurrentCourse() {
 
   // 現在のチャプターを取得と処理
   const currentChapter = courseData.course.chapters[0];
-  console.group('チャプター情報');
-  console.log('取得したチャプター:', {
-    ID: currentChapter.id,
-    タイトル: currentChapter.title,
-    コンテンツ: currentChapter.content
-  });
-  console.log('コンテンツ型:', typeof currentChapter.content);
+  let parsedChapter;
 
-  // パース処理
-  const parsedChapter = {
-    ...currentChapter,
-    content: parseContent(currentChapter.content as string)
-  };
-  
-  console.log('パース後のチャプター:', parsedChapter);
-  console.groupEnd();
+  // チャプターが存在する場合のみログを出力と処理を実行
+  if (currentChapter) {
+    console.group('チャプター情報');
+    console.log('取得したチャプター:', {
+      ID: currentChapter.id,
+      タイトル: currentChapter.title,
+      コンテンツ: currentChapter.content
+    });
+    console.log('コンテンツ型:', typeof currentChapter.content);
+
+    // パース処理
+    parsedChapter = {
+      ...currentChapter,
+      content: parseContent(currentChapter.content as string)
+    };
+    
+    console.log('パース後のチャプター:', parsedChapter);
+    console.groupEnd();
+  }
 
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -140,16 +150,18 @@ export function CurrentCourse() {
       {/* 進捗トラッカー */}
       <ProgressStages stages={activeChapters} />
 
-      {/* チャプタープレビュー */}
-      <ChapterPreview
-        chapter={parsedChapter}
-        progress={{
-          status: determineChapterProgress(currentChapter),
-          startedAt: courseData.startedAt,
-          completedAt: courseData.completedAt,
-          timeOutAt: courseData.course.timeRemaining?.timeOutAt
-        }}
-      />
+      {/* チャプタープレビュー - チャプターが存在する場合のみ表示 */}
+      {currentChapter && parsedChapter && (
+        <ChapterPreview
+          chapter={parsedChapter}
+          progress={{
+            status: determineChapterProgress(currentChapter),
+            startedAt: courseData.startedAt,
+            completedAt: courseData.completedAt,
+            timeOutAt: courseData.course.timeRemaining?.timeOutAt
+          }}
+        />
+      )}
 
       {/* アクティブユーザー */}
       <ActiveUsers

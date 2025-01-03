@@ -1,3 +1,4 @@
+// backend/src/courses/user/userCourseController.ts
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { userCourseService } from './userCourseService';
@@ -20,8 +21,40 @@ class UserCourseController {
     }
   }
 
+  async purchaseCourse(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const courseId = req.params.courseId;
 
-  
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Unauthorized' 
+        });
+      }
+
+      const result = await userCourseService.startCourse(userId, courseId);
+      
+      if ('error' in result) {
+        return res.status(400).json({
+          success: false,
+          message: result.error
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error purchasing course:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to purchase course'
+      });
+    }
+  }
+
   async getUserCourses(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
@@ -125,21 +158,13 @@ class UserCourseController {
       });
     }
   }
+
   async getCurrentChapter(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
       const { courseId } = req.params;
   
-      console.log('getCurrentChapter called with:', {
-        userId,
-        courseId,
-        params: req.params,
-        path: req.path,
-        url: req.url
-      });
-  
       if (!userId) {
-        console.log('No userId found in request');
         return res.status(401).json({ 
           success: false,
           message: 'Unauthorized' 
@@ -147,37 +172,28 @@ class UserCourseController {
       }
   
       const currentChapter = await userCourseService.getCurrentChapter(userId, courseId);
-      console.log('getCurrentChapter result:', currentChapter);
       
       if (!currentChapter) {
-        console.log('No chapter found');
         return res.status(404).json({ 
           success: false, 
-          message: 'No available chapter found' 
+          message: 'No chapter found' 
         });
       }
   
-      // チャプターの詳細情報を含むレスポンスを返す
-      const response = {
+      return res.json({
         success: true,
-        data: {
-          chapterId: currentChapter.id,
-          courseId: courseId,
-          nextUrl: `/user/courses/${courseId}/chapters/${currentChapter.id}`,
-          chapter: currentChapter
-        }
-      };
-      console.log('Sending response:', response);
-  
-      return res.json(response);
+        data: currentChapter
+      });
     } catch (error) {
       console.error('Error in getCurrentChapter:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to fetch current chapter' 
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch current chapter'
       });
     }
   }
 }
-// インスタンス作成とエクスポート
-export const userCourseController = new UserCourseController();
+
+// デフォルトエクスポートとしてインスタンスをエクスポート
+const userCourseController = new UserCourseController();
+export default userCourseController;

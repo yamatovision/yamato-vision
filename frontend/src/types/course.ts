@@ -61,12 +61,9 @@ export interface BaseCourse {
   title: string;
   description: string;
   thumbnail?: string;
-  gemCost: number;
   levelRequired?: number;
   rankRequired?: string;
   timeLimit?: number;
-  passingScore: number;
-  excellentScore: number;
   isPublished: boolean;
   isArchived: boolean;
   publishedAt?: Date;
@@ -74,18 +71,13 @@ export interface BaseCourse {
   createdAt: Date;
   updatedAt: Date;
   chapters?: Chapter[];
-  stage?: string;
-  level?: string;
-  progress?: number;
   lastAccessedChapterId?: string;
 }
 
 // ショップ表示用のコース情報
 export interface ShopCourse extends Omit<BaseCourse, 'gemCost'> {
   status: CourseStatus;
-  gemCost?: number;
   gradient?: string;
-  archiveUntil?: string;
   completion?: {
     badges?: {
       completion?: boolean;
@@ -99,27 +91,22 @@ export interface CreateCourseDTO {
   title: string;
   description: string;
   thumbnail?: string;
-  gemCost: number;
   levelRequired?: number;
   rankRequired?: string;
   timeLimit?: number;
-  passingScore: number;
-  excellentScore: number;
+  // 削除: gemCost, passingScore, excellentScore
 }
-
 // コース更新用DTO
 export interface UpdateCourseDTO {
   title?: string;
   description?: string;
   thumbnail?: string;
-  gemCost?: number;
   levelRequired?: number;
   rankRequired?: string;
   timeLimit?: number;
-  passingScore?: number;
-  excellentScore?: number;
   isPublished?: boolean;
   isArchived?: boolean;
+  // 削除: gemCost, passingScore, excellentScore
 }
 
 // チャプター作成用DTO
@@ -164,16 +151,6 @@ export interface ChapterResponse {
   data: Chapter;
 }
 
-export interface PurchaseResponse {
-  success: boolean;
-  error?: string;
-  userCourse?: {
-    id: string;
-    courseId: string;
-    progress: number;
-    startedAt: Date;
-  };
-}
 
 // ユーザーコース関連の型定義
 export interface CourseChapter {

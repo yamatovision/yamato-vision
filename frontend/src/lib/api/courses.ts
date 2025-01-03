@@ -40,11 +40,6 @@ interface UserCourse {
   completedAt?: Date;
 }
 
-interface PurchaseResponse extends BaseResponse {
-  data: {
-    userCourse: UserCourse;
-  };
-}
 
 interface CurrentCourseResponse extends BaseResponse {
   data: {
@@ -261,25 +256,6 @@ updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
     }
   },
 
-  // コース購入
-  purchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/user/${courseId}/purchase`, 
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      }
-    );
-    
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result.message || 'Failed to purchase course');
-    }
-    return { 
-      success: true, 
-      data: result 
-    };
-  },
 
   // コース開始
   startCourse: async (courseId: string): Promise<APIResponse<{ success: boolean; data: any }>> => {
@@ -415,14 +391,6 @@ getCurrentUserCourse: async (courseId?: string) => {
   }
 },
 
-expireArchiveAccess: async (courseId: string) => {
-  try {
-    const response = await api.post(`/courses/user/${courseId}/expire-archive`);
-    return response.data;
-  } catch (error) {
-    throw handleApiError(error);
-  }
-},
 // src/lib/api/courses.ts に追加
 startChapter: async (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
   try {
@@ -452,25 +420,6 @@ startChapter: async (courseId: string, chapterId: string): Promise<APIResponse<a
   }
 },
 
-// repurchaseCourse メソッドの追加
-repurchaseCourse: async (courseId: string): Promise<PurchaseResponse> => {
-  const response = await fetch(
-    `${FRONTEND_API_BASE}/courses/user/${courseId}/repurchase`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    }
-  );
-  
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.message || 'Failed to repurchase course');
-  }
-  return { 
-    success: true, 
-    data: result 
-  };
-},
   // チャプター作成
   createChapter: async (courseId: string, data: CreateChapterDTO) => {
     const { waitTime, ...restData } = data;

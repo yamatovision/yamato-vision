@@ -15,7 +15,6 @@ export function RepurchaseConfirmModal({
   isOpen, 
   onClose, 
   courseTitle,
-  gemCost,
   onConfirm 
 }: RepurchaseConfirmModalProps) {
   const { theme } = useTheme();
@@ -38,17 +37,7 @@ export function RepurchaseConfirmModal({
         }`}>
           『{courseTitle}』を再購入します。
         </p>
-        <div className="flex items-center justify-center space-x-2 mb-6">
-          <span className="text-yellow-400 text-xl">💎</span>
-          <span className={`text-lg font-bold ${
-            theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-          }`}>
-            {gemCost}
-          </span>
-          <span className={
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-          }>ジェム</span>
-        </div>
+        
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}

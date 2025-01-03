@@ -1,5 +1,6 @@
+// backend/src/courses/user/userCourseRoutes.ts
 import { Router } from 'express';
-import { userCourseController } from './userCourseController';
+import userCourseController from './userCourseController';
 import { authMiddleware } from '../../auth/authMiddleware';
 
 const router = Router();
@@ -8,13 +9,14 @@ const router = Router();
 router.use(authMiddleware);
 
 // コースの一覧と取得
-router.get('/available', userCourseController.getAvailableCourses);
-router.get('/user-courses', userCourseController.getUserCourses);
-router.get('/current', userCourseController.getCurrentUserCourse);
-router.get('/:courseId/current', userCourseController.getCurrentUserCourseById);
-router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter); // 修正
+router.get('/available', userCourseController.getAvailableCourses.bind(userCourseController));
+router.get('/user-courses', userCourseController.getUserCourses.bind(userCourseController));
+router.get('/current', userCourseController.getCurrentUserCourse.bind(userCourseController));
+router.get('/:courseId/current', userCourseController.getCurrentUserCourseById.bind(userCourseController));
+router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter.bind(userCourseController));
 
 // コースのアクション
-router.post('/:courseId/start', userCourseController.startCourse);
+router.post('/:courseId/start', userCourseController.startCourse.bind(userCourseController));
+router.post('/:courseId/purchase', userCourseController.purchaseCourse.bind(userCourseController));
 
 export const userCourseRoutes = router;

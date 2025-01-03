@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { CourseStatus } from '../courseTypes';  // 定数をインポート
-
+import { CourseStatus } from '../courseTypes';
 import { 
   CourseWithStatus, 
   USER_RANKS, 
@@ -12,6 +11,7 @@ const prisma = new PrismaClient();
 
 export class UserCourseService {
   async getAvailableCourses(userId: string): Promise<CourseWithStatus[]> {
+    console.log('=== Getting Available Courses ===');
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -28,7 +28,13 @@ export class UserCourseService {
         }
       }
     });
-
+  
+    console.log('Found User:', {
+      id: userId,
+      rank: user?.rank,
+      level: user?.level,
+      rankValue: user ? USER_RANKS[user.rank as UserRank] : null
+    });
     if (!user || user.rank === '退会者') {
       return [];
     }
@@ -44,22 +50,37 @@ export class UserCourseService {
     });
 
     return courses.map(course => {
+      console.log(`\nProcessing Course: ${course.id}`);
       const userCourse = user.courses.find(uc => uc.courseId === course.id);
       
+      console.log('Course Details:', {
+        id: course.id,
+        title: course.title,
+        levelRequired: course.levelRequired,
+        rankRequired: course.rankRequired,
+        requirementType: course.requirementType
+      });
+  
       let status: CourseStatus;
       if (userCourse) {
         if (userCourse.isTimedOut) {
-          status = CourseStatus.FAILED;  // 定数を使用
+          status = 'failed';
         } else {
           status = userCourse.status as CourseStatus;
         }
       } else if (this.checkCourseRequirements(user, course)) {
-        status = CourseStatus.AVAILABLE;
+        status = 'available';
       } else {
-        status = CourseStatus.RESTRICTED;
+        status = 'restricted';
       }
-            
-
+  
+      console.log('Determined Status:', {
+        courseId: course.id,
+        status,
+        hasUserCourse: !!userCourse,
+        userCourseStatus: userCourse?.status
+      });
+  
       return {
         ...course,
         status,
@@ -71,87 +92,164 @@ export class UserCourseService {
     user: { level: number; rank: string },
     course: { levelRequired?: number | null; rankRequired?: string | null; requirementType: string }
   ): boolean {
+    console.log('=== Course Requirements Check ===');
+    console.log('User Details:', {
+      rank: user.rank,
+      rankValue: USER_RANKS[user.rank as UserRank],
+      level: user.level
+    });
+
+    console.log('Course Requirements:', {
+      levelRequired: course.levelRequired,
+      rankRequired: course.rankRequired,
+      rankRequiredValue: course.rankRequired ? USER_RANKS[course.rankRequired as UserRank] : null,
+      requirementType: course.requirementType
+    });
+
     const levelCheck = !course.levelRequired || user.level >= course.levelRequired;
     const rankCheck = !course.rankRequired || 
       USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank];
 
-    return course.requirementType === 'AND' 
+    console.log('Requirement Checks:', {
+      levelCheck: {
+        result: levelCheck,
+        comparison: `${user.level} >= ${course.levelRequired}`
+      },
+      rankCheck: {
+        result: rankCheck,
+        comparison: `${USER_RANKS[user.rank as UserRank]} >= ${course.rankRequired ? USER_RANKS[course.rankRequired as UserRank] : 'N/A'}`
+      }
+    });
+
+    const finalResult = course.requirementType === 'AND' 
       ? levelCheck && rankCheck 
       : levelCheck || rankCheck;
+
+    console.log('Final Result:', {
+      result: finalResult,
+      logic: course.requirementType === 'AND' ? 'levelCheck && rankCheck' : 'levelCheck || rankCheck'
+    });
+
+    return finalResult;
   }
 
   async startCourse(userId: string, courseId: string) {
     return await prisma.$transaction(async (tx) => {
-
-      // 既存のアクティブなコースを失敗状態に
+      console.log('Starting transaction for startCourse:', { userId, courseId });
+  
+      // 既存のアクティブなコースを検索
       const existingActiveCourse = await tx.userCourse.findFirst({
         where: {
           userId,
           isActive: true,
         },
       });
-
+      console.log('Existing active course:', existingActiveCourse);
+  
+      // 既存のアクティブコースがある場合は失敗状態に
       if (existingActiveCourse) {
-        await tx.userCourse.update({
-          where: { id: existingActiveCourse.id },
-          data: { 
-            isActive: false,
-            status: 'FAILED',
-            certificationEligibility: false
-          },
-        });
+        try {
+          console.log('Attempting to deactivate course:', existingActiveCourse.id);
+          const deactivatedCourse = await tx.userCourse.update({
+            where: { id: existingActiveCourse.id },
+            data: { 
+              isActive: false,
+              status: 'FAILED',
+              certificationEligibility: false
+            },
+          });
+          console.log('Successfully deactivated course:', deactivatedCourse);
+        } catch (error) {
+          console.error('Failed to deactivate existing course:', error);
+          throw new Error('Failed to start course: Could not deactivate existing course');
+        }
       }
-
-      // 新しいコースの開始
-      const userCourse = await tx.userCourse.upsert({
-        where: {
-          userId_courseId: {
-            userId,
-            courseId,
+  
+      try {
+        console.log('Creating/updating new course');
+        const userCourse = await tx.userCourse.upsert({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId,
+            },
           },
-        },
-        update: {
-          isActive: true,
-          startedAt: new Date(),
-          status: 'ACTIVE',
-          progress: 0,
-          completedAt: null,
-          isTimedOut: false,
-          timeOutAt: null,
-        },
-        create: {
-          userId,
-          courseId,
-          status: 'ACTIVE',
-          isActive: true,
-          startedAt: new Date(),
-          certificationEligibility: true
-        },
-      });
-
-      // 最初のチャプターの進捗を作成
-      const firstChapter = await tx.chapter.findFirst({
-        where: { courseId },
-        orderBy: { orderIndex: 'asc' },
-      });
-
-      if (firstChapter) {
-        await tx.userChapterProgress.create({
-          data: {
-            userId,
-            courseId,
-            chapterId: firstChapter.id,
-            status: 'IN_PROGRESS',
+          update: {
+            isActive: true,
             startedAt: new Date(),
-            lessonWatchRate: 0
+            status: 'ACTIVE',
+            progress: 0,
+            completedAt: null,
+            isTimedOut: false,
+            timeOutAt: null,
+          },
+          create: {
+            userId,
+            courseId,
+            status: 'ACTIVE',
+            isActive: true,
+            startedAt: new Date(),
+            certificationEligibility: true
           },
         });
+        console.log('Successfully created/updated course:', userCourse);
+  
+        // 最初のチャプターの進捗を作成
+        const firstChapter = await tx.chapter.findFirst({
+          where: { courseId },
+          orderBy: { orderIndex: 'asc' },
+        });
+  
+        if (firstChapter) {
+          // 既存の進捗を確認
+          const existingProgress = await tx.userChapterProgress.findUnique({
+            where: {
+              userId_courseId_chapterId: {
+                userId,
+                courseId,
+                chapterId: firstChapter.id
+              }
+            }
+          });
+  
+          if (!existingProgress) {
+            // 進捗が存在しない場合のみ作成
+            await tx.userChapterProgress.create({
+              data: {
+                userId,
+                courseId,
+                chapterId: firstChapter.id,
+                status: 'IN_PROGRESS',
+                startedAt: new Date(),
+                lessonWatchRate: 0
+              },
+            });
+          } else {
+            // 既存の進捗を更新
+            await tx.userChapterProgress.update({
+              where: {
+                userId_courseId_chapterId: {
+                  userId,
+                  courseId,
+                  chapterId: firstChapter.id
+                }
+              },
+              data: {
+                status: 'IN_PROGRESS',
+                startedAt: new Date(),
+                lessonWatchRate: 0
+              }
+            });
+          }
+        }
+  
+        return { success: true, data: userCourse };
+      } catch (error) {
+        console.error('Failed to create/update course:', error);
+        throw error;
       }
-
-      return { success: true, data: userCourse };
     });
   }
-
   async getCurrentUserCourse(userId: string, courseId?: string) {
     const whereClause: any = {
       userId,
@@ -179,7 +277,6 @@ export class UserCourseService {
     });
   
     if (userCourse) {
-      // タイムアウトチェック
       if (userCourse.courseId) {
         const timeoutCheck = await timeoutService.checkCourseTimeout(userId, userCourse.courseId);
         if (timeoutCheck.isTimedOut) {
@@ -192,18 +289,33 @@ export class UserCourseService {
     return userCourse;
   }
 
-  // 復活させた getCurrentChapter
   async getCurrentChapter(userId: string, courseId: string) {
     console.log('Getting current chapter for:', { userId, courseId });
   
-    // Get all chapter progress for this course
+    const userCourse = await prisma.userCourse.findUnique({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId
+        }
+      }
+    });
+  
+    if (!userCourse || !userCourse.isActive) {
+      throw new Error('Active course not found');
+    }
+  
     const chapterProgress = await prisma.userChapterProgress.findMany({
       where: {
         userId,
         courseId,
       },
       include: {
-        chapter: true,
+        chapter: {
+          include: {
+            task: true
+          }
+        },
       },
       orderBy: {
         chapter: {
@@ -212,27 +324,33 @@ export class UserCourseService {
       },
     });
   
-    // Get all chapters for this course
     const courseChapters = await prisma.chapter.findMany({
       where: {
         courseId,
+      },
+      include: {
+        task: true,
       },
       orderBy: {
         orderIndex: 'asc',
       },
     });
   
-    // Find the first incomplete chapter
     const nextChapter = courseChapters.find(chapter => {
       const progress = chapterProgress.find(p => p.chapterId === chapter.id);
       return !progress || progress.status !== 'COMPLETED';
     });
   
-    // If all chapters are completed, return the last chapter
-    return nextChapter || courseChapters[courseChapters.length - 1];
+    if (!nextChapter) {
+      return courseChapters[courseChapters.length - 1];
+    }
+  
+    return {
+      ...nextChapter,
+      progress: chapterProgress.find(p => p.chapterId === nextChapter.id)
+    };
   }
 
-  // 復活させた getUserCourses
   async getUserCourses(userId: string) {
     return prisma.userCourse.findMany({
       where: { userId },
@@ -262,7 +380,7 @@ export class UserCourseService {
         }
       },
       data: {
-        status: 'FAILED',
+        status: 'failed',
         isTimedOut: true,
         timeOutAt: new Date(),
         isActive: false,
@@ -275,7 +393,7 @@ export class UserCourseService {
     userId: string,
     courseId: string,
     totalExperienceRate: number
-  ) {
+  ): Promise<CourseStatus> {
     const userCourse = await prisma.userCourse.findUnique({
       where: {
         userId_courseId: { userId, courseId }
@@ -283,15 +401,15 @@ export class UserCourseService {
     });
 
     if (!userCourse?.certificationEligibility) {
-      return 'COMPLETED';
+      return 'completed';
     }
 
     if (totalExperienceRate >= 95) {
-      return 'PERFECT';
+      return 'perfect';
     } else if (totalExperienceRate >= 85) {
-      return 'CERTIFIED';
+      return 'certified';
     } else {
-      return 'COMPLETED';
+      return 'completed';
     }
   }
 
