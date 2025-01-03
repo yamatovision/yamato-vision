@@ -9,12 +9,28 @@ import { RichTextEditor } from './RichTextEditor';
 import { MediaUpload } from './MediaUpload';
 import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
 import { TIME_VALIDATION } from '@/types/timeout';  // 追加
+import { TaskForm } from './TaskForm';  // この行を追加
+
 
 interface ChapterFormProps {
   initialData?: Chapter;
   courseId: string;
   onCancel: () => void;
   onSuccess: () => void;
+}
+
+interface TaskFormProps {
+  initialData?: Task;
+  onSubmit: (taskData: CreateTaskDTO) => Promise<void>;
+  onCancel: () => void;
+  disabled?: boolean;
+}
+
+interface CreateTaskDTO {
+  title: string;
+  description: string;
+  systemMessage: string;
+  maxPoints: number;
 }
 
 export function ChapterForm({
@@ -26,7 +42,6 @@ export function ChapterForm({
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'task'>('basic');
-
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     subtitle: initialData?.subtitle || '',
@@ -40,10 +55,11 @@ export function ChapterForm({
     orderIndex: initialData?.orderIndex || 0,
     task: {
       description: initialData?.task?.description || '',
-      systemMessage: initialData?.task?.systemMessage || '',
-      referenceText: initialData?.task?.referenceText || '',
+      materials: initialData?.task?.materials || '',
+      task: initialData?.task?.task || '',
+      evaluationCriteria: initialData?.task?.evaluationCriteria || '',
       maxPoints: initialData?.task?.maxPoints || 100,
-      type: initialData?.task?.type || 'standard'
+      systemMessage: '' // TaskFormで構築されたシステムメッセージが格納される
     }
   });
 
@@ -213,67 +229,23 @@ export function ChapterForm({
           }`}>
             課題設定
           </h3>
-          <div className="space-y-6">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-              }`}>
-                課題説明 *
-              </label>
-              <RichTextEditor
-                value={formData.task.description}
-                onChange={(value) => setFormData(prev => ({
-                  ...prev,
-                  task: { ...prev.task, description: value }
-                }))}
-                placeholder="課題の説明を入力してください"
-                label="課題説明"
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-              }`}>
-                システムメッセージ *
-              </label>
-              <textarea
-                value={formData.task.systemMessage}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  task: { ...prev.task, systemMessage: e.target.value }
-                }))}
-                className={`w-full h-32 rounded-lg p-3 ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 text-white border-gray-600'
-                    : 'bg-white text-gray-900 border-gray-200'
-                } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                placeholder="AIによる採点のためのシステムメッセージを入力してください"
-                required
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-              }`}>
-                参考テキスト
-              </label>
-              <textarea
-                value={formData.task.referenceText}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  task: { ...prev.task, referenceText: e.target.value }
-                }))}
-                className={`w-full h-32 rounded-lg p-3 ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 text-white border-gray-600'
-                    : 'bg-white text-gray-900 border-gray-200'
-                } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-                placeholder="課題の参考となるテキストを入力してください"
-              />
-            </div>
-          </div>
+          <TaskForm
+            initialData={initialData?.task}
+            onSubmit={async (taskData) => {
+              setFormData(prev => ({
+                ...prev,
+                task: {
+                  description: taskData.description,
+                  materials: taskData.materials,
+                  task: taskData.task,
+                  evaluationCriteria: taskData.evaluationCriteria,
+                  maxPoints: taskData.maxPoints,
+                  systemMessage: taskData.systemMessage
+                }
+              }));
+            }}
+            disabled={isSubmitting}
+          />
         </section>
 
         {/* 操作ボタン */}
@@ -291,16 +263,16 @@ export function ChapterForm({
             キャンセル
           </button>
           <button
-  type="submit"
-  className={`px-6 py-2 rounded-lg ${
-    theme === 'dark'
-      ? 'bg-blue-600 hover:bg-blue-700'
-      : 'bg-blue-500 hover:bg-blue-600'
-  } text-white transition-colors`}
-  disabled={isSubmitting}
->
-  {isSubmitting ? '保存中...' : '保存'}
-</button>
+            type="submit"
+            className={`px-6 py-2 rounded-lg ${
+              theme === 'dark'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white transition-colors`}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? '保存中...' : '保存'}
+          </button>
         </div>
       </form>
 
@@ -310,13 +282,6 @@ export function ChapterForm({
         </div>
       )}
     </div>
-);
-
-
-
-
-
-
-
-
+  );
 }
+

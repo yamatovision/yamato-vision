@@ -50,6 +50,7 @@ model Chapter {
   createdAt     DateTime                   @default(now())
   updatedAt     DateTime                   @updatedAt
   taskId        String?                    @unique
+  experienceWeight Int @default(100)  // 経験値の重み付けを追加
   releaseTime   Int?
   content       Json
   isPerfectOnly Boolean                    @default(false)
@@ -66,16 +67,15 @@ model Course {
   title           String
   description     String
   level           Int                   @default(1)
-  gemCost         Int                   @default(0)
   rankRequired    String?
   levelRequired   Int?
+   requirementType String                @default("OR")  // 追加
+  canEarnHigherStatus Boolean           @default(true)  // 追加
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   archivedAt      DateTime?
-  excellentScore  Int                   @default(95)
   isArchived      Boolean               @default(false)
   isPublished     Boolean               @default(false)
-  passingScore    Int                   @default(60)
   publishedAt     DateTime?
   thumbnail       String?
   timeLimit       Int?
@@ -93,12 +93,11 @@ model UserCourse {
   progress        Int       @default(0)
   startedAt       DateTime?
   completedAt     DateTime?
-  status          String    @default("INACTIVE")
+  status          String    @default("RESTRICTED")  // String型のまま
   isActive        Boolean   @default(false)
-  archiveUntil    DateTime?
   isTimedOut      Boolean   @default(false)
-  repurchasePrice Int?
   timeOutAt       DateTime?
+    certificationEligibility Boolean  @default(true)  // 追加
   course          Course    @relation(fields: [courseId], references: [id])
   user            User      @relation(fields: [userId], references: [id])
 
@@ -322,6 +321,7 @@ model UserChapterProgress {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   isTimedOut  Boolean   @default(false)
+  lessonWatchRate Float     @default(0)  // 追加
   timeOutAt   DateTime?
   chapter     Chapter   @relation(fields: [chapterId], references: [id])
   course      Course    @relation(fields: [courseId], references: [id])

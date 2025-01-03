@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import { evaluationService } from '../submissions/evaluationService';
+
 import { 
   CreateTaskDTO, 
   UpdateTaskDTO, 
@@ -67,29 +69,45 @@ export class TaskService {
   }
 
   // 課題評価
-  async evaluateSubmission(context: EvaluationContext): Promise<TaskEvaluationResult> {
-    // 実装は既存のものを使用
-    try {
-      const mockResult: TaskEvaluationResult = {
-        points: Math.floor(context.maxPoints * 0.8),
-        feedback: "AIによる採点機能は現在実装中です",
-        detail: {
-          reasoning: "採点システム構築中",
-          breakdowns: [
-            {
-              category: "総合評価",
-              score: Math.floor(context.maxPoints * 0.8),
-              comment: "AI採点の詳細は準備中です"
-            }
-          ]
-        }
-      };
-      return mockResult;
-    } catch (error) {
-      console.error('Evaluation error:', error);
-      throw new Error('課題の評価に失敗しました');
-    }
+  
+async evaluateSubmission(context: EvaluationContext): Promise<TaskEvaluationResult> {
+  try {
+    // システムメッセージから各セクションを抽出
+    const materials = this.extractSection(context.systemMessage, 'materials');
+    const task = this.extractSection(context.systemMessage, 'task');
+    const evaluationCriteria = this.extractSection(context.systemMessage, 'evaluation_criteria');
+
+    const result = await evaluationService.evaluateSubmission({
+      materials,
+      task,
+      evaluationCriteria,
+      submission: context.submission
+    });
+
+    return {
+      points: result.evaluation.total_score,
+      feedback: result.evaluation.feedback,
+      detail: {
+        reasoning: result.evaluation.feedback,
+        breakdowns: [{
+          category: "総合評価",
+          score: result.evaluation.total_score,
+          comment: result.evaluation.next_step
+        }]
+      }
+    };
+  } catch (error) {
+    console.error('Evaluation error:', error);
+    throw new Error('課題の評価に失敗しました');
   }
+}
+
+// XMLタグからコンテンツを抽出するヘルパー関数
+private extractSection(text: string, tag: string): string {
+  const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+  const match = text.match(regex);
+  return match ? match[1].trim() : '';
+}
 
   // 評価結果保存
   async saveEvaluation(

@@ -8,7 +8,6 @@ const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
 const MILLISECONDS_PER_MINUTE = 60 * 1000;
 
 export class TimeoutService {
-  // 既存のメソッドはそのまま維持
   async checkChapterTimeout(userId: string, courseId: string, chapterId: string): Promise<TimeoutCheckResult> {
     const progress = await prisma.userChapterProgress.findUnique({
       where: {
@@ -72,30 +71,27 @@ export class TimeoutService {
     const timeDiff = now.getTime() - userCourse.startedAt.getTime();
 
     if (timeDiff > timeLimit && !userCourse.isTimedOut) {
-      const repurchasePrice = Math.floor(userCourse.course.gemCost * 0.1);
-
       await prisma.userCourse.update({
         where: { id: userCourse.id },
         data: {
           isTimedOut: true,
           timeOutAt: now,
-          status: 'repurchasable',
+          status: 'FAILED',
           isActive: false,
-          repurchasePrice
+          certificationEligibility: false
         }
       });
 
       return {
         isTimedOut: true,
         type: 'course',
-        message: 'コースの期限が終了しました。再購入が必要です。'
+        message: 'コースの期限が終了しました。'
       };
     }
 
     return { isTimedOut: false, type: 'course' };
   }
 
-  // 既存のメソッドを維持しながら、新しい計算メソッドを追加
   calculateRemainingTime(startTime: Date, timeLimit: number): number {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
@@ -128,7 +124,6 @@ export class TimeoutService {
     return timeOutDate;
   }
 
-  // 新しいユーティリティメソッド
   getWarningLevel(remainingTime: TimeCalculation): TimeWarningLevel {
     const totalHours = (remainingTime.days * 24) + remainingTime.hours;
     

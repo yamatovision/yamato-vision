@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { timeoutService } from '../timeouts/timeoutService';
+import { CourseStatus } from '../courseTypes';  // 追加
 
 import { 
   CreateChapterDTO, 
@@ -78,6 +79,12 @@ async createChapter(courseId: string, data: CreateChapterDTO) {
 
   // チャプター更新
 // chapterService.ts の updateChapter メソッドを修正
+private getFinalStatus(isPerfect: boolean): CourseStatus {
+  if (isPerfect) {
+    return 'perfect';  // 小文字に変更
+  }
+  return 'completed';  // 小文字に変更
+}
 
 async updateChapter(chapterId: string, data: UpdateChapterDTO) {
   try {
@@ -245,13 +252,11 @@ async completeChapter(userId: string, courseId: string, chapterId: string) {
           }
         },
         data: {
-          status: allChaptersResult.allPerfect ? 'perfect' : 'completed_archive',
+          status: this.getFinalStatus(allChaptersResult.allPerfect),
           completedAt: new Date(),
-          archiveUntil: allChaptersResult.allPerfect 
-            ? null 
-            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7日間
+          isActive: false
         }
-      });
+      });      
     }
 
     return nextChapter;
@@ -478,25 +483,11 @@ async checkChapterAccess(
       return { canAccess: true };
     }
 
-    // アーカイブ期間中のチェック
-    if (userCourse.status === 'completed_archive') {
-      if (userCourse.archiveUntil && userCourse.archiveUntil > new Date()) {
-        return { canAccess: true, mode: 'archive' };
-      } else {
-        // アーカイブ期間終了
-        await prisma.userCourse.update({
-          where: { id: userCourse.id },
-          data: {
-            status: 'repurchasable',
-            archiveUntil: null
-          }
-        });
-        return { 
-          canAccess: false, 
-          message: 'アーカイブ期間が終了しました。再購入が必要です。'
-        };
-      }
+
+    if (['COMPLETED', 'CERTIFIED', 'PERFECT'].includes(userCourse.status)) {
+      return { canAccess: true };
     }
+
 
     // 前のチャプターの完了チェック
     if (chapter.orderIndex > 0) {
@@ -556,5 +547,6 @@ async checkChapterAccess(
     return { canAccess: true };
   }
 }
+
 
 export const chapterService = new ChapterService();

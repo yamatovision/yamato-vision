@@ -45,15 +45,13 @@ export interface AttachmentFile {
 
 // コースのステータス定義
 export type CourseStatus = 
-  | 'unlocked'          // 購入済み（未開始）
-  | 'available'         // 購入可能
-  | 'level_locked'      // レベル制限
-  | 'rank_locked'       // 階級制限
-  | 'complex'           // 複合制限
-  | 'active'           // 受講中
-  | 'perfect'          // Perfect達成（無期限アクセス権）
-  | 'completed_archive' // 完了（1週間限定アーカイブ）
-  | 'repurchasable';    // 再購入必要
+  | 'restricted'   // 条件未達成
+  | 'available'    // 受講可能
+  | 'active'       // 受講中
+  | 'completed'    // 通常クリア
+  | 'certified'    // 認証バッジ獲得
+  | 'perfect'      // パーフェクト達成
+  | 'failed';      // 失敗
 
 
 

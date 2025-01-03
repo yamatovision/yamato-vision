@@ -1,5 +1,7 @@
-// backend/src/courses/user/userCourseTypes.ts
+// userCourseTypes.ts
 import { Course } from '@prisma/client';
+// CourseStatusのインポートを追加
+import { CourseStatus } from '../courseTypes';
 
 export const USER_RANKS = {
   退会者: 0,
@@ -13,20 +15,12 @@ export const USER_RANKS = {
 
 export type UserRank = keyof typeof USER_RANKS;
 
-export type CourseStatus = 
-  | 'unlocked'
-  | 'available'
-  | 'level_locked'
-  | 'rank_locked'
-  | 'complex'
-  | 'active'
-  | 'perfect'
-  | 'completed_archive'
-  | 'repurchasable';
+// 古いCourseStatus定義を削除
 
 export interface CourseWithStatus extends Course {
-  status: CourseStatus;
+  status: CourseStatus;  // 新しいCourseStatusを使用
 }
+
 export type ChapterProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface PurchaseResult {

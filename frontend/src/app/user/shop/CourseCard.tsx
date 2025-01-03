@@ -1,4 +1,3 @@
-// frontend/src/app/shop/CourseCard.tsx
 'use client';
 import React from 'react';
 import { useTheme } from '@/contexts/theme';
@@ -6,21 +5,18 @@ import { CourseStatus } from '@/types/course';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { courseApi } from '@/lib/api/courses';
-import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
 
 interface CourseCardProps {
   id: string;
   title: string;
   description: string;
   status: CourseStatus;
-  gemCost?: number;
   levelRequired?: number;
   rankRequired?: string;
   gradient: string;
-  thumbnail?: string; // thumbnailプロパティを追加
+  thumbnail?: string;
   onUnlock: () => void;
   lastAccessedChapterId?: string;
-  archiveUntil?: string;
   completion?: {
     badges?: {
       completion?: boolean;
@@ -34,55 +30,45 @@ export function CourseCard({
   title,
   description,
   status,
-  gemCost,
   levelRequired,
   rankRequired,
-  thumbnail, // thumbnailプロパティを追加
+  thumbnail,
   gradient,
   onUnlock,
   lastAccessedChapterId,
-  archiveUntil,
   completion
 }: CourseCardProps) {
   const { theme } = useTheme();
   const router = useRouter();
 
   const badges: Record<CourseStatus, { text: string; color: string }> = {
+    restricted: {
+      text: '条件未達成',
+      color: 'bg-gray-500'
+    },
+    available: {
+      text: '受講可能',
+      color: 'bg-blue-500'
+    },
     active: {
       text: '受講中',
       color: 'bg-gradient-to-r from-green-700 via-green-600 to-green-700 animate-shimmer text-green-100 shadow-lg border border-green-500/50'
     },
-    unlocked: { 
-      text: '解放済み', 
-      color: 'bg-green-500' 
+    completed: {
+      text: 'クリア',
+      color: 'bg-green-500'
     },
-    available: { 
-      text: 'ジェム解放可能', 
-      color: 'bg-yellow-500' 
+    certified: {
+      text: '認定',
+      color: 'bg-yellow-500'
     },
-    level_locked: { 
-      text: 'レベル制限', 
-      color: 'bg-purple-500' 
-    },
-    rank_locked: { 
-      text: `${rankRequired}限定`, 
-      color: 'bg-red-500' 
-    },
-    complex: { 
-      text: '条件あり', 
-      color: 'bg-orange-500' 
-    },
-    perfect: { 
+    perfect: {
       text: 'Perfect',
       color: 'bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse'
     },
-    completed_archive: { 
-      text: '復習期間中', 
-      color: 'bg-blue-500' 
-    },
-    repurchasable: { 
-      text: '再購入可能', 
-      color: 'bg-gray-500' 
+    failed: {
+      text: '失敗',
+      color: 'bg-red-500'
     }
   };
 
@@ -95,6 +81,7 @@ export function CourseCard({
       </span>
     );
   };
+
   const renderThumbnailOrGradient = () => {
     if (thumbnail) {
       return (
@@ -104,11 +91,10 @@ export function CourseCard({
             alt={title}
             className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
           />
-          <div className="absolute inset-0 bg-black bg-opacity-20 rounded-t-lg" /> {/* オーバーレイ */}
+          <div className="absolute inset-0 bg-black bg-opacity-20 rounded-t-lg" />
         </div>
       );
     }
-
     return (
       <div className={`h-40 ${getGradientStyle()} relative`} />
     );
@@ -118,156 +104,89 @@ export function CourseCard({
     if (status === 'perfect') {
       return 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 animate-gradient';
     }
-    if (status === 'completed_archive' || status === 'repurchasable') {
-      return `${gradient} grayscale-[50%]`;
+    if (['completed', 'certified'].includes(status)) {
+      return `${gradient} opacity-90`;
     }
     return gradient;
   };
-  // frontend/src/app/shop/CourseCard.tsx の handleUnlock 関数を修正
 
   const handleUnlock = async () => {
-    switch (status) {
-      
-      case 'active':
-      case 'perfect':
-      case 'completed_archive':
-        try {
-          console.log('Starting handleUnlock for course:', id);
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/courses/user/${id}/current-chapter`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-              },
-              credentials: 'include'
-            }
-          );
-  
-          if (!response.ok) {
-            throw new Error('Failed to fetch current chapter');
+    try {
+      switch (status) {
+        case 'active':
+        case 'perfect':
+        case 'completed':
+        case 'certified':
+          const response = await courseApi.getCurrentChapter(id);
+          if (response.success && response.data) {
+            router.push(`/user/courses/${id}/chapters/${response.data.chapterId}`);
           }
-  
-          const data = await response.json();
-          console.log('Current chapter response:', data);
-  
-          if (data.success && data.data && data.data.chapterId) {
-            console.log('Redirecting to chapter:', data.data.chapterId);
-            router.push(`/user/courses/${id}/chapters/${data.data.chapterId}`);
-          } else {
-            throw new Error('Invalid response format');
-          }
-        } catch (error) {
-          console.error('Error in handleUnlock:', error);
-          toast.error('コースへのアクセスに失敗しました');
-        }
-        break;
-      
-    // 他のケースは変更なし
-    case 'repurchasable':
-      try {
-        const result = await courseApi.repurchaseCourse(id);
-        if (result.success) {
-          toast.success('コースを再購入しました！');
+          break;
+        
+        case 'failed':
+        case 'available':
           onUnlock();
-        }
-      } catch (error) {
-        console.error('Error repurchasing course:', error);
-        toast.error('コースの再購入に失敗しました');
+          break;
+
+        default:
+          // restricted の場合は何もしない
+          break;
       }
-      break;
-    default:
-      onUnlock();
-  }
-};
+    } catch (error) {
+      console.error('Error in handleUnlock:', error);
+      toast.error('コースへのアクセスに失敗しました');
+    }
+  };
+
   const getButtonLabel = () => {
     switch (status) {
       case 'active':
         return '学習を続ける';
-      case 'unlocked':
-        return '受講開始';
       case 'available':
-        return 'ジェムで解放';
+        return '受講開始';
+      case 'completed':
+        return 'もう一度見る';
+      case 'certified':
+        return '復習する';
       case 'perfect':
         return 'コースを見る';
-      case 'completed_archive':
-        return '復習する';
-      case 'repurchasable':
-        return '再購入する';
-      case 'level_locked':
-        return `レベル${levelRequired}で解放`;
+      case 'failed':
+        return '再受講';
+      case 'restricted':
+        return `${levelRequired ? `Lv${levelRequired}` : ''} ${rankRequired || ''}で解放`;
       default:
-        return `${rankRequired}にアップグレード`;
+        return '受講不可';
     }
   };
+
   const getButtonStyle = () => {
-    if (status === 'active') {
+    if (!['active', 'available', 'completed', 'certified', 'perfect', 'failed'].includes(status)) {
       return theme === 'dark'
-        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-        : 'bg-blue-500 hover:bg-blue-600 text-white';
+        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+        : 'bg-gray-100 text-gray-400 cursor-not-allowed';
     }
-    if (status === 'perfect') {
-      return 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90';
+
+    switch (status) {
+      case 'active':
+        return theme === 'dark'
+          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+          : 'bg-blue-500 hover:bg-blue-600 text-white';
+      case 'perfect':
+        return 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90';
+      case 'certified':
+        return 'bg-yellow-600 hover:bg-yellow-700 text-white';
+      case 'completed':
+        return 'bg-green-600 hover:bg-green-700 text-white';
+      case 'failed':
+        return theme === 'dark'
+          ? 'bg-red-600 hover:bg-red-700 text-white'
+          : 'bg-red-500 hover:bg-red-600 text-white';
+      default:
+        return theme === 'dark'
+          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+          : 'bg-blue-500 hover:bg-blue-600 text-white';
     }
-    if (status === 'completed_archive') {
-      return 'bg-blue-600 hover:bg-blue-700 text-white';
-    }
-    if (status === 'repurchasable') {
-      return theme === 'dark'
-        ? 'bg-gray-600 hover:bg-gray-500 text-white'
-        : 'bg-gray-500 hover:bg-gray-600 text-white';
-    }
-    if (status === 'unlocked') {
-      return 'bg-blue-600 hover:bg-blue-700 text-white';
-    }
-    if (status === 'available') {
-      return theme === 'dark'
-        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-        : 'bg-[#DBEAFE] hover:bg-[#3B82F6] hover:text-white text-[#3B82F6]';
-    }
-    return theme === 'dark'
-      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-      : 'bg-gray-100 text-gray-400 cursor-not-allowed';
   };
-  const getCost = () => {
-    if (status === 'repurchasable') {
-      return Math.floor((gemCost || 0) / 10);
-    }
-    return gemCost;
-  };
-
-
-const handleArchiveExpire = async () => {
-  try {
-    const response = await courseApi.expireArchiveAccess(id);
-    
-    if (!response.success) {
-      toast('アーカイブの期限切れ処理に失敗しました', {
-        icon: '❌',
-        duration: 3000,
-      });
-      return;
-    }
-
-    // 成功時の処理
-    toast('アーカイブ期間が終了しました', {
-      icon: 'ℹ️',
-      duration: 3000,
-    });
-    
-    // コールバック実行
-    await onUnlock();
-
-  } catch (error) {
-    console.error('Error expiring archive access:', error);
-    toast('エラーが発生しました', {
-      icon: '❌',
-      duration: 3000,
-    });
-  }
-};
-
-
 
   return (
     <div className={`relative ${
@@ -275,16 +194,16 @@ const handleArchiveExpire = async () => {
         ? 'bg-gray-800' 
         : 'bg-white border border-[#DBEAFE] shadow-sm'
     } rounded-lg overflow-hidden ${
-      !['unlocked', 'available', 'completed_archive', 'perfect', 'repurchasable', 'active'].includes(status) ? 'opacity-75' : ''
+      status === 'restricted' ? 'opacity-75' : ''
     }`}>
       <div className={`h-40 ${getGradientStyle()} relative`}>
-      {renderThumbnailOrGradient()}
-      {getStatusBadge()}
-      {completion?.badges && (
-        <div className="absolute bottom-2 left-2 flex space-x-2">
-          {completion.badges.completion && (
-            <span className={`text-2xl ${!completion.badges.excellence ? 'grayscale-[50%]' : ''}`}>
-              🏆
+        {renderThumbnailOrGradient()}
+        {getStatusBadge()}
+        {completion?.badges && (
+          <div className="absolute bottom-2 left-2 flex space-x-2">
+            {completion.badges.completion && (
+              <span className={`text-2xl ${!completion.badges.excellence ? 'grayscale-[50%]' : ''}`}>
+                🏆
               </span>
             )}
             {completion.badges.excellence && (
@@ -304,51 +223,29 @@ const handleArchiveExpire = async () => {
         }`}>
           {description}
         </p>
-        {status === 'completed_archive' && archiveUntil && (
-          <div className="mb-4">
-            <TimeRemaining
-              startTime={new Date()}
-              timeLimit={Math.floor((new Date(archiveUntil).getTime() - new Date().getTime()) / 1000)}
-              type="archive"
-              onTimeout={handleArchiveExpire}
-            />
-          </div>
-        )}
-        {(getCost() || levelRequired || rankRequired) && (
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center space-x-2">
-              {levelRequired && (
-                <>
-                  <span className={theme === 'dark' ? 'text-blue-400' : 'text-[#3B82F6]'}>
-                    Lv.{levelRequired}
-                  </span>
-                  {rankRequired && (
-                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                      かつ
-                    </span>
-                  )}
-                </>
-              )}
-              {rankRequired && (
-                <span className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}>
-                  {rankRequired}階級
-                </span>
-              )}
-            </div>
-            {getCost() && (
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-400">💎</span>
-                <span className={theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'}>
-                  {getCost()}
-                </span>
-              </div>
+        {(levelRequired || rankRequired) && (
+          <div className="flex items-center space-x-2 mb-4">
+            {levelRequired && (
+              <span className={theme === 'dark' ? 'text-blue-400' : 'text-[#3B82F6]'}>
+                Lv.{levelRequired}
+              </span>
+            )}
+            {levelRequired && rankRequired && (
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                かつ
+              </span>
+            )}
+            {rankRequired && (
+              <span className={theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}>
+                {rankRequired}階級
+              </span>
             )}
           </div>
         )}
         <button
           onClick={handleUnlock}
           className={`w-full py-2 rounded-lg ${getButtonStyle()}`}
-          disabled={!['unlocked', 'available', 'completed_archive', 'perfect', 'repurchasable', 'active'].includes(status)}
+          disabled={status === 'restricted'}
         >
           {getButtonLabel()}
         </button>

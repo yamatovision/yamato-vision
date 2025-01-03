@@ -16,13 +16,13 @@ export interface CreateCourseDTO {
   title: string;
   description: string;
   thumbnail?: string;
-  gemCost: number;
   levelRequired?: number;
   rankRequired?: string;
-  timeLimit?: number;  // 日数単位
-  passingScore?: number;
-  excellentScore?: number;
+  requirementType?: 'AND' | 'OR';
+  timeLimit?: number;
+  canEarnHigherStatus?: boolean;
 }
+
 
 export interface CreateChapterDTO {
   title: string;
@@ -51,15 +51,24 @@ export interface CourseTimeInfo {
 }
 
 export type CourseStatus = 
-  | 'unlocked'          // 購入済み（未開始）
-  | 'available'         // 購入可能
-  | 'level_locked'      // レベル制限
-  | 'rank_locked'       // 階級制限
-  | 'complex'           // 複合制限
-  | 'active'            // 受講中
-  | 'perfect'           // Perfect達成（無期限アクセス権）
-  | 'completed_archive' // 完了（1週間限定アーカイブ）
-  | 'repurchasable';    // 再購入必要
+  | 'restricted'     // すべて小文字
+  | 'available'
+  | 'active'
+  | 'completed'
+  | 'certified'
+  | 'perfect'
+  | 'failed';
+
+// 定数として使用できるように追加
+export const CourseStatus = {
+  RESTRICTED: 'restricted' as CourseStatus,
+  AVAILABLE: 'available' as CourseStatus,
+  ACTIVE: 'active' as CourseStatus,
+  COMPLETED: 'completed' as CourseStatus,
+  CERTIFIED: 'certified' as CourseStatus,
+  PERFECT: 'perfect' as CourseStatus,
+  FAILED: 'failed' as CourseStatus,
+} as const;
 
 export interface CourseResponse {
   id: string;
@@ -71,6 +80,7 @@ export interface CourseResponse {
   rankRequired?: string;
   timeLimit?: number;  // 日数単位
   timeInfo?: CourseTimeInfo;  // 時間関連の詳細情報
+  certificationEligibility: boolean;  // 追加
   gradient?: string;
   archiveUntil?: string;
   completion?: {
@@ -111,20 +121,23 @@ export interface ChapterProgressStatus {
   completed: boolean;
   score?: number;
   submittedAt?: Date;
-  timeLimit?: number;  // 日数単位
+  timeLimit?: number;
   startedAt?: Date;
   timeOutAt?: Date;
+  lessonWatchRate?: number;
 }
-
 export interface CourseProgress {
   courseId: string;
   progress: number;
   currentChapterId?: string;
   startedAt?: Date;
   completedAt?: Date;
-  timeLimit?: number;  // 日数単位
+  timeLimit?: number;
   remainingDays?: number;
+  lessonWatchRate?: number;
 }
+
+
 
 // 時間計算用のユーティリティ型
 export interface TimeCalculation {

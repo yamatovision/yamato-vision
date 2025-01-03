@@ -7,13 +7,15 @@ interface TimeoutModalProps {
   type: 'chapter' | 'course';
   onClose: () => void;
   onAction?: () => void;
+  courseTitle?: string; // コースタイトルを追加
 }
 
 export function TimeoutModal({ 
   isOpen, 
   type, 
   onClose,
-  onAction 
+  onAction,
+  courseTitle 
 }: TimeoutModalProps) {
   const { theme } = useTheme();
 
@@ -28,8 +30,11 @@ export function TimeoutModal({
       };
     } else {
       return {
-        title: 'コースの期限が終了しました',
-        description: '再購入が必要です。ショップページから手続きを行ってください。',
+        title: 'コース受講期限超過',
+        description: courseTitle 
+          ? `『${courseTitle}』の受講期限が超過したため、コース受講は取り消されました。`
+          : 'コースの受講期限が超過したため、受講は取り消されました。',
+        subDescription: '再受講はいつでも可能ですが、認定資格は取り消されます。',
         action: 'ショップへ移動'
       };
     }
@@ -48,11 +53,16 @@ export function TimeoutModal({
         }`}>
           {message.title}
         </h3>
-        <p className={`mb-6 ${
+        <p className={`mb-4 ${
           theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
         }`}>
           {message.description}
         </p>
+        {type === 'course' && (
+          <p className="text-yellow-600 mb-4">
+            {message.subDescription}
+          </p>
+        )}
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}

@@ -68,6 +68,7 @@ export interface ChapterProgress {
   hasSubmission: boolean;
   score?: number;
   submittedAt?: Date;
+  lessonWatchRate: number;  // 追加
   timeStatus?: {
     startedAt: Date;
     timeLimit: number;  // 日数単位

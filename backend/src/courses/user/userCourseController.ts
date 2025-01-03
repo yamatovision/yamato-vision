@@ -20,66 +20,7 @@ class UserCourseController {
     }
   }
 
-  async expireArchiveAccess(req: Request, res: Response) {
-    try {
-      const { courseId } = req.params;
-      const userId = req.user?.id;
-  
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-  
-      const result = await userCourseService.expireArchiveAccess(userId, courseId);
-      return res.json(result);
-    } catch (error) {
-      console.error('Error expiring archive access:', error);
-      return res.status(500).json({ message: 'Failed to expire archive access' });
-    }
-  }
 
-  async purchaseCourse(req: Request, res: Response) {
-    try {
-      const userId = req.user?.id;
-      const courseId = req.params.courseId;
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-
-      const result = await userCourseService.purchaseCourse(userId, courseId);
-      
-      if ('error' in result) {
-        return res.status(400).json({ message: result.error });
-      }
-
-      return res.status(201).json(result);
-    } catch (error) {
-      console.error('Error purchasing course:', error);
-      return res.status(500).json({ message: 'Failed to purchase course' });
-    }
-  }
-
-  async repurchaseCourse(req: Request, res: Response) {
-    try {
-      const userId = req.user?.id;
-      const courseId = req.params.courseId;
-  
-      if (!userId) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-  
-      const result = await userCourseService.repurchaseCourse(userId, courseId);
-      
-      if ('error' in result) {
-        return res.status(400).json({ message: result.error });
-      }
-  
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error('Error repurchasing course:', error);
-      return res.status(500).json({ message: 'Failed to repurchase course' });
-    }
-  }
   
   async getUserCourses(req: Request, res: Response) {
     try {

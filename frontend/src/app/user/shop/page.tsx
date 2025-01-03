@@ -87,12 +87,12 @@ export default function ShopPage() {
             id: apiCourse.id,
             title: apiCourse.title,
             description: apiCourse.description,
-            status: apiCourse.status as CourseStatus,
+            status: mapApiStatusToCourseStatus(apiCourse.status), // ここを修正
             gemCost: apiCourse.gemCost,
             levelRequired: apiCourse.levelRequired,
             rankRequired: apiCourse.rankRequired,
             gradient: apiCourse.gradient,
-            thumbnail: apiCourse.thumbnail, // thumbnailフィールドを追加
+            thumbnail: apiCourse.thumbnail,
             completion: apiCourse.completion,
             archiveUntil: apiCourse.archiveUntil,
             // ShopCourse の必須フィールドを追加
@@ -114,12 +114,11 @@ export default function ShopPage() {
     };
     fetchCourses();
   }, []);
-
   // コース操作のハンドラー
   const handleUnlock = async (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
-
+  
     switch (course.status) {
       case 'available':
         try {
@@ -134,19 +133,16 @@ export default function ShopPage() {
         }
         break;
 
-      case 'repurchasable':
-        setRepurchasingCourse(course);
-        setShowRepurchaseModal(true);
-        break;
 
-      case 'unlocked':
+      case 'available':
         setActivatingCourse(courseId);
         setShowActivationModal(true);
         break;
 
       case 'active':
       case 'perfect':
-      case 'completed_archive':
+      case 'completed':
+        case 'certified': // certified ステータスを追加
         try {
           const response = await courseApi.getCurrentChapter(courseId);
           if (response.success && response.data) {
@@ -159,41 +155,65 @@ export default function ShopPage() {
         break;
     }
   };
+// コース一覧の更新
+const refreshCourses = async () => {
+  const response = await courseApi.getAvailableCourses();
+  if (response.success) {
+    const formattedCourses: ShopCourse[] = response.data.map((apiCourse: any) => ({
+      id: apiCourse.id,
+      title: apiCourse.title,
+      description: apiCourse.description,
+      // status の変換処理を追加
+      status: mapApiStatusToCourseStatus(apiCourse.status),
+      gemCost: apiCourse.gemCost,
+      levelRequired: apiCourse.levelRequired,
+      rankRequired: apiCourse.rankRequired,
+      gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
+      completion: apiCourse.completion,
+      archiveUntil: apiCourse.archiveUntil,
+      // ShopCourse必須フィールドの追加
+      passingScore: apiCourse.passingScore || 0,
+      excellentScore: apiCourse.excellentScore || 0,
+      isPublished: apiCourse.isPublished || false,
+      isArchived: apiCourse.isArchived || false,
+      createdAt: new Date(apiCourse.createdAt),
+      updatedAt: new Date(apiCourse.updatedAt)
+    }));
+    setCourses(formattedCourses);
+  }
+};
 
-  // コース一覧の更新
-  const refreshCourses = async () => {
-    const response = await courseApi.getAvailableCourses();
-    if (response.success) {
-      const formattedCourses: ShopCourse[] = response.data.map((apiCourse: any) => ({
-        id: apiCourse.id,
-        title: apiCourse.title,
-        description: apiCourse.description,
-        status: apiCourse.status as CourseStatus,
-        gemCost: apiCourse.gemCost,
-        levelRequired: apiCourse.levelRequired,
-        rankRequired: apiCourse.rankRequired,
-        gradient: apiCourse.gradient || 'bg-gradient-to-r from-blue-500 to-purple-500',
-        completion: apiCourse.completion,
-        archiveUntil: apiCourse.archiveUntil,
-        // ShopCourse必須フィールドの追加
-        passingScore: apiCourse.passingScore || 0,
-        excellentScore: apiCourse.excellentScore || 0,
-        isPublished: apiCourse.isPublished || false,
-        isArchived: apiCourse.isArchived || false,
-        createdAt: new Date(apiCourse.createdAt),
-        updatedAt: new Date(apiCourse.updatedAt)
-      }));
-      setCourses(formattedCourses);
-    }
-  };
-
+// ステータスマッピング用の関数を追加
+const mapApiStatusToCourseStatus = (apiStatus: string): CourseStatus => {
+  switch (apiStatus) {
+    case 'unlocked':
+    case 'available':
+      return 'available';
+    case 'active':
+      return 'active';
+    case 'completed':
+    case 'completed_archive':
+      return 'completed';
+    case 'certified':
+      return 'certified';
+    case 'perfect':
+      return 'perfect';
+    case 'failed':
+      return 'failed';
+    case 'level_locked':
+    case 'rank_locked':
+    case 'complex':
+    default:
+      return 'restricted';
+  }
+};
   // コースの並び替えとフィルタリング
   const filteredCourses = React.useMemo(() => {
     let filtered = courses;
     
     if (filter === 'available') {
       filtered = courses.filter(course =>
-        ['unlocked', 'available', 'perfect', 'completed_archive'].includes(course.status)
+        ['available', 'active', 'completed', 'certified', 'perfect'].includes(course.status)
       );
     }
 
@@ -207,15 +227,13 @@ export default function ShopPage() {
 
     return [...filtered].sort((a, b) => {
       const statusPriority: Record<CourseStatus, number> = {
-        unlocked: 1,
-        available: 2,
-        perfect: 3,
-        completed_archive: 4,
-        repurchasable: 5,
-        level_locked: 6,
-        rank_locked: 7,
-        complex: 8,
-        active: 0
+        restricted: 6,   // 条件未達成
+        available: 2,    // 受講可能
+        active: 0,       // 受講中
+        completed: 4,    // 通常クリア
+        certified: 3,    // 認証バッジ獲得
+        perfect: 1,      // パーフェクト達成
+        failed: 5        // 失敗
       };
       return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
     });
