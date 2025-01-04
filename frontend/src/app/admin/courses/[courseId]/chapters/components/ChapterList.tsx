@@ -157,6 +157,8 @@ export function ChapterList({
                                 {chapter.content?.type === 'video' ? '動画' : '音声'}
                               </span>
                             </div>
+                            
+                            
                             <div>
                               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
                                 制限時間:

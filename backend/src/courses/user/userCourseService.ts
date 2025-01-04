@@ -6,6 +6,7 @@ import {
   UserRank,
 } from './userCourseTypes';
 import { timeoutService } from '../timeouts/timeoutService';
+import { progressTrackingService } from '../progress/progressTrackingService';
 
 const prisma = new PrismaClient();
 
@@ -132,7 +133,6 @@ export class UserCourseService {
 
     return finalResult;
   }
-
   async startCourse(userId: string, courseId: string) {
     return await prisma.$transaction(async (tx) => {
       console.log('Starting transaction for startCourse:', { userId, courseId });
@@ -154,7 +154,7 @@ export class UserCourseService {
             where: { id: existingActiveCourse.id },
             data: { 
               isActive: false,
-              status: 'FAILED',
+              status: 'failed',  // ここだけ小文字に変更
               certificationEligibility: false
             },
           });
@@ -177,7 +177,7 @@ export class UserCourseService {
           update: {
             isActive: true,
             startedAt: new Date(),
-            status: 'ACTIVE',
+            status: 'active',  // ここだけ小文字に変更
             progress: 0,
             completedAt: null,
             isTimedOut: false,
@@ -186,7 +186,7 @@ export class UserCourseService {
           create: {
             userId,
             courseId,
-            status: 'ACTIVE',
+            status: 'active',  // ここだけ小文字に変更
             isActive: true,
             startedAt: new Date(),
             certificationEligibility: true
@@ -219,8 +219,8 @@ export class UserCourseService {
                 userId,
                 courseId,
                 chapterId: firstChapter.id,
-                status: 'IN_PROGRESS',
-                startedAt: new Date(),
+                status: 'ready',  // ここだけ変更
+                startedAt: null,  // ready状態なのでnull
                 lessonWatchRate: 0
               },
             });
@@ -235,8 +235,8 @@ export class UserCourseService {
                 }
               },
               data: {
-                status: 'IN_PROGRESS',
-                startedAt: new Date(),
+                status: 'ready',  // ここだけ変更
+                startedAt: null,  // ready状態なのでnull
                 lessonWatchRate: 0
               }
             });
@@ -370,7 +370,6 @@ export class UserCourseService {
       }
     });
   }
-
   private async handleTimeout(userId: string, courseId: string) {
     await prisma.userCourse.update({
       where: {
@@ -389,6 +388,7 @@ export class UserCourseService {
     });
   }
 
+  // calculateFinalStatus と updateCourseStatus をクラス内に正しく配置
   async calculateFinalStatus(
     userId: string,
     courseId: string,

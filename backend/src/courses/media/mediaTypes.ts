@@ -48,7 +48,7 @@ export interface MediaProgress {
   userId: string;
   chapterId: string;
   position: number;
-  deviceId?: string;
+  deviceId?: string;  // null の代わりに undefined を使用
   updatedAt: Date;
   createdAt: Date;
 }

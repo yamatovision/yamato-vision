@@ -53,6 +53,7 @@ export function ChapterForm({
     timeLimit: initialData?.timeLimit || 0,
     releaseTime: initialData?.releaseTime || 0,
     orderIndex: initialData?.orderIndex || 0,
+    experienceWeight: initialData?.experienceWeight || 100,  // 追加
     task: {
       description: initialData?.task?.description || '',
       materials: initialData?.task?.materials || '',
@@ -247,6 +248,43 @@ export function ChapterForm({
             disabled={isSubmitting}
           />
         </section>
+        <div>
+  <label className={`block text-sm font-medium mb-2 ${
+    theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+  }`}>
+    経験値の重み付け
+  </label>
+  <div className="relative">
+    <input
+      type="number"
+      value={formData.experienceWeight}
+      onChange={(e) => {
+        const value = Math.max(1, Math.min(1000, parseInt(e.target.value) || 100));
+        setFormData(prev => ({
+          ...prev,
+          experienceWeight: value
+        }));
+      }}
+      min="1"
+      max="1000"
+      className={`w-full rounded-lg pl-3 pr-12 py-2 ${
+        theme === 'dark'
+          ? 'bg-gray-700 text-white border-gray-600'
+          : 'bg-white text-gray-900 border-gray-200'
+      } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+    />
+    <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
+      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+    }`}>
+      %
+    </div>
+  </div>
+  <p className={`mt-1 text-sm ${
+    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+  }`}>
+    経験値の獲得量を調整します（1-1000%）
+  </p>
+</div>
 
         {/* 操作ボタン */}
         <div className="flex justify-end space-x-4">
