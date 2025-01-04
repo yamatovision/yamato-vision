@@ -5,47 +5,46 @@ import type { LevelUpData } from '@/types/toast';  // toastから型をインポ
 
 export function useTokens() {
   const { showToast } = useToast();
+// src/lib/hooks/useTokens.ts
+const processTokenUsage = async (tokenCount: number) => {
+  try {
+    const response = await tokenAPI.updateUsage(tokenCount);
 
-  const processTokenUsage = async (tokenCount: number) => {
-    try {
-      const response = await tokenAPI.updateUsage(tokenCount);
-
-      if (!response.success || !response.data) {
-        showToast('トークンの処理中にエラーが発生しました', 'error');
-        return null;
-      }
-
-      const { 
-        currentLevel,
-        oldLevel,
-        levelUpMessage,
-        experienceGained
-      } = response.data;
-
-      // レベルアップが発生した場合
-      if (currentLevel > oldLevel && levelUpMessage) {
-        const levelUpData: LevelUpData = {
-          oldLevel,
-          newLevel: currentLevel,
-          message: levelUpMessage,
-          experienceGained
-        };
-        
-        showToast('', 'levelUp', levelUpData);
-      }
-
-      // 経験値獲得通知
-      if (experienceGained > 0) {
-        showToast(`+${experienceGained} EXP を獲得!`, 'success');  // 'expGained'を'success'に変更
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error('Token processing error:', error);
+    if (!response.success || !response.data) {
       showToast('トークンの処理中にエラーが発生しました', 'error');
-      throw error;
+      return null;
     }
-  };
+
+    const { 
+      currentLevel,    // newLevel → currentLevel に戻す
+      oldLevel,
+      levelUpMessage,
+      experienceGained
+    } = response.data;
+    
+    // レベルアップが発生した場合
+    if (currentLevel > oldLevel && levelUpMessage) {
+      const levelUpData: LevelUpData = {
+        oldLevel,
+        newLevel: currentLevel,  // currentLevelをnewLevelとして使用
+        message: levelUpMessage,
+        experienceGained
+      };
+      
+      showToast('', 'levelUp', levelUpData);
+    }
+    // 経験値獲得通知
+    if (experienceGained > 0) {
+      showToast(`+${experienceGained} EXP を獲得!`, 'success');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Token processing error:', error);
+    showToast('トークンの処理中にエラーが発生しました', 'error');
+    throw error;
+  }
+};
 
 
 

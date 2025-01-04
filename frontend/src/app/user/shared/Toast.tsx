@@ -45,8 +45,8 @@ export function Toast({ message, type, onClose, levelUpData, experienceData }: T
             <div className="text-2xl mb-2">🎊 Level Up! 🎊</div>
             
             <div className="text-3xl font-bold mb-4">
-              Lv.{levelUpData.oldLevel} → Lv.{levelUpData.newLevel}
-            </div>
+  Lv.{levelUpData.oldLevel} → Lv.{levelUpData.newLevel}
+</div>
 
             {levelUpData.experienceGained && (
               <div className="bg-yellow-500/30 rounded-lg p-3 mb-4">

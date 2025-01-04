@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { submissionController } from './submissionController';
 
-const router = Router({ mergeParams: true }); // courseId, taskId等のパラメータを受け取るため
+const router = Router({ mergeParams: true });
 
-router.post(
-  '/debug/evaluate',
-  submissionController.testEvaluation.bind(submissionController)
-);
+router.post('/evaluate', submissionController.testEvaluation.bind(submissionController));
+
+
 
 // 課題提出関連
 router.post(

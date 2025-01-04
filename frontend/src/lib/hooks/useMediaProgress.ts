@@ -135,9 +135,9 @@ export const useMediaProgress = (courseId: string, chapterId: string) => {
   useEffect(() => {
     loadProgress();
   }, [loadProgress]);
-
   return {
     position: state.position,
+    setPosition: (newPosition: number) => setState(prev => ({ ...prev, position: newPosition })),
     duration: state.duration,
     isCompleted: state.isCompleted,
     isLoading,

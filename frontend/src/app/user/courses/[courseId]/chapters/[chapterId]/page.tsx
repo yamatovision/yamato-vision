@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { Chapter } from '@/types/course';
-import { ChapterProgress, MaterialProgress } from '@/types/progress';
+import { ChapterProgress } from '@/types/progress';
 import { courseApi } from '@/lib/api/courses';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -13,15 +13,22 @@ import { TaskDescription } from '../../../components/TaskDescription';
 import { AttachmentFiles } from '../../../components/AttachmentFiles';
 import { TimeRemaining } from '../../../components/TimeRemaining';
 import { ParticipantList } from '../../../components/ParticipantList';
-import { ProgressBar } from '../../../components/ProgressBar';
 import { TimeoutModal } from '@/app/user/courses/components/TimeoutModal';
 import { TimeoutWarning } from '@/app/user/courses/components/TimeoutWarning';
+import { SubmissionForm } from '@/app/user/courses/components/SubmissionForm';
+
+
 
 interface ChapterState {
   chapter: Chapter | null;
   progress: ChapterProgress | null;
   materials: MaterialProgress[];
   loading: boolean;
+}
+
+interface MaterialProgress {
+  materialId: string;
+  completed: boolean;
 }
 
 export default function ChapterPage({ 
@@ -31,11 +38,11 @@ export default function ChapterPage({
 }) {
   const router = useRouter();
   const { theme } = useTheme();
-  
+  const [progress, setProgress] = useState(0);  // これを追加
+
   // 既存の状態
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
   const [timeoutType, setTimeoutType] = useState<'chapter' | 'course' | null>(null);
@@ -77,12 +84,11 @@ export default function ChapterPage({
         }
 
         if (progressResponse.success && progressResponse.data) {
-          setProgress(progressResponse.data.progress);
           setMaterials(progressResponse.data.materials || []);
           
           // メディアの完了状態を確認
           const currentMaterial = progressResponse.data.materials?.find(
-            m => m.materialId === chapterResponse.data?.content?.id
+            (m: MaterialProgress) => m.materialId === chapterResponse.data?.content?.id
           );
           setMediaCompleted(!!currentMaterial?.completed);
         }
@@ -135,19 +141,16 @@ export default function ChapterPage({
         params.courseId,
         params.chapterId
       );
-
+  
       if (response.success) {
         toast.success('チャプターを完了しました！');
         
-        // 進捗の更新
-        const progressResponse = await courseApi.getCurrentUserCourse(params.courseId);
-        if (progressResponse.success) {
-          setProgress(progressResponse.data.progress);
-        }
-
         // 次のチャプターが存在する場合は自動的に移動
-        if (response.data.nextChapterId) {
-          router.push(`/user/courses/${params.courseId}/chapters/${response.data.nextChapterId}`);
+        if (response.data?.nextChapter?.id) {
+          router.push(`/user/courses/${params.courseId}/chapters/${response.data.nextChapter.id}`);
+        } else {
+          // 次のチャプターがない場合はコース一覧に戻る
+          router.push('/user/courses');
         }
       }
     } catch (error) {
@@ -220,50 +223,59 @@ export default function ChapterPage({
       </div>
 
       <div className="space-y-6">
-      {chapter.content?.type === 'video' && (
+      {chapter.content?.type === 'video' && chapter.content.videoId && (
   <div className="mb-6">
-    <VideoPlayer 
-      videoId={chapter.content.videoId}
-      courseId={params.courseId}
-      chapterId={params.chapterId}
-      transcription={chapter.content.transcription}
-      onCompletion={handleMediaCompletion}
-      completed={mediaCompleted}
+    <VideoPlayer
+    videoId={chapter.content.videoId}  // urlではなくvideoIdを使用
+      courseId={params.courseId}        // paramsから取得
+      chapterId={params.chapterId}      // paramsから取得
+      transcription={chapter.content.transcription}  // オプショナル
+      onCompletion={handleMediaCompletion}          // コールバック関数
+      completed={mediaCompleted}                     // 完了状態
     />
   </div>
 )}
 
 
-        {chapter.content?.type === 'audio' && (
-          <div className="mb-6">
-            <AudioPlayer 
-              url={chapter.content.url}
-              courseId={params.courseId}
-              chapterId={params.chapterId}
-              transcription={chapter.content.transcription}
-              onCompletion={handleMediaCompletion}
-              completed={mediaCompleted}
-            />
-          </div>
-        )}
-
+{chapter.content?.type === 'audio' && chapter.content.url && (
+  <div className="mb-6">
+    <AudioPlayer
+      url={chapter.content.url}
+      courseId={params.courseId}        // paramsから取得
+      chapterId={params.chapterId}      // paramsから取得
+      transcription={chapter.content.transcription}  // オプショナル
+      onCompletion={handleMediaCompletion}          // コールバック関数
+      completed={mediaCompleted}                     // 完了状態
+    />
+  </div>
+)}
 {chapter.task && (
   <div className="mb-6">
-    <TaskSubmission
-      courseId={params.courseId}
-      chapterId={params.chapterId}
+    <SubmissionForm
       task={chapter.task}
-      onComplete={handleChapterCompletion}
+      onSubmit={async (prompt: string, result: string) => {
+        try {
+          const submission = await courseApi.submitTask(params.courseId, params.chapterId, {
+            prompt,
+            result
+          });
+
+          if (submission.success) {
+            toast.success('課題を提出しました！');
+            await handleChapterCompletion();
+          }
+        } catch (error) {
+          console.error('Failed to submit task:', error);
+          toast.error('課題の提出に失敗しました');
+        }
+      }}
+      isSubmitting={false}
     />
   </div>
 )}
 
         <div className="mt-8 space-y-4">
-          <ProgressBar 
-            progress={progress}
-            mediaCompleted={mediaCompleted}
-            materials={materials}
-          />
+          
           {startTime && chapter.timeLimit && (
             <div className="flex justify-between items-center">
               <TimeRemaining

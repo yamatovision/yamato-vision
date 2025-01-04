@@ -173,8 +173,10 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
                 type="radio"
                 value="AND"
                 checked={formData.requirementType === 'AND'}
-                onChange={(e) => setFormData(prev => ({ ...prev, requirementType: e.target.value }))}
-                className="text-blue-500 focus:ring-blue-500"
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  requirementType: e.target.value as 'AND' | 'OR'
+                }))}                className="text-blue-500 focus:ring-blue-500"
               />
               <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
                 レベルと階級の両方を満たす（AND）
@@ -185,7 +187,10 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
                 type="radio"
                 value="OR"
                 checked={formData.requirementType === 'OR'}
-                onChange={(e) => setFormData(prev => ({ ...prev, requirementType: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  requirementType: e.target.value as 'AND' | 'OR'
+                }))}
                 className="text-blue-500 focus:ring-blue-500"
               />
               <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>

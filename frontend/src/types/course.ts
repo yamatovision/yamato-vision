@@ -1,18 +1,21 @@
 // 基本的なチャプターの内容定義
 export interface ChapterContent {
   type: 'video' | 'audio';
-  videoId?: string;  // URLの代わりにvideoIdを保存
+  videoId?: string;
+  url?: string;  // 追加
+  id?: string;   // 追加
   transcription?: string;
 }
-
 // タスクの定義
 export interface Task {
   id?: string;
   description: string;
+  materials?: string;
+  task?: string;
+  evaluationCriteria?: string;
+  maxPoints: number;
   systemMessage: string;
   referenceText: string;
-  maxPoints: number;
-  type: string;
 }
 
 // チャプターの定義
@@ -20,19 +23,25 @@ export interface Chapter {
   id: string;
   courseId: string;
   title: string;
-  subtitle?: string;
-  content: ChapterContent;
+  subtitle: string;
   orderIndex: number;
-  timeLimit?: number;
-  waitTime?: number;
-  releaseTime?: number;
+  timeLimit: number;
   isVisible: boolean;
-  isFinalExam: boolean;
-  isPerfectOnly: boolean; // 必須フィールドとして追加
-  task: Task;
-  createdAt: Date;
-  updatedAt: Date;
+  content?: {
+    type: 'video' | 'audio';
+    videoId?: string;
+    url?: string;
+    transcription?: string;
+    id?: string;
+  };
+  task?: {
+    description: string;
+    systemMessage: string;
+    referenceText: string;
+    maxPoints: number;
+  };
 }
+
 
 // 添付ファイルの定義
 export interface AttachmentFile {
@@ -78,6 +87,10 @@ export interface BaseCourse {
 export interface ShopCourse extends Omit<BaseCourse, 'gemCost'> {
   status: CourseStatus;
   gradient?: string;
+  requirementType?: 'AND' | 'OR';
+  stage?: string;
+  level?: number;
+  progress?: number;
   completion?: {
     badges?: {
       completion?: boolean;
@@ -85,7 +98,6 @@ export interface ShopCourse extends Omit<BaseCourse, 'gemCost'> {
     };
   };
 }
-
 // コース作成用DTO
 export interface CreateCourseDTO {
   title: string;
@@ -106,21 +118,23 @@ export interface UpdateCourseDTO {
   timeLimit?: number;
   isPublished?: boolean;
   isArchived?: boolean;
-  // 削除: gemCost, passingScore, excellentScore
 }
+
+export interface ChapterProgressInfo {
+  status: 'not_started' | 'in_progress' | 'completed' | 'timeout';
+  startedAt?: Date;
+  completedAt?: Date;
+}
+
 
 // チャプター作成用DTO
 export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
-  content: ChapterContent;
+  content?: string;
   orderIndex: number;
-  timeLimit?: number;
-  waitTime?: number;
-  releaseTime?: number;
-  isVisible?: boolean;
-  isFinalExam?: boolean;
-  task: Omit<Task, 'id'>;
+  timeLimit: number;
+  isVisible: boolean;
 }
 
 // チャプター更新用DTO
@@ -132,6 +146,7 @@ export interface UpdateChapterDTO {
   timeLimit?: number;
   waitTime?: number;
   releaseTime?: number;
+  experienceWeight?: number;
   isVisible?: boolean;
   isFinalExam?: boolean;
   isPerfectOnly?: boolean;
@@ -157,6 +172,10 @@ export interface CourseChapter {
   id: string;
   orderIndex: number;
   title: string;
+  content?: ChapterContent;  // 追加
+  subtitle?: string;         // 追加
+  timeLimit?: number;        // 追加
+  isVisible?: boolean;       // 追加
 }
 
 export interface CurrentUserCourse {
@@ -211,7 +230,6 @@ export interface TaskDescriptionProps {
   systemMessage: string;
   referenceText: string;
   maxPoints: number;
-  type: string;
 }
 
 // メインのコース型（BaseCourseとShopCourseの統合）

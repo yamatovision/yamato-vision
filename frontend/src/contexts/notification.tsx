@@ -2,14 +2,9 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Toast } from '../app/user/shared/Toast';
+import { LevelUpData } from '@/types/toast';  // toast.tsから型をインポート
 
-interface LevelUpData {
-  oldLevel: number;
-  newLevel: number;
-  message: string | null;
-  experienceGained: number;
-}
-
+// NotificationContextTypeの型定義
 interface NotificationContextType {
   showExperienceGain: (amount: number) => void;
   showLevelUp: (levelUpData: LevelUpData) => void;

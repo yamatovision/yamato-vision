@@ -8,8 +8,8 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({
   description,
   systemMessage,
   referenceText,
-  maxPoints,
-  type
+  maxPoints
+  // type プロパティを削除
 }) => {
   const { theme } = useTheme();
   const [prompt, setPrompt] = useState('');
@@ -42,7 +42,7 @@ export const TaskDescription: React.FC<TaskDescriptionProps> = ({
     <div className="space-y-6">
       <div>
         <h2 className={`font-bold text-lg mb-2 ${getThemedTextColor(theme === 'dark', true)}`}>
-          {type === 'practice' ? '実践課題' : '基礎課題'}
+          基礎課題 {/* type による条件分岐を削除し、固定テキストに */}
         </h2>
         <p className={`text-sm ${getThemedTextColor(theme === 'dark')} mb-4`}>
           {systemMessage}

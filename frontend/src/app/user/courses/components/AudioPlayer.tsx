@@ -6,9 +6,11 @@ import { useMediaProgress } from '@/lib/hooks/useMediaProgress';
 
 interface AudioPlayerProps {
   url: string;
-  courseId: string;  // 追加
-  chapterId: string; // 追加
+  courseId: string;
+  chapterId: string;
   transcription?: string;
+  onCompletion?: () => Promise<void>; // 追加
+  completed?: boolean; // 追加
 }
 
 export function AudioPlayer({ url, courseId, chapterId, transcription }: AudioPlayerProps) {

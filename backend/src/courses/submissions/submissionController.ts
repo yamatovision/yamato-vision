@@ -30,8 +30,10 @@ export class SubmissionController {
 
   // backend/src/courses/submissions/submissionController.ts に追加
 // デバッグ用エンドポイント
+// submissionController.ts のtestEvaluationメソッドにログを追加
 async testEvaluation(req: Request, res: Response) {
   try {
+    console.log('Debug evaluation request received:', req.body);
     const testData = {
       materials: "テスト教材内容",
       task: "プロンプトエンジニアリングの基本課題",
@@ -39,7 +41,10 @@ async testEvaluation(req: Request, res: Response) {
       submission: req.body.submission || "テスト回答"
     };
 
+    console.log('Sending test data to evaluation service:', testData);
     const result = await evaluationService.evaluateSubmission(testData);
+    console.log('Evaluation result:', result);
+
     return res.json({ success: true, data: result });
   } catch (error) {
     console.error('Test evaluation failed:', error);

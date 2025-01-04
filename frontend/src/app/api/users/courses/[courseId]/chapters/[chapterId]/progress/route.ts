@@ -19,7 +19,7 @@ export async function GET(
       `${API_URL}/courses/${courseId}/chapters/${chapterId}/progress`,
       {
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+'Authorization': `Bearer ${session.user.accessToken}`,
         },
       }
     );
@@ -52,7 +52,8 @@ export async function POST(
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+'Authorization': `Bearer ${session.user.accessToken}`,
+
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),

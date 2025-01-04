@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { Chapter } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { RichTextEditor } from './RichTextEditor';
@@ -10,8 +9,9 @@ import { MediaUpload } from './MediaUpload';
 import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
 import { TIME_VALIDATION } from '@/types/timeout';  // 追加
 import { TaskForm } from './TaskForm';  // この行を追加
+import { Chapter, Task, CreateChapterDTO } from '@/types/course';  // CreateChapterDTOを追加
 
-// ChapterForm.tsx の先頭に追加
+
 interface ChapterFormData {
   title: string;
   subtitle: string;
@@ -25,11 +25,13 @@ interface ChapterFormData {
   orderIndex: number;
   experienceWeight: number;
   task: {
+    description: string;
     materials: string;
     task: string;
     evaluationCriteria: string;
     maxPoints: number;
-    description: string;
+    systemMessage: string;
+    referenceText: string;
   };
 }
 
@@ -41,9 +43,8 @@ interface ChapterFormProps {
 }
 
 interface TaskFormProps {
-  initialData?: Task;
-  onSubmit: (taskData: CreateTaskDTO) => Promise<void>;
-  onCancel: () => void;
+  initialData?: Task;  // Task型を使用
+  onSubmit: (taskData: Task) => void;  // TaskData型をTask型に変更
   disabled?: boolean;
 }
 
@@ -75,14 +76,15 @@ export function ChapterForm({
     timeLimit: initialData?.timeLimit || 0,
     releaseTime: initialData?.releaseTime || 0,
     orderIndex: initialData?.orderIndex || 0,
-    experienceWeight: initialData?.experienceWeight || 100,  // 追加
+    experienceWeight: initialData?.experienceWeight || 100,
     task: {
       description: initialData?.task?.description || '',
       materials: initialData?.task?.materials || '',
       task: initialData?.task?.task || '',
       evaluationCriteria: initialData?.task?.evaluationCriteria || '',
       maxPoints: initialData?.task?.maxPoints || 100,
-      systemMessage: '' // TaskFormで構築されたシステムメッセージが格納される
+      systemMessage: initialData?.task?.systemMessage || '',
+      referenceText: initialData?.task?.referenceText || '', // 追加
     }
   });
 
@@ -94,29 +96,53 @@ export function ChapterForm({
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
 
-    try {
-      if (initialData) {
-        await courseApi.updateChapter(courseId, initialData.id, formData);
-        toast.success('チャプターを更新しました');
-      } else {
-        await courseApi.createChapter(courseId, formData);
-        toast.success('チャプターを作成しました');
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!validateForm()) return;
+  
+  setIsSubmitting(true);
+
+  try {
+    const submitData: CreateChapterDTO = {
+      title: formData.title,
+      subtitle: formData.subtitle,
+      content: {
+        type: formData.content.type,
+        videoId: formData.content.videoId,
+        transcription: formData.content.transcription
+      },
+      timeLimit: formData.timeLimit,
+      releaseTime: formData.releaseTime,
+      orderIndex: formData.orderIndex,
+      experienceWeight: formData.experienceWeight,
+      task: {
+        description: formData.task.description,
+        materials: formData.task.materials,
+        task: formData.task.task,
+        evaluationCriteria: formData.task.evaluationCriteria,
+        maxPoints: formData.task.maxPoints,
+        systemMessage: formData.task.systemMessage,
+        referenceText: formData.task.referenceText,
       }
-      onSuccess();
-    } catch (error) {
-      console.error('Error saving chapter:', error);
-      toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    };
 
+    if (initialData) {
+      await courseApi.updateChapter(courseId, initialData.id, submitData);
+      toast.success('チャプターを更新しました');
+    } else {
+      await courseApi.createChapter(courseId, submitData);
+      toast.success('チャプターを作成しました');
+    }
+    onSuccess();
+  } catch (error) {
+    console.error('Error saving chapter:', error);
+    toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,
@@ -211,7 +237,7 @@ export function ChapterForm({
                     ...prev,
                     content: {
                       type: e.target.value as 'video' | 'audio',
-                      url: '',
+                      videoId: '',          // urlをvideoIdに変更
                       transcription: ''
                     }
                   }));
@@ -259,11 +285,12 @@ export function ChapterForm({
       ...prev,
       task: {
         description: taskData.description,
-        materials: taskData.materials,
-        task: taskData.task,
-        evaluationCriteria: taskData.evaluationCriteria,
+        materials: taskData.materials || '',
+        task: taskData.task || '',
+        evaluationCriteria: taskData.evaluationCriteria || '',
         maxPoints: taskData.maxPoints,
-        systemMessage: taskData.systemMessage
+        systemMessage: taskData.systemMessage,
+        referenceText: taskData.referenceText, // 追加
       }
     }));
   }}

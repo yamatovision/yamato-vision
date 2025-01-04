@@ -420,39 +420,114 @@ startChapter: async (courseId: string, chapterId: string): Promise<APIResponse<a
   }
 },
 
-  // チャプター作成
-  createChapter: async (courseId: string, data: CreateChapterDTO) => {
-    const { waitTime, ...restData } = data;
-    const createData = {
-      ...restData,
-      releaseTime: data.releaseTime || waitTime
-    };
-  
-    const response = await api.post<ChapterResponse>(
-      `/admin/courses/${courseId}/chapters`,
-      createData
-    );
-    return { data: response.data.data };
-  },
-
-  // チャプター更新
-  updateChapter: async (
-    courseId: string, 
-    chapterId: string, 
-    data: Omit<Partial<Chapter>, 'id' | 'courseId'>
-  ) => {
+// チャプター更新
+updateChapter: async (
+  courseId: string, 
+  chapterId: string, 
+  data: UpdateChapterDTO
+): Promise<APIResponse<Chapter>> => {
+  try {
     const { waitTime, ...restData } = data;
     const updatedData = {
       ...restData,
-      releaseTime: data.releaseTime || waitTime
+      releaseTime: data.releaseTime || waitTime,
+      task: {
+        ...data.task,
+        referenceText: data.task.referenceText || ''
+      }
     };
-  
-    const response = await api.put<ChapterResponse>(
-      `/admin/courses/${courseId}/chapters/${chapterId}`,
-      updatedData
+
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updatedData)
+      }
     );
-    return { data: response.data.data };
-  },
+
+    if (!response.ok) {
+      throw new Error('Failed to update chapter');
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
+updateMaterialProgress: async (
+  courseId: string,
+  chapterId: string,
+  materialId: string,
+  data: {  // このデータ型を追加
+    completed: boolean;
+    lastAccessedAt: Date;
+  }
+) => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/materials/${materialId}/progress`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to update material progress');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data: data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
+  createChapter: async (courseId: string, data: CreateChapterDTO): Promise<APIResponse<Chapter>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to create chapter');
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
 
   // チャプター削除
   deleteChapter: async (courseId: string, chapterId: string) => {
@@ -518,5 +593,36 @@ startChapter: async (courseId: string, chapterId: string): Promise<APIResponse<a
       console.error('Failed to archive course:', error);
       throw error;
     }
-  }
+  },
+  submitTask: async (
+    courseId: string,
+    chapterId: string,
+    data: {
+      prompt: string;
+      result: string;
+    }
+  ): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/submit`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to submit task');
+      }
+
+      return await response.json();
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }  // ← 最後のメソッドなのでカンマは不要
 };

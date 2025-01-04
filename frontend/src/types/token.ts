@@ -1,8 +1,8 @@
 // src/types/token.ts を作成
 export interface TokenUpdateResponse {
-  currentLevel: number;
+  newLevel: number;     // currentLevel → newLevel
   oldLevel: number;
-  levelUpMessage: string;
+  levelUpMessage: string | null;
   experienceGained: number;
   newTokens?: number;
 }

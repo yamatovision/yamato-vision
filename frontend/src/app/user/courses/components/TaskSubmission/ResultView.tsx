@@ -1,4 +1,7 @@
-// frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/components/TaskSubmission/ResultView.tsx
+// src/app/user/courses/components/TaskSubmission/ResultView.tsx
+import { useTheme } from '@/contexts/theme';  // 追加
+import React from 'react';  // 追加
+
 interface ResultViewProps {
   result: {
     score: number;
@@ -6,6 +9,7 @@ interface ResultViewProps {
     nextStep: string;
   };
 }
+
 
 export const ResultView: React.FC<ResultViewProps> = ({ result }) => {
   const { theme } = useTheme();

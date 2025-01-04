@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { toast } from 'react-hot-toast';
 
-  interface MediaUploadProps {
-    type: 'video' | 'audio';
-    currentVideoId?: string;
-    onUpload: (data: { videoId: string }) => void;
-    courseId: string;
-    chapterId: string;
-  }
+interface MediaUploadProps {
+  type: 'video' | 'audio';
+  currentVideoId?: string;
+  onUpload: (data: { videoId: string }) => void;
+  courseId: string;
+  chapterId: string;
+}
 
 export function MediaUpload({
   type,

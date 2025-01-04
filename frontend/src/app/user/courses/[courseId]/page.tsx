@@ -12,7 +12,6 @@ import { TaskDescription } from '@/app/user/courses/components/TaskDescription';
 import { AttachmentFiles } from '@/app/user/courses/components/AttachmentFiles';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
 import { ParticipantList } from '@/app/user/courses/components/ParticipantList';
-import { ProgressBar } from '@/app/user/courses/components/ProgressBar';
 export default function ChapterPage({ 
   params 
 }: { 
@@ -22,7 +21,6 @@ export default function ChapterPage({
   const router = useRouter();
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -45,7 +43,6 @@ export default function ChapterPage({
           // プログレスの取得
           const progressResponse = await courseApi.getCurrentUserCourse(params.courseId);
           if (progressResponse.success && progressResponse.data) {
-            setProgress(progressResponse.data.progress);
           }
         }
       } catch (error) {
@@ -122,34 +119,38 @@ if (result.data && result.data.nextChapter) {
       {/* コンテンツ部分 */}
       <div className="space-y-6">
         {/* メディアプレイヤー */}
-        {chapter.content?.type === 'video' && (
-          <div className="mb-6">
-            <VideoPlayer 
-              url={chapter.content.url} 
-              transcription={chapter.content.transcription}
-            />
-          </div>
-        )}
+        {chapter.content?.type === 'video' && chapter.content.videoId && (
+  <div className="mb-6">
+    <VideoPlayer
+      videoId={chapter.content.videoId}
+      courseId={params.courseId}
+      chapterId={params.chapterId}
+      transcription={chapter.content.transcription}
+    />
+  </div>
+)}
 
-        {chapter.content?.type === 'audio' && (
-          <div className="mb-6">
-            <AudioPlayer 
-              url={chapter.content.url}
-              transcription={chapter.content.transcription}
-            />
-          </div>
-        )}
+{chapter.content?.type === 'audio' && chapter.content.url && (
+  <div className="mb-6">
+    <AudioPlayer
+      url={chapter.content.url || ''}  // デフォルト値を設定
+      courseId={params.courseId}
+      chapterId={params.chapterId}
+      transcription={chapter.content.transcription}
+    />
+  </div>
+)}
 
         {/* タスク部分 */}
         {chapter.task && (
           <div className="mb-6">
-            <TaskDescription
-              description={chapter.task.description}
-              systemMessage={chapter.task.systemMessage}
-              referenceText={chapter.task.referenceText}
-              maxPoints={chapter.task.maxPoints}
-              type={chapter.task.type}
-            />
+           <TaskDescription
+  description={chapter.task.description}
+  systemMessage={chapter.task.systemMessage}
+  referenceText={chapter.task.referenceText}
+  maxPoints={chapter.task.maxPoints}
+  // typeプロパティを削除
+/>
           </div>
         )}
 
@@ -158,7 +159,6 @@ if (result.data && result.data.nextChapter) {
 
         {/* 進捗と時間 */}
         <div className="mt-8 space-y-4">
-          <ProgressBar progress={progress} />
           {chapter.timeLimit && (
   <div className="flex justify-between items-center">
    <TimeRemaining 
