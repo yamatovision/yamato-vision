@@ -1,9 +1,15 @@
 // backend/src/courses/chapters/chapterTypes.ts
-import { PrismaClient, Chapter as PrismaChapter, Task as PrismaTask } from '@prisma/client';
+import { 
+  PrismaClient, 
+  Chapter as PrismaChapter, 
+  Task as PrismaTask,
+  UserChapterProgress 
+} from '@prisma/client';
 
 // Prismaの基本型との統合
 export type ChapterWithTask = PrismaChapter & {
   task: PrismaTask | null;
+  userProgress?: UserChapterProgress[];
 };
 
 // メディアコンテンツの定義

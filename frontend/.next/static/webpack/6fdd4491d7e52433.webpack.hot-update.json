@@ -1,0 +1,1 @@
+{"c":["app/layout","app/user/courses/[courseId]/chapters/[chapterId]/page","webpack"],"r":[],"m":["(app-pages-browser)/./src/app/user/courses/components/SubmissionForm.tsx","(app-pages-browser)/./src/app/user/courses/components/TimeoutModal.tsx"]}

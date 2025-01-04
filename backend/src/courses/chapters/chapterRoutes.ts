@@ -14,7 +14,7 @@ router.put('/', chapterController.updateChaptersOrder.bind(chapterController));
 
 // Public routes
 router.get('/', chapterController.getChapters.bind(chapterController));
-router.get('/:chapterId', chapterController.getChapter.bind(chapterController));
+router.get('/:chapterId', authMiddleware, chapterController.getChapter.bind(chapterController));
 router.get('/:chapterId/access', chapterController.checkChapterAccess.bind(chapterController));
 
 // Current chapter endpoint

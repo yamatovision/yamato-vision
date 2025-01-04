@@ -28,15 +28,16 @@ interface Props {
 
 export function TimeRemaining({ 
   startTime,
-  timeLimit,
+  timeLimit, // 日数で渡される
   type,
-  onTimeout = () => {} // デフォルト値を設定
+  onTimeout = () => {}
 }: Props) {
   const { theme } = useTheme();
   const [remainingTime, setRemainingTime] = useState(() => {
     const now = new Date();
-    const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
-    return Math.max(0, timeLimit - elapsed);
+    const endTime = new Date(startTime.getTime() + (timeLimit * 24 * 60 * 60 * 1000)); // 日数を秒に変換
+    const remaining = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+    return remaining;
   });
 
   const severity: TimeoutSeverity = useMemo(() => {

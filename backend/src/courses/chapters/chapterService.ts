@@ -384,25 +384,37 @@ async getChapters(courseId: string): Promise<ChapterWithTask[]> {
     throw error;
   }
 }
-
-async getChapter(chapterId: string): Promise<ChapterWithTask | null> {
+async getChapter(chapterId: string, userId?: string): Promise<ChapterWithTask | null> {
   try {
-    // デバッグログ：クエリ開始
-    console.log('Getting chapter from database:', { chapterId });
-
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: {
-        task: true
+        task: true,
+        userProgress: userId ? {
+          where: { userId }
+        } : undefined
       }
     });
 
-    // デバッグログ：クエリ結果
-    console.log('Database query result:', {
-      found: !!chapter,
-      chapterId,
-      title: chapter?.title
-    });
+    if (!chapter) return null;
+
+    // progressの取得を同時に行う
+    if (userId) {
+      const progress = await prisma.userChapterProgress.findUnique({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId: chapter.courseId,
+            chapterId: chapter.id
+          }
+        }
+      });
+
+      return {
+        ...chapter,
+        userProgress: progress ? [progress] : []
+      };
+    }
 
     return chapter;
   } catch (error) {

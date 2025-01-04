@@ -48,25 +48,22 @@ export class ChapterController {
     }
   }
   // チャプター取得
+
   async getChapter(
     req: Request<{ courseId: string; chapterId: string }>,
     res: Response
   ) {
     try {
-      // デバッグログ：リクエストパラメータ
       console.log('GetChapter Request:', {
         courseId: req.params.courseId,
         chapterId: req.params.chapterId,
         userId: req.user?.id
       });
   
-      const chapter = await chapterService.getChapter(req.params.chapterId);
-      
-      // デバッグログ：サービスからの結果
-      console.log('Chapter Service Result:', {
-        found: !!chapter,
-        chapterId: req.params.chapterId
-      });
+      const chapter = await chapterService.getChapter(
+        req.params.chapterId,
+        req.user?.id
+      );
   
       if (!chapter) {
         console.log('Chapter not found:', req.params.chapterId);
@@ -76,7 +73,13 @@ export class ChapterController {
         });
       }
   
-      // content文字列のパース
+      // デバッグ用：進捗情報の確認（型安全な書き方に修正）
+      console.log('Chapter progress:', {
+        hasProgress: Array.isArray(chapter.userProgress) && chapter.userProgress.length > 0,
+        startTime: chapter.userProgress?.[0]?.startedAt,
+        status: chapter.userProgress?.[0]?.status
+      });
+  
       const parsedChapter = {
         ...chapter,
         content: typeof chapter.content === 'string' 
@@ -84,29 +87,28 @@ export class ChapterController {
           : chapter.content
       };
   
-      // デバッグログ：レスポンスデータ
-      console.log('Sending chapter response:', {
-        chapterId: parsedChapter.id,
-        title: parsedChapter.title
-      });
-  
       return res.status(200).json({
         success: true,
         data: parsedChapter
       });
     } catch (error) {
-      console.error('Error in getChapter:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        chapterId: req.params.chapterId,
-        stack: error instanceof Error ? error.stack : undefined
-      });
-  
+      console.error('Error in getChapter:', error);
       return res.status(500).json({
         success: false,
         message: 'チャプターの取得に失敗しました'
       });
     }
   }
+
+
+
+
+
+
+
+
+
+
 // chapterController.tsに追加
 async updateVisibility(
   req: Request<{ courseId: string; chapterId: string }>,
