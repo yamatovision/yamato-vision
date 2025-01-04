@@ -48,6 +48,13 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     media: false,
     task: false
   });
+  const extractContent = (systemMessage: string, tag: string): string => {
+    if (!systemMessage) return '';
+    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+    const match = systemMessage.match(regex);
+    return match ? match[1].trim() : '';
+  };
+  
 
   const parseContent = (contentString: string): ChapterContent => {
     try {
@@ -200,9 +207,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
           transcription={parsedContent.transcription}
         />
       ) : null}
-
-      {/* 課題セクション */}
-      {chapter.task && (
+   {(chapter?.taskContent || chapter?.task) && (
         <div className={`mt-8 ${
           theme === 'dark' ? 'bg-gray-800' : 'bg-white'
         } rounded-lg shadow-lg p-6`}>
@@ -211,29 +216,50 @@ export default function ChapterPage({ params }: ChapterPageProps) {
           }`}>
             課題
           </h2>
-          <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
-            <div dangerouslySetInnerHTML={{ __html: chapter.task.description }} />
-          </div>
 
-          <SubmissionForm
-            task={chapter.task}
-            onSubmit={async (prompt: string, result: string) => {
-              try {
-                const submission = await courseApi.submitTask(
-                  params.courseId,
-                  params.chapterId,
-                  { prompt, result }
-                );
+          {/* リッチテキストによる課題説明 */}
+          {chapter.taskContent?.description && (
+            <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
+              <div dangerouslySetInnerHTML={{ __html: chapter.taskContent.description }} />
+            </div>
+          )}
 
-                if (submission.success) {
-                  toast.success('課題を提出しました！');
-                }
-              } catch (error) {
-                toast.error('課題の提出に失敗しました');
-              }
-            }}
-            isSubmitting={false}
-          />
+          {/* 従来の課題説明（taskContent がない場合のフォールバック） */}
+          {!chapter.taskContent?.description && chapter.task?.description && (
+            <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
+              <div dangerouslySetInnerHTML={{ __html: chapter.task.description }} />
+            </div>
+          )}
+
+{chapter.task && (
+  <>
+    {/* デバッグ用ログ出力 */}
+    {console.log('Chapter Task Raw Data:', {
+      fullTask: chapter.task,
+      systemMessage: chapter.task.systemMessage,
+      description: chapter.task.description
+    })}
+    {console.log('Extracted Contents:', {
+      materials: extractContent(chapter.task.systemMessage, 'materials'),
+      task: extractContent(chapter.task.systemMessage, 'task'),
+      evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
+    })}
+
+    <SubmissionForm
+      task={{
+        ...chapter.task,
+        materials: extractContent(chapter.task.systemMessage, 'materials'),
+        task: extractContent(chapter.task.systemMessage, 'task'),
+        evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
+      }}
+      courseId={params.courseId}
+      chapterId={params.chapterId}
+      onSubmitSuccess={(result) => {
+        toast.success('課題を提出しました！');
+      }}
+    />
+  </>
+)}
         </div>
       )}
     </div>

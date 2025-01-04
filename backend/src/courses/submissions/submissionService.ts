@@ -1,17 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 import { 
   CreateSubmissionDTO, 
-  SubmissionResult, 
-  SubmissionStats,
-  UserSubmissionStatus 
+  SubmissionResult,  
+  UserSubmissionStatus,
+  DbSubmission
 } from './submissionTypes';
 import { taskService } from '../tasks/taskService';
 import { timeoutService } from '../timeouts/timeoutService';
+import { evaluationService } from './evaluationService';  // 追加
+
 
 const prisma = new PrismaClient();
 
 export class SubmissionService {
   async createSubmission(data: CreateSubmissionDTO): Promise<SubmissionResult> {
+    // データの存在チェック
+    if (!data.userId || !data.taskId) {
+      throw new Error('ユーザーIDとタスクIDは必須です');
+    }
+
     const task = await prisma.task.findUnique({
       where: { id: data.taskId },
       include: {
@@ -50,48 +57,51 @@ export class SubmissionService {
       task.chapter.id
     );
 
-    const userCourse = task.chapter?.course.users[0];
-    const timePenalty = chapterTimeout.isTimedOut || (task.chapter?.timeLimit 
-      ? taskService.calculateTimePenalty(
-          new Date(),
-          userCourse?.startedAt || new Date(),
-          task.chapter.timeLimit
-        ) < 1
-      : false);
+    if (chapterTimeout.isTimedOut) {
+      throw new Error('チャプターの制限時間が終了しています。');
+    }
 
-    const evaluationResult = await taskService.evaluateSubmission({
-      systemMessage: task.systemMessage,
-      referenceText: task.referenceText || '',
-      submission: data.content,
-      maxPoints: task.maxPoints
+    // システムメッセージから各セクションを抽出
+    const materials = this.extractSection(task.systemMessage, 'materials');
+    const taskContent = this.extractSection(task.systemMessage, 'task');
+    const evaluationCriteria = this.extractSection(task.systemMessage, 'evaluation_criteria');
+
+    // 評価用のXMLデータを構築
+    const evaluationXML = `
+<materials>${materials}</materials>
+<task>${taskContent}</task>
+<evaluation_criteria>${evaluationCriteria}</evaluation_criteria>
+<submission>${data.submission}</submission>`;
+
+    const evaluationResult = await evaluationService.evaluateSubmission({
+      materials,
+      task: taskContent,
+      evaluationCriteria,
+      submission: data.submission
     });
-
-    const originalScore = evaluationResult.points;
-    const finalScore = timePenalty 
-      ? Math.floor(originalScore * 0.33) 
-      : originalScore;
-
 
     const submission = await prisma.submission.create({
       data: {
-        content: data.content,
+        content: data.submission,
         userId: data.userId,
         taskId: data.taskId,
-        points: finalScore,
-        feedback: evaluationResult.feedback,
+        points: evaluationResult.evaluation.total_score,
+        feedback: evaluationResult.evaluation.feedback,
         evaluatedAt: new Date(),
         submittedAt: new Date()
       }
-    });
+    }) as DbSubmission;
 
     return {
-      submission,
-      timePenalty,
-      finalScore,
-      originalScore,
-      feedback: evaluationResult.feedback,
-      timeoutMessage: chapterTimeout.message || courseTimeout.message
-
+      submission: {
+        id: submission.id,
+        content: submission.content,
+        points: submission.points ?? undefined,  // nullをundefinedに変換
+        feedback: submission.feedback ?? undefined  // nullをundefinedに変換
+      },
+      finalScore: evaluationResult.evaluation.total_score,
+      originalScore: evaluationResult.evaluation.total_score,
+      feedback: evaluationResult.evaluation.feedback
     };
   }
 
@@ -124,15 +134,15 @@ export class SubmissionService {
         userId,
         taskId
       },
+      orderBy: {
+        submittedAt: 'desc'
+      },
       include: {
         task: {
           include: {
             chapter: true
           }
         }
-      },
-      orderBy: {
-        submittedAt: 'desc'
       }
     });
 
@@ -143,72 +153,19 @@ export class SubmissionService {
       };
     }
 
-    const task = submission.task;
-    const chapter = task.chapter;
-    const timeLimit = chapter?.timeLimit;
-
-    const isLate = timeLimit
-      ? (submission.submittedAt.getTime() - chapter.createdAt.getTime()) > (timeLimit * 60 * 1000)
+    const isLate = submission.task.chapter?.timeLimit
+      ? this.checkIfSubmissionIsLate(
+          submission.submittedAt,
+          submission.task.chapter.timeLimit
+        )
       : false;
 
     return {
       completed: true,
       submittedAt: submission.submittedAt,
       score: submission.points ?? undefined,
-      isLate,
-      feedback: submission.feedback ?? undefined
-    };
-  }
-
-  async getTaskSubmissionStats(taskId: string): Promise<SubmissionStats> {
-    const submissions = await prisma.submission.findMany({
-      where: { taskId },
-      include: {
-        task: {
-          include: {
-            chapter: true
-          }
-        }
-      }
-    });
-
-    const totalSubmissions = submissions.length;
-    if (totalSubmissions === 0) {
-      return {
-        totalSubmissions: 0,
-        averageScore: 0,
-        highestScore: 0,
-        timelySubmissions: 0,
-        lateSubmissions: 0
-      };
-    }
-
-    let timelyCount = 0;
-    let lateCount = 0;
-    let totalScore = 0;
-    let highestScore = 0;
-
-    submissions.forEach(submission => {
-      const timeLimit = submission.task.chapter?.timeLimit;
-      const submissionTime = submission.submittedAt.getTime() - 
-        submission.task.chapter!.createdAt.getTime();
-
-      if (timeLimit && submissionTime > (timeLimit * 60 * 1000)) {
-        lateCount++;
-      } else {
-        timelyCount++;
-      }
-
-      totalScore += submission.points ?? 0;
-      highestScore = Math.max(highestScore, submission.points ?? 0);
-    });
-
-    return {
-      totalSubmissions,
-      averageScore: totalScore / totalSubmissions,
-      highestScore,
-      timelySubmissions: timelyCount,
-      lateSubmissions: lateCount
+      feedback: submission.feedback ?? undefined,
+      isLate
     };
   }
 
@@ -238,6 +195,18 @@ export class SubmissionService {
       score: submission?.points ?? 0,
       submittedAt: submission?.submittedAt
     };
+  }
+
+  private extractSection(text: string, tag: string): string {
+    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+    const match = text.match(regex);
+    return match ? match[1].trim() : '';
+  }
+
+  private checkIfSubmissionIsLate(submittedAt: Date, timeLimit: number): boolean {
+    const submissionTime = submittedAt.getTime();
+    const timeLimitMs = timeLimit * 60 * 1000;
+    return submissionTime > timeLimitMs;
   }
 }
 

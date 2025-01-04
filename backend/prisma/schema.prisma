@@ -52,6 +52,7 @@ model Chapter {
   taskId           String?                    @unique
   releaseTime      Int?
   content          Json
+  taskContent   Json?    // 追加
   isPerfectOnly    Boolean                    @default(false)
   experienceWeight Int                        @default(100)
   course           Course                     @relation(fields: [courseId], references: [id])

@@ -10,9 +10,9 @@ export interface ChapterContent {
 export interface Task {
   id?: string;
   description: string;
-  materials?: string;
-  task?: string;
-  evaluationCriteria?: string;
+  materials: string;        // required に変更
+  task: string;            // required に変更
+  evaluationCriteria: string;  // required に変更
   maxPoints: number;
   systemMessage: string;
   referenceText: string;

@@ -1,39 +1,39 @@
+// backend/src/courses/submissions/submissionRoutes.ts
+
 import { Router } from 'express';
 import { submissionController } from './submissionController';
+import { authMiddleware } from '../../auth/authMiddleware';
 
 const router = Router({ mergeParams: true });
 
-router.post('/evaluate', submissionController.testEvaluation.bind(submissionController));
-
-
-
-// 課題提出関連
+// 課題提出
 router.post(
-  '/tasks/:taskId/submissions',
+  '/courses/:courseId/chapters/:chapterId/submit',  // パスを確認
+  authMiddleware,
   submissionController.createSubmission.bind(submissionController)
 );
 
+// 提出内容の取得
 router.get(
   '/submissions/:submissionId',
+  authMiddleware,
   submissionController.getSubmission.bind(submissionController)
 );
 
 // 提出状況確認
 router.get(
   '/tasks/:taskId/users/:userId/status',
+  authMiddleware,
   submissionController.getUserTaskStatus.bind(submissionController)
-);
-
-// 統計情報
-router.get(
-  '/tasks/:taskId/submissions/stats',
-  submissionController.getTaskSubmissionStats.bind(submissionController)
 );
 
 // チャプター進捗
 router.get(
   '/chapters/:chapterId/users/:userId/progress',
+  authMiddleware,
   submissionController.getChapterProgress.bind(submissionController)
 );
+
+// テスト用評価エンドポイントは削除または必要な場合は別途実装
 
 export { router as submissionRoutes };

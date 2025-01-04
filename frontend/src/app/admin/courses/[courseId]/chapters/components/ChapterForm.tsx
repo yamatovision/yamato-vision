@@ -7,7 +7,6 @@ import { toast } from 'react-hot-toast';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaUpload } from './MediaUpload';
 import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
-import { TIME_VALIDATION } from '@/types/timeout';  // 追加
 import { TaskForm } from './TaskForm';  // この行を追加
 import { Chapter, Task, CreateChapterDTO } from '@/types/course';  // CreateChapterDTOを追加
 
@@ -33,6 +32,9 @@ interface ChapterFormData {
     systemMessage: string;
     referenceText: string;
   };
+  taskContent: {
+    description: string;
+  };
 }
 
 interface ChapterFormProps {
@@ -42,18 +44,8 @@ interface ChapterFormProps {
   onSuccess: () => void;
 }
 
-interface TaskFormProps {
-  initialData?: Task;  // Task型を使用
-  onSubmit: (taskData: Task) => void;  // TaskData型をTask型に変更
-  disabled?: boolean;
-}
 
-interface CreateTaskDTO {
-  title: string;
-  description: string;
-  systemMessage: string;
-  maxPoints: number;
-}
+
 
 
 export function ChapterForm({
@@ -64,7 +56,6 @@ export function ChapterForm({
 }: ChapterFormProps) {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'task'>('basic');
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     subtitle: initialData?.subtitle || '',
@@ -85,8 +76,14 @@ export function ChapterForm({
       maxPoints: initialData?.task?.maxPoints || 100,
       systemMessage: initialData?.task?.systemMessage || '',
       referenceText: initialData?.task?.referenceText || '', // 追加
+    },
+    taskContent: {
+      description: initialData?.taskContent?.description || ''
     }
+   
   });
+
+
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -98,11 +95,12 @@ export function ChapterForm({
 
 
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
   
-  setIsSubmitting(true);
 
   try {
     const submitData: CreateChapterDTO = {
@@ -125,7 +123,11 @@ const handleSubmit = async (e: React.FormEvent) => {
         maxPoints: formData.task.maxPoints,
         systemMessage: formData.task.systemMessage,
         referenceText: formData.task.referenceText,
+      },
+      taskContent: {
+        description: formData.taskContent.description
       }
+      
     };
 
     if (initialData) {
@@ -269,15 +271,34 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </section>
 
-        {/* 課題セクション */}
-        <section className={`p-6 rounded-lg ${
+       {/* 課題セクション - 更新 */}
+       <section className={`p-6 rounded-lg ${
           theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
         }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
+          <h3 className={`text-lg font-medium mb-6 ${
             theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
           }`}>
             課題設定
           </h3>
+
+          {/* 公開用課題説明 */}
+          <div className="mb-8">
+            <RichTextEditor
+              label="課題説明"
+              value={formData.taskContent.description}
+              onChange={(value) => {
+                setFormData(prev => ({
+                  ...prev,
+                  taskContent: {
+                    ...prev.taskContent,
+                    description: value
+                  }
+                }));
+              }}
+              placeholder="課題の説明を入力してください"
+            />
+          </div>
+
           <TaskForm
   initialData={initialData?.task}
   onSubmit={(taskData) => {

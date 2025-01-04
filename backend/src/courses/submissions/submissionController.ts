@@ -1,61 +1,99 @@
+// backend/src/courses/submissions/submissionController.ts
+
 import { Request, Response } from 'express';
 import { submissionService } from './submissionService';
 import { CreateSubmissionDTO } from './submissionTypes';
-import { evaluationService } from './evaluationService';  // 追加
-
-
+import { evaluationService } from './evaluationService';
+import { AuthRequest } from '../../auth/authMiddleware';  // 既存の型をインポート
+import { PrismaClient } from '@prisma/client';  // 追加
+const prisma = new PrismaClient();  // 追加
+const extractContent = (text: string, tag: string): string => {
+  const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+  const match = text.match(regex);
+  return match ? match[1].trim() : '';
+};
 export class SubmissionController {
-  // 課題提出処理
-  async createSubmission(
-    req: Request<{ taskId: string }, {}, CreateSubmissionDTO>,
-    res: Response
-  ) {
-    try {
-      const result = await submissionService.createSubmission({
-        ...req.body,
-        taskId: req.params.taskId
-      });
 
+
+
+
+  async createSubmission(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
+      }
+  
+      const { courseId, chapterId } = req.params;
+      
+      // チャプターからtaskIdを取得
+      const chapter = await prisma.chapter.findUnique({
+        where: { id: chapterId },
+        select: { taskId: true }
+      });
+  
+      if (!chapter?.taskId) {
+        return res.status(404).json({
+          success: false,
+          message: 'チャプターに対応する課題が見つかりません'
+        });
+      }
+  
+      // タスクの取得
+      const task = await prisma.task.findUnique({
+        where: { id: chapter.taskId },
+        select: {
+          id: true,
+          systemMessage: true
+        }
+      });
+  
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          message: '課題が見つかりません'
+        });
+      }
+  
+      // 以下は既存の処理
+      const materials = extractContent(task.systemMessage, 'materials');
+      const taskContent = extractContent(task.systemMessage, 'task');
+      const evaluationCriteria = extractContent(task.systemMessage, 'evaluation_criteria');
+  
+      const evaluationResult = await evaluationService.evaluateSubmission({
+        materials,
+        task: taskContent,
+        evaluationCriteria,
+        submission: req.body.submission
+      });
+  
+      const submissionData: CreateSubmissionDTO = {
+        taskId: task.id,
+        userId: req.user.id,
+        submission: req.body.submission
+      };
+  
+      const result = await submissionService.createSubmission(submissionData);
+  
       return res.status(201).json({
-        data: result,
-        message: result.timePenalty 
-          ? '制限時間を超過したため、得点が減少しています'
-          : '課題を提出しました'
+        success: true,
+        data: {
+          ...result,
+          evaluation: evaluationResult.evaluation
+        },
+        message: '課題を提出しました'
       });
     } catch (error) {
       console.error('Error creating submission:', error);
-      return res.status(500).json({ message: '課題の提出に失敗しました' });
+      return res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : '課題の提出に失敗しました' 
+      });
     }
   }
 
-  // backend/src/courses/submissions/submissionController.ts に追加
-// デバッグ用エンドポイント
-// submissionController.ts のtestEvaluationメソッドにログを追加
-async testEvaluation(req: Request, res: Response) {
-  try {
-    console.log('Debug evaluation request received:', req.body);
-    const testData = {
-      materials: "テスト教材内容",
-      task: "プロンプトエンジニアリングの基本課題",
-      evaluationCriteria: "1. プロンプトの構造化\n2. 制約条件の明確さ\n3. 目的の具体性",
-      submission: req.body.submission || "テスト回答"
-    };
-
-    console.log('Sending test data to evaluation service:', testData);
-    const result = await evaluationService.evaluateSubmission(testData);
-    console.log('Evaluation result:', result);
-
-    return res.json({ success: true, data: result });
-  } catch (error) {
-    console.error('Test evaluation failed:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
-  }
-}
-
-  // 提出内容の取得
   async getSubmission(
     req: Request<{ submissionId: string }>,
     res: Response
@@ -76,7 +114,6 @@ async testEvaluation(req: Request, res: Response) {
     }
   }
 
-  // ユーザーの課題提出状況確認
   async getUserTaskStatus(
     req: Request<{ taskId: string; userId: string }>,
     res: Response
@@ -94,24 +131,30 @@ async testEvaluation(req: Request, res: Response) {
     }
   }
 
-  // 課題の提出統計情報
-  async getTaskSubmissionStats(
-    req: Request<{ taskId: string }>,
-    res: Response
-  ) {
+  async testEvaluation(req: Request, res: Response) {
     try {
-      const stats = await submissionService.getTaskSubmissionStats(
-        req.params.taskId
-      );
+      console.log('Debug evaluation request received:', req.body);
+      const testData = {
+        materials: "テスト教材内容",
+        task: "プロンプトエンジニアリングの基本課題",
+        evaluationCriteria: "1. プロンプトの構造化\n2. 制約条件の明確さ\n3. 目的の具体性",
+        submission: req.body.submission || "テスト回答"
+      };
 
-      return res.json({ data: stats });
+      console.log('Sending test data to evaluation service:', testData);
+      const result = await evaluationService.evaluateSubmission(testData);
+      console.log('Evaluation result:', result);
+
+      return res.json({ success: true, data: result });
     } catch (error) {
-      console.error('Error fetching submission stats:', error);
-      return res.status(500).json({ message: '統計情報の取得に失敗しました' });
+      console.error('Test evaluation failed:', error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   }
 
-  // チャプターの進捗確認
   async getChapterProgress(
     req: Request<{ chapterId: string; userId: string }>,
     res: Response

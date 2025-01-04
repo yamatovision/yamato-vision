@@ -30,6 +30,9 @@ export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
   content?: ChapterContent;
+  taskContent?: {
+    description: string;
+  };
   timeLimit?: number;  // 日数単位
   releaseTime?: number;  // コース開始からの経過日数（日単位）
   orderIndex?: number;
@@ -42,13 +45,30 @@ export interface CreateChapterDTO {
 }
 
 // チャプター更新用DTO
-export interface UpdateChapterDTO extends Partial<CreateChapterDTO> {
+// chapterTypes.ts
+export interface UpdateChapterDTO {
+  title?: string;
+  subtitle?: string;
+  content?: {
+    type: 'video' | 'audio';
+    videoId: string;
+    transcription?: string;
+  };
+  taskContent?: {
+    description: string;
+  };
+  timeLimit?: number;
+  releaseTime?: number;
   isVisible?: boolean;
   isFinalExam?: boolean;
   isPerfectOnly?: boolean;
-  timeSettings?: ChapterTimeSettings;  // 時間設定の一括更新用
+  task?: {
+    description?: string;
+    systemMessage?: string;
+    referenceText?: string;
+    maxPoints?: number;
+  };
 }
-
 // チャプター順序設定
 export interface ChapterOrderItem {
   id: string;

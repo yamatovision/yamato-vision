@@ -85,18 +85,18 @@ private getFinalStatus(isPerfect: boolean): CourseStatus {
   }
   return 'completed';  // 小文字に変更
 }
-
+// chapterService.ts
 async updateChapter(chapterId: string, data: UpdateChapterDTO) {
   try {
-    // Chapter更新データの準備
+    // デバッグログ追加
+    console.log('Updating chapter with data:', {
+      chapterId,
+      taskContent: data.taskContent
+    });
+
     const updateData: any = {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.subtitle !== undefined && { subtitle: data.subtitle }),
-      ...(data.content && { 
-        content: typeof data.content === 'string' 
-          ? data.content 
-          : JSON.stringify(data.content) 
-      }),
       ...(data.timeLimit !== undefined && { timeLimit: data.timeLimit }),
       ...(data.releaseTime !== undefined && { releaseTime: data.releaseTime }),
       ...(data.isVisible !== undefined && { isVisible: data.isVisible }),
@@ -104,7 +104,27 @@ async updateChapter(chapterId: string, data: UpdateChapterDTO) {
       ...(data.isPerfectOnly !== undefined && { isPerfectOnly: data.isPerfectOnly })
     };
 
-    // Taskの更新が含まれている場合のみ実行
+    // content の処理
+    if (data.content) {
+      updateData.content = typeof data.content === 'string'
+        ? JSON.parse(data.content)
+        : data.content;
+    }
+
+    // taskContent の処理（独立したフィールドとして扱う）
+    if (data.taskContent) {
+      // taskContentが文字列の場合はパースし、オブジェクトの場合はそのまま使用
+      const parsedTaskContent = typeof data.taskContent === 'string'
+        ? JSON.parse(data.taskContent)
+        : data.taskContent;
+
+      // データベースに保存する前に構造を確認
+      console.log('Saving taskContent:', parsedTaskContent);
+
+      updateData.taskContent = parsedTaskContent;
+    }
+
+    // Taskの更新処理
     if (data.task) {
       const chapter = await prisma.chapter.findUnique({
         where: { id: chapterId },
@@ -132,19 +152,30 @@ async updateChapter(chapterId: string, data: UpdateChapterDTO) {
       }
     }
 
+    // デバッグログ追加
+    console.log('Final update data:', updateData);
+
     // Chapterの更新を実行
-    return prisma.chapter.update({
+    const updatedChapter = await prisma.chapter.update({
       where: { id: chapterId },
       data: updateData,
       include: {
         task: true
       }
     });
+
+    // デバッグログ追加
+    console.log('Updated chapter:', updatedChapter);
+
+    return updatedChapter;
   } catch (error) {
     console.error('Error in updateChapter:', error);
     throw error;
   }
 }
+
+
+
   // Helper method to get taskId by chapterId
   private async getTaskIdByChapterId(chapterId: string): Promise<string> {
     const chapter = await prisma.chapter.findUnique({

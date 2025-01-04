@@ -594,14 +594,27 @@ updateMaterialProgress: async (
       throw error;
     }
   },
+
+  // courses.ts の submitTask メソッドを修正
   submitTask: async (
     courseId: string,
     chapterId: string,
     data: {
-      prompt: string;
-      result: string;
+      submission: string;  // 回答のみ
     }
-  ): Promise<APIResponse<any>> => {
+  ): Promise<APIResponse<{
+    submission: {
+      id: string;
+      content: string;
+      points: number;
+      feedback: string;
+    };
+    evaluation: {
+      total_score: number;
+      feedback: string;
+      next_step: string;
+    };
+  }>> => {
     try {
       const response = await fetch(
         `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/submit`,
@@ -611,18 +624,23 @@ updateMaterialProgress: async (
           body: JSON.stringify(data),
         }
       );
-
+  
       if (!response.ok) {
         throw new Error('Failed to submit task');
       }
-
-      return await response.json();
+  
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
     } catch (error) {
+      console.error('Task submission error:', error);
       return {
         success: false,
         data: null,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
-  }  // ← 最後のメソッドなのでカンマは不要
+  }
 };

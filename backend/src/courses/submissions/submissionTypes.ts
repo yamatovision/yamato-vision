@@ -13,18 +13,39 @@ export interface SubmissionWithDetails extends PrismaSubmission {
 }
 
 export interface CreateSubmissionDTO {
-  content: string;
-  userId: string;
   taskId: string;
+  userId: string;
+  submission: string;
 }
 
+
 export interface SubmissionResult {
-  submission: PrismaSubmission;
-  timePenalty?: boolean;
-  finalScore: number;
-  originalScore: number;
-  feedback: string;
-  timeoutMessage?: string;  // この行を追加
+  submission: {
+    id: string;
+    content: string;
+    points?: number;
+    feedback?: string;
+  };
+  finalScore?: number;
+  originalScore?: number;
+  feedback?: string;
+}
+export interface UserSubmissionStatus {
+  completed: boolean;
+  submittedAt?: Date;
+  score?: number;
+  feedback?: string;
+  isLate: boolean;
+}
+export interface DbSubmission {
+  id: string;
+  userId: string;
+  content: string;
+  points: number | null;
+  feedback: string | null;
+  submittedAt: Date;
+  evaluatedAt: Date | null;
+  taskId: string;
 }
 
 export interface SubmissionStats {

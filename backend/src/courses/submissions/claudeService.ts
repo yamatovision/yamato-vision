@@ -30,6 +30,10 @@ class ClaudeService {
 
   async countTokens(messages: SimpleMessage[], systemMessage?: string) {
     try {
+      console.log('\n=== トークン数計算リクエスト ===');
+      console.log('システムメッセージ:', systemMessage);
+      console.log('メッセージ数:', messages.length);
+
       const response = await axios.post(
         `${CLAUDE_API_URL}/messages/count_tokens`,
         {
@@ -41,9 +45,14 @@ class ClaudeService {
           headers: this.defaultHeaders
         }
       );
+
+      console.log('トークン数計算結果:', response.data);
+      console.log('========================\n');
       return response.data;
     } catch (error) {
-      console.error('Token counting failed:', error);
+      console.error('\n=== トークン数計算エラー ===');
+      console.error('エラー詳細:', error);
+      console.error('========================\n');
       throw new Error('トークン数の計算に失敗しました');
     }
   }
@@ -57,18 +66,45 @@ class ClaudeService {
       try {
         const { systemMessage, messages } = this.formatMessages(params.messages);
         
-        return await anthropic.messages.create({
+        // リクエストログ
+        console.log('\n=== Claude APIリクエスト ===');
+        console.log('システムメッセージ:');
+        console.log(params.system || systemMessage);
+        console.log('\nユーザーメッセージ:');
+        messages.forEach((msg, index) => {
+          console.log(`[メッセージ ${index + 1}]`);
+          console.log(msg.content);
+        });
+
+        const response = await anthropic.messages.create({
           model: CLAUDE_MODEL,
           max_tokens: params.max_tokens || 1024,
           system: params.system || systemMessage,
           messages: messages
         });
+
+        // レスポンスログ
+        console.log('\n=== Claude APIレスポンス ===');
+        if (response.content[0].type === 'text') {
+          console.log('回答内容:');
+          console.log(response.content[0].text);
+        }
+        console.log('\n=== トークン使用状況 ===');
+        console.log(`入力トークン数: ${response.usage.input_tokens}`);
+        console.log(`出力トークン数: ${response.usage.output_tokens}`);
+        console.log(`合計トークン数: ${response.usage.input_tokens + response.usage.output_tokens}`);
+        console.log('========================\n');
+
+        return response;
       } catch (error) {
-        console.error('Error in create:', error);
+        console.error('\n=== Claude APIエラー ===');
+        console.error('エラー詳細:', error);
+        console.error('========================\n');
         throw error;
       }
     }
   };
+
 
   private formatMessages(messages: SimpleMessage[]): {
     systemMessage: string;

@@ -75,7 +75,8 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/experience', experienceRoutes);       // 追加
 app.use('/api/notifications', notificationRoutes);  // 追加
 app.use('/api/media', mediaRoutes);
-app.use('/api/debug', submissionRoutes);
+app.use('/api', submissionRoutes);
+
 
 
 
