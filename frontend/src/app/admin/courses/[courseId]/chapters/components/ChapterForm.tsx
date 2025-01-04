@@ -11,6 +11,27 @@ import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
 import { TIME_VALIDATION } from '@/types/timeout';  // 追加
 import { TaskForm } from './TaskForm';  // この行を追加
 
+// ChapterForm.tsx の先頭に追加
+interface ChapterFormData {
+  title: string;
+  subtitle: string;
+  content: {
+    type: 'video' | 'audio';
+    videoId: string;
+    transcription: string;
+  };
+  timeLimit: number;
+  releaseTime: number;
+  orderIndex: number;
+  experienceWeight: number;
+  task: {
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+    maxPoints: number;
+    description: string;
+  };
+}
 
 interface ChapterFormProps {
   initialData?: Chapter;
@@ -32,6 +53,7 @@ interface CreateTaskDTO {
   systemMessage: string;
   maxPoints: number;
 }
+
 
 export function ChapterForm({
   initialData,
@@ -231,22 +253,22 @@ export function ChapterForm({
             課題設定
           </h3>
           <TaskForm
-            initialData={initialData?.task}
-            onSubmit={async (taskData) => {
-              setFormData(prev => ({
-                ...prev,
-                task: {
-                  description: taskData.description,
-                  materials: taskData.materials,
-                  task: taskData.task,
-                  evaluationCriteria: taskData.evaluationCriteria,
-                  maxPoints: taskData.maxPoints,
-                  systemMessage: taskData.systemMessage
-                }
-              }));
-            }}
-            disabled={isSubmitting}
-          />
+  initialData={initialData?.task}
+  onSubmit={(taskData) => {
+    setFormData(prev => ({
+      ...prev,
+      task: {
+        description: taskData.description,
+        materials: taskData.materials,
+        task: taskData.task,
+        evaluationCriteria: taskData.evaluationCriteria,
+        maxPoints: taskData.maxPoints,
+        systemMessage: taskData.systemMessage
+      }
+    }));
+  }}
+  disabled={isSubmitting}
+/>
         </section>
         <div>
   <label className={`block text-sm font-medium mb-2 ${

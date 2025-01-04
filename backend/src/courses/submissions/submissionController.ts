@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { submissionService } from './submissionService';
 import { CreateSubmissionDTO } from './submissionTypes';
+import { evaluationService } from './evaluationService';  // 追加
+
 
 export class SubmissionController {
   // 課題提出処理
@@ -25,6 +27,28 @@ export class SubmissionController {
       return res.status(500).json({ message: '課題の提出に失敗しました' });
     }
   }
+
+  // backend/src/courses/submissions/submissionController.ts に追加
+// デバッグ用エンドポイント
+async testEvaluation(req: Request, res: Response) {
+  try {
+    const testData = {
+      materials: "テスト教材内容",
+      task: "プロンプトエンジニアリングの基本課題",
+      evaluationCriteria: "1. プロンプトの構造化\n2. 制約条件の明確さ\n3. 目的の具体性",
+      submission: req.body.submission || "テスト回答"
+    };
+
+    const result = await evaluationService.evaluateSubmission(testData);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Test evaluation failed:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
 
   // 提出内容の取得
   async getSubmission(

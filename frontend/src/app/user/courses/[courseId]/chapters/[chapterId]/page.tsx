@@ -247,17 +247,16 @@ export default function ChapterPage({
           </div>
         )}
 
-        {chapter.task && (
-          <div className="mb-6">
-            <TaskDescription
-              description={chapter.task.description}
-              systemMessage={chapter.task.systemMessage}
-              referenceText={chapter.task.referenceText}
-              maxPoints={chapter.task.maxPoints}
-              type={chapter.task.type}
-            />
-          </div>
-        )}
+{chapter.task && (
+  <div className="mb-6">
+    <TaskSubmission
+      courseId={params.courseId}
+      chapterId={params.chapterId}
+      task={chapter.task}
+      onComplete={handleChapterCompletion}
+    />
+  </div>
+)}
 
         <div className="mt-8 space-y-4">
           <ProgressBar 

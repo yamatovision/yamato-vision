@@ -3,6 +3,11 @@ import { submissionController } from './submissionController';
 
 const router = Router({ mergeParams: true }); // courseId, taskId等のパラメータを受け取るため
 
+router.post(
+  '/debug/evaluate',
+  submissionController.testEvaluation.bind(submissionController)
+);
+
 // 課題提出関連
 router.post(
   '/tasks/:taskId/submissions',

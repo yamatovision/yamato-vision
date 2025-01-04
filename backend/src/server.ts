@@ -15,6 +15,7 @@ import { UserSyncService } from './sync/user/userSyncService';
 import experienceRoutes from './experience/experienceRoutes';     
 import notificationRoutes from './notification/notificationRoutes'; 
 import { mediaRoutes } from './courses/media/mediaRoutes';
+import { submissionRoutes } from './courses/submissions/submissionRoutes';
 
 dotenv.config();
 export const prisma = new PrismaClient();
@@ -74,6 +75,8 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/experience', experienceRoutes);       // 追加
 app.use('/api/notifications', notificationRoutes);  // 追加
 app.use('/api/media', mediaRoutes);
+app.use('/api/debug', submissionRoutes);
+
 
 
 // デバッグ用エンドポイント

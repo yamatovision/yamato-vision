@@ -1,51 +1,60 @@
 'use client';
-
-import { useState } from 'react';
-
-interface TaskFormData {
-  title: string;
-  description: string;
-  materials: string;
-  task: string;
-  evaluationCriteria: string;
-  maxPoints: number;
-}
+import { useState, useEffect } from 'react';
+import { useTheme } from '@/contexts/theme';
 
 interface TaskFormProps {
   initialData?: {
-    title?: string;
     description?: string;
+    referenceText?: string;
+    systemMessage?: string;
     maxPoints?: number;
   };
-  onSubmit: (taskData: CreateTaskDTO) => void;  // Promiseを削除
+  onSubmit: (taskData: {
+    description: string;
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+    maxPoints: number;
+    systemMessage: string;
+  }) => void;
+  disabled?: boolean;
 }
 
-interface CreateTaskDTO {
-  title: string;
-  description: string;
-  systemMessage: string;
-  maxPoints: number;
-}
+export function TaskForm({ initialData, onSubmit, disabled = false }: TaskFormProps) {
+  const { theme } = useTheme();
 
-export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
-  const [formData, setFormData] = useState<TaskFormData>({
-    title: initialData?.title || '',
+  // システムメッセージからコンテンツを抽出する関数
+  const extractContent = (systemMessage: string, tag: string): string => {
+    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
+    const match = systemMessage?.match(regex);
+    return match ? match[1].trim() : '';
+  };
+
+  const [formData, setFormData] = useState({
+    materials: initialData?.systemMessage ? extractContent(initialData.systemMessage, 'materials') : '',
+    task: initialData?.systemMessage ? extractContent(initialData.systemMessage, 'task') : '',
+    evaluationCriteria: initialData?.systemMessage ? extractContent(initialData.systemMessage, 'evaluation_criteria') : '',
     description: initialData?.description || '',
-    materials: '',
-    task: '',
-    evaluationCriteria: '',
     maxPoints: initialData?.maxPoints || 100
   });
 
-  // フォームの値が変更されるたびにonSubmitを呼び出し
-  const handleChange = (field: keyof TaskFormData, value: string | number) => {
+  useEffect(() => {
+    console.log('TaskForm - FormData initialized:', formData);
+  }, []);
+
+  const handleChange = (field: keyof typeof formData, value: string | number) => {
+    console.log('TaskForm - HandleChange:', {
+      field,
+      value,
+      currentFormData: formData
+    });
+
     const newFormData = {
       ...formData,
       [field]: value
     };
     setFormData(newFormData);
 
-    // システムメッセージを構築
     const systemMessage = `<materials>
 ${newFormData.materials}
 </materials>
@@ -56,55 +65,74 @@ ${newFormData.task}
 ${newFormData.evaluationCriteria}
 </evaluation_criteria>`;
 
-    // 親コンポーネントに変更を通知
     onSubmit({
-      title: newFormData.title,
-      description: newFormData.description,
-      systemMessage: systemMessage,
-      maxPoints: newFormData.maxPoints
+      ...newFormData,
+      systemMessage
     });
   };
+
 
   return (
     <div className="space-y-6">
       {/* 教材内容 */}
       <div>
-        <label className="block text-sm font-medium mb-2">
+        <label className={`block text-sm font-medium mb-2 ${
+          theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+        }`}>
           教材内容 *
         </label>
         <textarea
           value={formData.materials}
           onChange={(e) => handleChange('materials', e.target.value)}
-          className="w-full h-32 rounded-lg p-3"
+          className={`w-full h-32 rounded-lg p-3 ${
+            theme === 'dark'
+              ? 'bg-gray-700 text-white border-gray-600'
+              : 'bg-white text-gray-900 border-gray-200'
+          } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
           placeholder="講座の内容を入力してください"
+          disabled={disabled}
           required
         />
       </div>
 
       {/* 課題内容 */}
       <div>
-        <label className="block text-sm font-medium mb-2">
+        <label className={`block text-sm font-medium mb-2 ${
+          theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+        }`}>
           課題内容 *
         </label>
         <textarea
           value={formData.task}
           onChange={(e) => handleChange('task', e.target.value)}
-          className="w-full h-32 rounded-lg p-3"
+          className={`w-full h-32 rounded-lg p-3 ${
+            theme === 'dark'
+              ? 'bg-gray-700 text-white border-gray-600'
+              : 'bg-white text-gray-900 border-gray-200'
+          } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
           placeholder="課題の内容を入力してください"
+          disabled={disabled}
           required
         />
       </div>
 
       {/* 評価基準 */}
       <div>
-        <label className="block text-sm font-medium mb-2">
+        <label className={`block text-sm font-medium mb-2 ${
+          theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+        }`}>
           評価基準 *
         </label>
         <textarea
           value={formData.evaluationCriteria}
           onChange={(e) => handleChange('evaluationCriteria', e.target.value)}
-          className="w-full h-32 rounded-lg p-3"
+          className={`w-full h-32 rounded-lg p-3 ${
+            theme === 'dark'
+              ? 'bg-gray-700 text-white border-gray-600'
+              : 'bg-white text-gray-900 border-gray-200'
+          } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
           placeholder="評価基準を入力してください"
+          disabled={disabled}
           required
         />
       </div>
