@@ -1,22 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 import { Task } from '@/types/course';
+import { courseApi } from '@/lib/api/courses';
+import { toast } from 'react-hot-toast';
 
 interface SubmissionFormProps {
   task: Task;
   courseId: string;
   chapterId: string;
-  onSubmit: (submission: string) => Promise<void>;
 }
 
-export function SubmissionForm({ 
-  task, 
-  courseId, 
-  chapterId,
-  onSubmit 
-}: SubmissionFormProps) {
+export function SubmissionForm({ task, courseId, chapterId }: SubmissionFormProps) {
+  const router = useRouter();
   const { theme } = useTheme();
   const [submission, setSubmission] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,9 +25,20 @@ export function SubmissionForm({
   
     setIsSubmitting(true);
     try {
-      await onSubmit(submission);
+      const response = await courseApi.submitTask(courseId, chapterId, {
+        submission: submission.trim()
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error || '課題の提出に失敗しました');
+      }
+
+      // 提出成功後、評価ページに遷移
+      router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation`);
+
     } catch (error) {
       console.error('Submission error:', error);
+      toast.error('課題の提出中にエラーが発生しました');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +70,7 @@ export function SubmissionForm({
         <div className={`text-sm ${
           theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
         }`}>
+          配点: {task.maxPoints}点
         </div>
         <button
           type="submit"

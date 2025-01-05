@@ -1,3 +1,6 @@
 {
-  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js"
+  "/user/home/page": "app/user/home/page.js",
+  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js",
+  "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": "app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js",
+  "/api/users/courses/[courseId]/chapters/[chapterId]/submission/route": "app/api/users/courses/[courseId]/chapters/[chapterId]/submission/route.js"
 }
