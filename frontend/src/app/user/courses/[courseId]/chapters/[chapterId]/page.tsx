@@ -9,7 +9,7 @@ import { VideoPlayer } from '@/app/user/courses/components/VideoPlayer';
 import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
 import { ParticipantList } from '@/app/user/courses/components/ParticipantList';
-import { SubmissionForm } from '@/app/user/courses/components/SubmissionForm';
+import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';  // 追加
 
 interface ChapterPageProps {
   params: { 
@@ -207,15 +207,15 @@ export default function ChapterPage({ params }: ChapterPageProps) {
           transcription={parsedContent.transcription}
         />
       ) : null}
-   {(chapter?.taskContent || chapter?.task) && (
-        <div className={`mt-8 ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        } rounded-lg shadow-lg p-6`}>
-          <h2 className={`text-xl font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-          }`}>
-            課題
-          </h2>
+ {(chapter?.taskContent || chapter?.task) && (
+  <div className={`mt-8 ${
+    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+  } rounded-lg shadow-lg p-6`}>
+    <h2 className={`text-xl font-bold mb-4 ${
+      theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+    }`}>
+      課題
+    </h2>
 
           {/* リッチテキストによる課題説明 */}
           {chapter.taskContent?.description && (
@@ -230,38 +230,20 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               <div dangerouslySetInnerHTML={{ __html: chapter.task.description }} />
             </div>
           )}
-
-{chapter.task && (
-  <>
-    {/* デバッグ用ログ出力 */}
-    {console.log('Chapter Task Raw Data:', {
-      fullTask: chapter.task,
-      systemMessage: chapter.task.systemMessage,
-      description: chapter.task.description
-    })}
-    {console.log('Extracted Contents:', {
-      materials: extractContent(chapter.task.systemMessage, 'materials'),
-      task: extractContent(chapter.task.systemMessage, 'task'),
-      evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
-    })}
-
-    <SubmissionForm
-      task={{
-        ...chapter.task,
-        materials: extractContent(chapter.task.systemMessage, 'materials'),
-        task: extractContent(chapter.task.systemMessage, 'task'),
-        evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
-      }}
-      courseId={params.courseId}
-      chapterId={params.chapterId}
-      onSubmitSuccess={(result) => {
-        toast.success('課題を提出しました！');
-      }}
-    />
-  </>
+  {chapter.task && (
+      <TaskSubmission
+        task={{
+          ...chapter.task,
+          materials: extractContent(chapter.task.systemMessage, 'materials'),
+          task: extractContent(chapter.task.systemMessage, 'task'),
+          evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
+        }}
+        courseId={params.courseId}
+        chapterId={params.chapterId}
+      />
+    )}
+  </div>
 )}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,28 +1,21 @@
-// SubmissionForm.tsx
 'use client';
 
 import { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
 import { Task } from '@/types/course';
-import { courseApi } from '@/lib/api/courses';
-import { toast } from 'react-hot-toast';
 
 interface SubmissionFormProps {
   task: Task;
   courseId: string;
   chapterId: string;
-  onSubmitSuccess?: (result: {
-    points: number;
-    feedback: string;
-    next_step: string;
-  }) => void;
+  onSubmit: (submission: string) => Promise<void>;
 }
 
 export function SubmissionForm({ 
   task, 
   courseId, 
   chapterId,
-  onSubmitSuccess 
+  onSubmit 
 }: SubmissionFormProps) {
   const { theme } = useTheme();
   const [submission, setSubmission] = useState('');
@@ -30,37 +23,18 @@ export function SubmissionForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!submission.trim()) return;
+    if (!submission.trim() || isSubmitting) return;
   
     setIsSubmitting(true);
     try {
-      const response = await courseApi.submitTask(
-        courseId,
-        chapterId,
-        {
-          submission: submission.trim()  // 回答のみを送信
-        }
-      );
-  
-      if (response.success && response.data) {
-        toast.success('課題を提出しました！');
-        setSubmission(''); // フォームをクリア
-        
-        if (onSubmitSuccess) {
-          onSubmitSuccess({
-            points: response.data.evaluation.total_score,
-            feedback: response.data.evaluation.feedback,
-            next_step: response.data.evaluation.next_step
-          });
-        }
-      }
+      await onSubmit(submission);
     } catch (error) {
       console.error('Submission error:', error);
-      toast.error('課題の提出中にエラーが発生しました');
     } finally {
       setIsSubmitting(false);
     }
   };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
@@ -87,7 +61,6 @@ export function SubmissionForm({
         <div className={`text-sm ${
           theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
         }`}>
-          配点: {task.maxPoints}点
         </div>
         <button
           type="submit"

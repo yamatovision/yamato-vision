@@ -1,6 +1,7 @@
-// frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/components/TaskSubmission/LoadingState.tsx
+'use client';
 
 import { useEffect, useState } from 'react';
+import { useTheme } from '@/contexts/theme';
 
 interface LoadingStateProps {
   onTimeout?: () => void;
@@ -9,8 +10,9 @@ interface LoadingStateProps {
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
   onTimeout,
-  timeoutDuration = 20000 // デフォルトのタイムアウト: 20秒
+  timeoutDuration = 15000 // 15秒
 }) => {
+  const { theme } = useTheme();
   const [evaluationMessage, setEvaluationMessage] = useState('AIが課題を分析中...');
   const messages = [
     'AIが課題を分析中...',
@@ -59,18 +61,33 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 
   return (
     <div className="mb-8">
-      <div className="bg-gray-800 rounded-lg p-8 mb-6">
+      <div className={`${
+        theme === 'dark' 
+          ? 'bg-gray-800 text-gray-100' 
+          : 'bg-white text-gray-900 shadow-md'
+      } rounded-lg p-8 mb-6`}>
         <div className="flex flex-col items-center space-y-6">
           {/* アナライザーグリッド */}
-          <div className="analyzer-grid w-32 h-32 grid grid-cols-4 gap-0.5 bg-gray-900 rounded-lg p-2">
+          <div className={`analyzer-grid w-32 h-32 grid grid-cols-4 gap-0.5 ${
+            theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'
+          } rounded-lg p-2`}>
             {Array(16).fill(null).map((_, i) => (
-              <div key={i} className="analyzer-cell relative bg-gray-800 rounded">
-                <div className="absolute inset-0 bg-blue-500 opacity-0 rounded analyzer-progress" />
+              <div 
+                key={i} 
+                className={`analyzer-cell relative ${
+                  theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'
+                } rounded`}
+              >
+                <div className={`absolute inset-0 ${
+                  theme === 'dark' ? 'bg-blue-500' : 'bg-blue-400'
+                } opacity-0 rounded analyzer-progress`} />
               </div>
             ))}
           </div>
           {/* メッセージ */}
-          <div className="text-center text-lg text-blue-200">
+          <div className={`text-center text-lg ${
+            theme === 'dark' ? 'text-blue-200' : 'text-blue-600'
+          }`}>
             {messages[currentMessageIndex]}
           </div>
         </div>

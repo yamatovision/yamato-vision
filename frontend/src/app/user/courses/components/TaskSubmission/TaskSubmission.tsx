@@ -5,6 +5,7 @@ import { SubmissionForm } from '../SubmissionForm';
 import { LoadingState } from './LoadingState';
 import { ResultView } from './ResultView';
 import { Task } from '@/types/course';
+import { courseApi } from '@/lib/api/courses';
 import { toast } from 'react-hot-toast';
 
 interface TaskSubmissionProps {
@@ -15,10 +16,11 @@ interface TaskSubmissionProps {
 
 type SubmissionStatus = 'idle' | 'submitting' | 'evaluating' | 'completed' | 'error';
 
+// ResultViewPropsに合わせて型を修正
 interface SubmissionResult {
-  points: number;
+  score: number;      // points から score に変更
   feedback: string;
-  next_step: string;
+  nextStep: string;   // next_step から nextStep に変更
 }
 
 export function TaskSubmission({ task, courseId, chapterId }: TaskSubmissionProps) {
@@ -43,11 +45,11 @@ export function TaskSubmission({ task, courseId, chapterId }: TaskSubmissionProp
       // 評価中状態に移行
       setStatus('evaluating');
 
-      // 評価結果を設定
+      // 評価結果を設定（キー名を修正）
       const evaluationResult = {
-        points: response.data.evaluation.total_score,
+        score: response.data.evaluation.total_score,
         feedback: response.data.evaluation.feedback,
-        next_step: response.data.evaluation.next_step
+        nextStep: response.data.evaluation.next_step
       };
 
       setResult(evaluationResult);
@@ -88,7 +90,7 @@ export function TaskSubmission({ task, courseId, chapterId }: TaskSubmissionProp
       {(status === 'submitting' || status === 'evaluating') && (
         <LoadingState
           onTimeout={handleTimeout}
-          timeoutDuration={15000} // 15秒
+          timeoutDuration={50000} // 50秒
         />
       )}
 
