@@ -2,6 +2,7 @@
 
 import { useTheme } from '@/contexts/theme';
 import { useEffect, useState } from 'react';
+import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 
 interface ChapterProgress {
   status: string;
@@ -117,9 +118,8 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
 
     return () => clearInterval(timer);
   }, [progress?.startedAt, chapter.timeLimit]);
-
   return (
-    <div className={`bg-${theme === 'dark' ? 'gray-700' : 'gray-50'} rounded-lg p-4 mb-6`}>
+    <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 mb-6`}>
       <div className="flex space-x-4 mb-4">
         {/* サムネイル部分 */}
         <div className="w-48 h-32 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0 relative">
@@ -147,7 +147,7 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
             </div>
           )}
         </div>
-
+  
         {/* チャプター詳細 */}
         <div className="flex-1">
           <h3 className={`font-bold text-lg mb-2 ${
@@ -180,17 +180,18 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
           )}
         </div>
       </div>
-
+  
       {/* コース受講者情報 */}
       <div className={`border-t ${
         theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
       } pt-4`}>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col space-y-2">
           <div className={`text-sm ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
           }`}>
-            {progress?.status === 'IN_PROGRESS' ? '受講中' : '未開始'}
           </div>
+          {/* ActiveUsersコンポーネントを追加 */}
+          <ActiveUsers courseId={chapter.courseId} maxDisplay={3} />
         </div>
       </div>
     </div>

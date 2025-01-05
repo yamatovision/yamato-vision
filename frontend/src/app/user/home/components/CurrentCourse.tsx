@@ -90,33 +90,33 @@ export function CurrentCourse() {
       status: determineChapterProgress(chapter),
       title: chapter.title
     }));
-
-  // コンテンツのパース関数
-  const parseContent = (contentString: string): ChapterContent => {
-    console.group('コンテンツ解析処理');
-    console.log('解析前のコンテンツ:', contentString);
-
-    try {
-      const parsed = JSON.parse(contentString);
-      const result = {
-        type: parsed.type || 'video',
-        videoId: parsed.videoId || '',
-        transcription: parsed.transcription || ''
-      };
-
-      console.log('解析結果:', result);
-      console.groupEnd();
-      return result;
-    } catch (error) {
-      console.error('コンテンツ解析エラー:', error);
-      console.groupEnd();
-      return {
-        type: 'video',
-        videoId: '',
-        transcription: ''
-      };
-    }
-  };
+    const parseContent = (contentString: string | any): ChapterContent => {
+      try {
+        // すでにオブジェクトの場合はそのまま返す
+        if (typeof contentString === 'object' && contentString !== null) {
+          return {
+            type: contentString.type || 'video',
+            videoId: contentString.videoId || '',
+            transcription: contentString.transcription || ''
+          };
+        }
+    
+        // 文字列の場合はJSONパースを試みる
+        const parsed = JSON.parse(contentString);
+        return {
+          type: parsed.type || 'video',
+          videoId: parsed.videoId || '',
+          transcription: parsed.transcription || ''
+        };
+      } catch (error) {
+        console.error('コンテンツ解析エラー:', error);
+        return {
+          type: 'video',
+          videoId: '',
+          transcription: ''
+        };
+      }
+    };
 
   // 現在のチャプターを取得と処理
   const currentChapter = courseData.course.chapters[0];

@@ -69,6 +69,33 @@ class UserCourseController {
       return res.status(500).json({ message: 'Failed to fetch user courses' });
     }
   }
+  async getActiveUsers(req: Request, res: Response) {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized'
+        });
+      }
+  
+      const activeUsers = await userCourseService.getActiveCourseUsers(courseId);
+      return res.json({
+        success: true,
+        data: {
+          users: activeUsers
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching active users:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch active users'
+      });
+    }
+  }
 
   async startCourse(req: Request, res: Response) {
     try {

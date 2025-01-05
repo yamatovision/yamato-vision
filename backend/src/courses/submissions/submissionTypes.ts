@@ -23,12 +23,13 @@ export interface SubmissionResult {
   submission: {
     id: string;
     content: string;
-    points?: number;
-    feedback?: string;
+    points: number;
+    feedback: string;
+    nextStep: string;
   };
-  finalScore?: number;
-  originalScore?: number;
-  feedback?: string;
+  finalScore: number;
+  originalScore: number;
+  feedback: string;
 }
 export interface UserSubmissionStatus {
   completed: boolean;
@@ -41,10 +42,11 @@ export interface DbSubmission {
   id: string;
   userId: string;
   content: string;
-  points: number | null;
-  feedback: string | null;
+  points: number;
+  feedback: string;
+  nextStep: string;
   submittedAt: Date;
-  evaluatedAt: Date | null;
+  evaluatedAt: Date;
   taskId: string;
 }
 

@@ -14,6 +14,8 @@ router.get('/user-courses', userCourseController.getUserCourses.bind(userCourseC
 router.get('/current', userCourseController.getCurrentUserCourse.bind(userCourseController));
 router.get('/:courseId/current', userCourseController.getCurrentUserCourseById.bind(userCourseController));
 router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter.bind(userCourseController));
+router.get('/:courseId/active-users', authMiddleware, userCourseController.getActiveUsers);
+
 
 // コースのアクション
 router.post('/:courseId/start', userCourseController.startCourse.bind(userCourseController));

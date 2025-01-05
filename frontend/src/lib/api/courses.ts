@@ -563,6 +563,38 @@ updateMaterialProgress: async (
     }
   },
 
+
+  getActiveCourseUsers: async (courseId: string): Promise<APIResponse<{
+  users: Array<{
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+  }>;
+}>> => {
+  try {
+    const response = await fetch(
+      // パスを正しいものに修正
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/active-users`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch active users');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
   unpublishCourse: async (courseId: string): Promise<CourseResponse> => {
     try {
       const response = await api.put<CourseResponse>(
@@ -594,6 +626,7 @@ updateMaterialProgress: async (
       throw error;
     }
   },
+
 
   // courses.ts の submitTask メソッドを修正
   submitTask: async (

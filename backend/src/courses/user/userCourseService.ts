@@ -289,6 +289,35 @@ export class UserCourseService {
     return userCourse;
   }
 
+  async getActiveCourseUsers(courseId: string) {
+    const activeUsers = await prisma.userCourse.findMany({
+      where: {
+        courseId,
+        isActive: true,
+        status: {
+          in: ['active', 'ACTIVE']  // 両方のケースに対応
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true
+          }
+        }
+      }
+    });
+  
+    return activeUsers.map(uc => ({
+      id: uc.user.id,
+      name: uc.user.name,
+      avatarUrl: uc.user.avatarUrl
+    }));
+  }
+
+
+
   async getCurrentChapter(userId: string, courseId: string) {
     console.log('Getting current chapter for:', { userId, courseId });
   

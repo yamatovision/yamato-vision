@@ -125,10 +125,11 @@ model Submission {
   userId      String
   taskId      String
   content     String
-  points      Int?
-  feedback    String?
+  points      Int       
+  feedback    String    
+  nextStep    String?   // nullable（?）にする
   submittedAt DateTime  @default(now())
-  evaluatedAt DateTime?
+  evaluatedAt DateTime  @default(now())
   task        Task      @relation(fields: [taskId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 }

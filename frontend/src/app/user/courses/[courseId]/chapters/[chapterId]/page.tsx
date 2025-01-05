@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 import { VideoPlayer } from '@/app/user/courses/components/VideoPlayer';
 import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
-import { ParticipantList } from '@/app/user/courses/components/ParticipantList';
+import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';  // 追加
 
 interface ChapterPageProps {
@@ -183,8 +183,8 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               }}
             />
           )}
-          <ParticipantList />
-        </div>
+  <ActiveUsers courseId={params.courseId} />
+  </div>
       </div>
 
       {/* メディアコンテンツ */}

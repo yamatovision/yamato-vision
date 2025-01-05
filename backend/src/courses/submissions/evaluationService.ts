@@ -70,35 +70,36 @@ async evaluateSubmission(params: {
     throw new Error('課題の評価に失敗しました');
   }
 }
-  private parseResponse(responseText: string): EvaluationResponse {
-    try {
-      // JSON部分の抽出と解析
-      const jsonMatch = responseText.match(/{[\s\S]*}/);
-      if (!jsonMatch) {
-        throw new Error('レスポンスの解析に失敗しました');
-      }
-
-      const result: EvaluationResponse = JSON.parse(jsonMatch[0]);
-
-      // バリデーション
-      if (!result.evaluation?.total_score || 
-          !result.evaluation?.feedback ||
-          !result.evaluation?.next_step) {
-        throw new Error('不完全なレスポンス形式です');
-      }
-
-      // スコアの範囲チェック
-      result.evaluation.total_score = Math.max(0, Math.min(100, 
-        Math.round(result.evaluation.total_score)
-      ));
-
-      return result;
-
-    } catch (error) {
-      console.error('Response parsing failed:', error);
-      throw new Error('評価結果の解析に失敗しました');
+private parseResponse(responseText: string): EvaluationResponse {
+  try {
+    // JSON部分の抽出と解析
+    const jsonMatch = responseText.match(/{[\s\S]*}/);
+    if (!jsonMatch) {
+      throw new Error('レスポンスの解析に失敗しました');
     }
+
+    const result: EvaluationResponse = JSON.parse(jsonMatch[0]);
+
+    // バリデーション - total_scoreが0の場合も有効とする
+    if (!result.evaluation || 
+        typeof result.evaluation.total_score !== 'number' ||  // 数値型チェック
+        !result.evaluation.feedback ||
+        !result.evaluation.next_step) {
+      throw new Error('不完全なレスポンス形式です');
+    }
+
+    // スコアの範囲チェック
+    result.evaluation.total_score = Math.max(0, Math.min(100, 
+      Math.round(result.evaluation.total_score)
+    ));
+
+    return result;
+
+  } catch (error) {
+    console.error('Response parsing failed:', error);
+    throw new Error('評価結果の解析に失敗しました');
   }
+}
 }
 
 export const evaluationService = new EvaluationService();

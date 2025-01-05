@@ -87,6 +87,7 @@ export class SubmissionService {
         taskId: data.taskId,
         points: evaluationResult.evaluation.total_score,
         feedback: evaluationResult.evaluation.feedback,
+        nextStep: evaluationResult.evaluation.next_step,
         evaluatedAt: new Date(),
         submittedAt: new Date()
       }
@@ -96,13 +97,43 @@ export class SubmissionService {
       submission: {
         id: submission.id,
         content: submission.content,
-        points: submission.points ?? undefined,  // nullをundefinedに変換
-        feedback: submission.feedback ?? undefined  // nullをundefinedに変換
+        points: submission.points,
+        feedback: submission.feedback,
+        nextStep: submission.nextStep  // これを追加
       },
       finalScore: evaluationResult.evaluation.total_score,
       originalScore: evaluationResult.evaluation.total_score,
       feedback: evaluationResult.evaluation.feedback
     };
+  }
+
+  async getLatestSubmission(userId: string, chapterId: string) {
+    const submission = await prisma.submission.findFirst({
+      where: {
+        userId,
+        task: {
+          chapter: {
+            id: chapterId
+          }
+        }
+      },
+      orderBy: {
+        submittedAt: 'desc'
+      },
+      select: {
+        id: true,
+        points: true,
+        feedback: true,
+        nextStep: true,
+        submittedAt: true
+      }
+    });
+  
+    if (!submission) {
+      throw new Error('提出結果が見つかりません');
+    }
+  
+    return submission;
   }
 
   async getSubmission(submissionId: string) {

@@ -93,6 +93,36 @@ export class SubmissionController {
       });
     }
   }
+  async getLatestSubmission(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
+      }
+  
+      const { chapterId } = req.params;
+  
+      const submission = await submissionService.getLatestSubmission(
+        req.user.id,
+        chapterId
+      );
+  
+      return res.json({
+        success: true,
+        data: submission
+      });
+  
+    } catch (error) {
+      console.error('Error fetching latest submission:', error);
+      return res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : '提出結果の取得に失敗しました'
+      });
+    }
+  }
+
 
   async getSubmission(
     req: Request<{ submissionId: string }>,

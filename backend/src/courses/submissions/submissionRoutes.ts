@@ -13,6 +13,11 @@ router.post(
   submissionController.createSubmission.bind(submissionController)
 );
 
+router.get(
+  '/courses/:courseId/chapters/:chapterId/submission',
+  authMiddleware,
+  submissionController.getLatestSubmission.bind(submissionController)
+);
 // 提出内容の取得
 router.get(
   '/submissions/:submissionId',
