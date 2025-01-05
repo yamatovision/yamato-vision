@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { userCourseService } from './userCourseService';
+import { GetPeerSubmissionsResponse } from './userCourseTypes';
 
 const prisma = new PrismaClient();
 
@@ -93,6 +94,43 @@ class UserCourseController {
       return res.status(500).json({
         success: false,
         message: 'Failed to fetch active users'
+      });
+    }
+  }
+
+  // backend/src/courses/user/userCourseController.ts に追加
+  async getChapterPeerSubmissions(req: Request, res: Response) {
+    try {
+      const { courseId, chapterId } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
+      }
+  
+      const result = await userCourseService.getChapterPeerSubmissions(
+        courseId,
+        chapterId,
+        userId,
+        page,
+        perPage
+      );
+  
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+  
+    } catch (error) {
+      console.error('Error fetching peer submissions:', error);
+      return res.status(500).json({
+        success: false,
+        message: '提出一覧の取得に失敗しました'
       });
     }
   }

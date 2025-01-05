@@ -2,6 +2,8 @@
 import { Course } from '@prisma/client';
 // CourseStatusのインポートを追加
 import { CourseStatus } from '../courseTypes';
+import { User, Submission } from '@prisma/client';
+
 
 export const USER_RANKS = {
   退会者: -1,    // 変更
@@ -27,4 +29,27 @@ export interface PurchaseResult {
   error?: string;
   success?: boolean;
   userCourse?: any;
+}
+
+// backend/src/courses/user/userCourseTypes.ts に追加
+
+export interface PeerSubmissionResponse {
+  id: string;
+  content: string;
+  points: number;
+  feedback: string;
+  submittedAt: Date;
+  user: {
+    id: string;
+    name: string | null; // nullを許容するように変更
+    avatarUrl: string | null;
+    rank: string;
+  };
+}
+
+export interface GetPeerSubmissionsResponse {
+  submissions: PeerSubmissionResponse[];
+  total: number;
+  page: number;
+  perPage: number;
 }

@@ -16,7 +16,13 @@ router.get('/:courseId/current', userCourseController.getCurrentUserCourseById.b
 router.get('/:courseId/current-chapter', userCourseController.getCurrentChapter.bind(userCourseController));
 router.get('/:courseId/active-users', authMiddleware, userCourseController.getActiveUsers);
 
+// backend/src/courses/user/userCourseRoutes.ts に追加
 
+router.get(
+    '/:courseId/chapters/:chapterId/peer-submissions',
+    authMiddleware,
+    userCourseController.getChapterPeerSubmissions.bind(userCourseController)
+);
 // コースのアクション
 router.post('/:courseId/start', userCourseController.startCourse.bind(userCourseController));
 router.post('/:courseId/purchase', userCourseController.purchaseCourse.bind(userCourseController));

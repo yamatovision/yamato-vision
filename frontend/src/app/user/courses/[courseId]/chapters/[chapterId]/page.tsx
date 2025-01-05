@@ -10,6 +10,8 @@ import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
 import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';  // 追加
+import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
+
 
 interface ChapterPageProps {
   params: { 
@@ -230,6 +232,17 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               <div dangerouslySetInnerHTML={{ __html: chapter.task.description }} />
             </div>
           )}
+
+           {/* 他の受講生の提出を表示 - ここに追加 */}
+    {chapter.task && (
+      <div className="mb-8">
+        <PeerSubmissions
+          courseId={params.courseId}
+          chapterId={params.chapterId}
+        />
+      </div>
+    )}
+
   {chapter.task && (
       <TaskSubmission
         task={{

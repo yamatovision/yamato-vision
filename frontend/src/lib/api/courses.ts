@@ -28,6 +28,27 @@ interface CourseListResponse extends BaseResponse {
   })[];
 }
 
+interface PeerSubmissionResponse {
+  submissions: Array<{
+    id: string;
+    content: string;
+    points: number;
+    feedback: string;
+    nextStep: string;
+    submittedAt: Date;
+    user: {
+      id: string;
+      name: string;
+      avatarUrl: string | null;
+      rank: string;
+    };
+  }>;
+  total: number;
+  page: number;
+  perPage: number;
+}
+
+
 interface ChapterResponse extends BaseResponse {
   data: Chapter;
 }
@@ -218,6 +239,37 @@ updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
 
   const result = await response.json();
   return result;
+},
+getChapterPeerSubmissions: async (
+  courseId: string,
+  chapterId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<APIResponse<PeerSubmissionResponse>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/peer-submissions?page=${page}&perPage=${perPage}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch peer submissions');
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 },
   // コース削除
   deleteCourse: async (courseId: string) => {

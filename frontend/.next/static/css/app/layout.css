@@ -1981,6 +1981,9 @@ video {
 .bg-yellow-900\/50 {
   background-color: rgb(113 63 18 / 0.5);
 }
+.bg-red-900\/20 {
+  background-color: rgb(127 29 29 / 0.2);
+}
 .bg-opacity-20 {
   --tw-bg-opacity: 0.2;
 }

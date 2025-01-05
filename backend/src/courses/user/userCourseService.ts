@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CourseStatus } from '../courseTypes';
+import { GetPeerSubmissionsResponse, PeerSubmissionResponse } from './userCourseTypes';
 import { 
   CourseWithStatus, 
   USER_RANKS, 
@@ -315,8 +316,94 @@ export class UserCourseService {
       avatarUrl: uc.user.avatarUrl
     }));
   }
+// userCourseService.ts の getChapterPeerSubmissions メソッドを修正
+// backend/src/courses/user/userCourseService.ts
+async getChapterPeerSubmissions(
+  courseId: string,
+  chapterId: string,
+  currentUserId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<GetPeerSubmissionsResponse> {
+  try {
+    console.log('Getting peer submissions:', { courseId, chapterId, currentUserId });
 
+    // 1. チャプターの存在確認とtaskIdの取得
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      select: { 
+        taskId: true,
+        courseId: true
+      }
+    });
 
+    if (!chapter || !chapter.taskId) {
+      throw new Error('チャプターが見つかりません');
+    }
+
+    // courseIdの検証を削除し、実際のcourseIdを使用
+    console.log('Found chapter:', {
+      requestedCourseId: courseId,
+      actualCourseId: chapter.courseId,
+      chapterId,
+      taskId: chapter.taskId
+    });
+
+    // 2. 提出一覧の取得
+    const submissions = await prisma.submission.findMany({
+      where: {
+        taskId: chapter.taskId,
+        userId: {
+          not: currentUserId
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            rank: true
+          }
+        }
+      },
+      orderBy: [
+        { points: 'desc' },
+        { submittedAt: 'desc' }
+      ],
+      skip: (page - 1) * perPage,
+      take: perPage
+    });
+
+    // 3. 総件数の取得
+    const total = await prisma.submission.count({
+      where: {
+        taskId: chapter.taskId,
+        userId: {
+          not: currentUserId
+        }
+      }
+    });
+
+    console.log('Successfully retrieved submissions:', {
+      total,
+      returnedCount: submissions.length,
+      page,
+      perPage
+    });
+
+    return {
+      submissions,
+      total,
+      page,
+      perPage
+    };
+
+  } catch (error) {
+    console.error('Error in getChapterPeerSubmissions:', error);
+    throw error;
+  }
+}
 
   async getCurrentChapter(userId: string, courseId: string) {
     console.log('Getting current chapter for:', { userId, courseId });
