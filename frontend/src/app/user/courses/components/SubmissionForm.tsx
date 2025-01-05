@@ -24,24 +24,17 @@ export function SubmissionForm({ task, courseId, chapterId }: SubmissionFormProp
     if (!submission.trim() || isSubmitting) return;
   
     setIsSubmitting(true);
-    try {
-      const response = await courseApi.submitTask(courseId, chapterId, {
-        submission: submission.trim()
-      });
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '課題の提出に失敗しました');
-      }
-
-      // 提出成功後、評価ページに遷移
-      router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation`);
-
-    } catch (error) {
+    
+    // 即座に評価ページへ遷移
+    router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation`);
+  
+    // バックグラウンドで提出処理を実行
+    courseApi.submitTask(courseId, chapterId, {
+      submission: submission.trim()
+    }).catch(error => {
       console.error('Submission error:', error);
       toast.error('課題の提出中にエラーが発生しました');
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   };
 
   return (

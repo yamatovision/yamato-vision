@@ -90,7 +90,7 @@ export function TaskSubmission({ task, courseId, chapterId }: TaskSubmissionProp
       {(status === 'submitting' || status === 'evaluating') && (
         <LoadingState
           onTimeout={handleTimeout}
-          timeoutDuration={50000} // 50秒
+          timeoutDuration={90000} // 50秒
         />
       )}
 

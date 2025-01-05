@@ -28,51 +28,59 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
   const [status, setStatus] = useState<EvaluationStatus>('evaluating');
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submittedAt, setSubmittedAt] = useState<Date>(new Date());
+
+  const fetchLatestSubmission = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `/api/users/courses/${params.courseId}/chapters/${params.chapterId}/submission`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('認証エラーが発生しました。再度ログインしてください。');
+          setStatus('error');
+          return;
+        }
+        throw new Error('評価結果の取得に失敗しました');
+      }
+
+      const data = await response.json();
+      if (!data?.data) {
+        throw new Error('無効な評価データ形式です');
+      }
+
+      // 新しい提出データかどうかをチェック
+      if (new Date(data.data.submittedAt) > submittedAt) {
+        setResult({
+          score: data.data.points,
+          feedback: data.data.feedback,
+          nextStep: data.data.nextStep
+        });
+        setStatus('completed');
+        setSubmittedAt(new Date(data.data.submittedAt));
+      } else {
+        // 古いデータの場合は再度取得を試みる
+        setTimeout(fetchLatestSubmission, 1000);
+      }
+
+    } catch (error) {
+      console.error('Error fetching evaluation result:', error);
+      if (status === 'evaluating') {
+        // エラーの場合も再度取得を試みる
+        setTimeout(fetchLatestSubmission, 1000);
+      }
+    }
+  };
 
   useEffect(() => {
-  // frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.tsx
-
-const fetchLatestSubmission = async () => {
-  try {
-    const response = await fetch(
-      `/api/users/courses/${params.courseId}/chapters/${params.chapterId}/submission`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('auth_token') && {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          })
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('評価結果の取得に失敗しました');
-    }
-
-    const data = await response.json();
-    
-    // データの存在チェックを追加
-    if (!data || !data.data) {
-      throw new Error('無効な評価データ形式です');
-    }
-
-    // data.dataから値を取得するように修正
-    setResult({
-      score: data.data.points,
-      feedback: data.data.feedback,
-      nextStep: data.data.nextStep
-    });
-    setStatus('completed');
-
-  } catch (error) {
-    console.error('Error fetching evaluation result:', error);
-    setError(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
-    setStatus('error');
-    toast.error('評価結果の取得に失敗しました');
-  }
-};
-
     fetchLatestSubmission();
   }, [params.courseId, params.chapterId]);
 
@@ -91,7 +99,6 @@ const fetchLatestSubmission = async () => {
       <div className={`${
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
       } rounded-lg shadow-lg p-6`}>
-        {/* ヘッダー */}
         <div className="mb-6 flex justify-between items-center">
           <h1 className={`text-2xl font-bold ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -110,11 +117,10 @@ const fetchLatestSubmission = async () => {
           </button>
         </div>
 
-        {/* メインコンテンツ */}
         {status === 'evaluating' && (
           <LoadingState
             onTimeout={handleTimeout}
-            timeoutDuration={15000}
+            timeoutDuration={90000}
           />
         )}
 
