@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CourseStatus } from '../courseTypes';
 import { GetPeerSubmissionsResponse, PeerSubmissionResponse } from './userCourseTypes';
-import { ChapterStatus } from './userCourseTypes';
-
 import { 
   CourseWithStatus, 
   USER_RANKS, 
@@ -136,7 +134,6 @@ export class UserCourseService {
 
     return finalResult;
   }
-
   async startCourse(userId: string, courseId: string) {
     return await prisma.$transaction(async (tx) => {
       console.log('Starting transaction for startCourse:', { userId, courseId });
@@ -158,7 +155,7 @@ export class UserCourseService {
             where: { id: existingActiveCourse.id },
             data: { 
               isActive: false,
-              status: 'failed',
+              status: 'failed',  // ここだけ小文字に変更
               certificationEligibility: false
             },
           });
@@ -181,7 +178,7 @@ export class UserCourseService {
           update: {
             isActive: true,
             startedAt: new Date(),
-            status: 'active',
+            status: 'active',  // ここだけ小文字に変更
             progress: 0,
             completedAt: null,
             isTimedOut: false,
@@ -190,7 +187,7 @@ export class UserCourseService {
           create: {
             userId,
             courseId,
-            status: 'active',
+            status: 'active',  // ここだけ小文字に変更
             isActive: true,
             startedAt: new Date(),
             certificationEligibility: true
@@ -223,8 +220,8 @@ export class UserCourseService {
                 userId,
                 courseId,
                 chapterId: firstChapter.id,
-                status: 'ready',
-                startedAt: null,
+                status: 'ready',  // ここだけ変更
+                startedAt: null,  // ready状態なのでnull
                 lessonWatchRate: 0
               },
             });
@@ -239,8 +236,8 @@ export class UserCourseService {
                 }
               },
               data: {
-                status: 'ready',
-                startedAt: null,
+                status: 'ready',  // ここだけ変更
+                startedAt: null,  // ready状態なのでnull
                 lessonWatchRate: 0
               }
             });
@@ -254,210 +251,17 @@ export class UserCourseService {
       }
     });
   }
-
-  async updateChapterStatus(userId: string, courseId: string, chapterId: string, status: ChapterStatus) {
-    return await prisma.$transaction(async (tx) => {
-      // タイムアウトチェック
-      const timeoutCheck = await timeoutService.checkChapterTimeout(userId, courseId, chapterId);
-      if (timeoutCheck.isTimedOut) {
-        return this.handleChapterTimeout(tx, userId, courseId, chapterId);
-      }
-
-      // 進捗更新
-      const progress = await tx.userChapterProgress.upsert({
-        where: {
-          userId_courseId_chapterId: {
-            userId,
-            courseId,
-            chapterId
-          }
-        },
-        update: {
-          status,
-          startedAt: status === 'in_progress' ? new Date() : undefined,
-          completedAt: status === 'completed' ? new Date() : undefined
-        },
-        create: {
-          userId,
-          courseId,
-          chapterId,
-          status,
-          startedAt: status === 'in_progress' ? new Date() : null,
-          lessonWatchRate: 0
-        }
-      });
-
-      // 完了状態の場合、次のチャプターを解放
-      if (status === 'completed') {
-        await this.unlockNextChapter(tx, userId, courseId, chapterId);
-      }
-
-      return progress;
-    });
-  }
-
-  private async updateCourseCompletion(
-    tx: any,
-    userId: string,
-    courseId: string
-  ) {
-    const allChapterProgress = await tx.userChapterProgress.findMany({
-      where: {
-        userId,
-        courseId
-      },
-      include: {
-        chapter: true
-      }
-    });
-  
-    // 型を明示的に指定
-    const totalScore = allChapterProgress.reduce((sum: number, progress: { score: number | null }) => 
-      sum + (progress.score || 0), 0);
-    const averageScore = totalScore / allChapterProgress.length;
-  
-    // 新しいステータスの決定
-    let newStatus: CourseStatus = 'failed';
-    if (averageScore >= 95) newStatus = 'perfect';
-    else if (averageScore >= 85) newStatus = 'certified';
-    else if (averageScore >= 70) newStatus = 'completed';
-  
-    // コースステータスの更新
-    await tx.userCourse.update({
-      where: {
-        userId_courseId: {
-          userId,
-          courseId
-        }
-      },
-      data: {
-        status: newStatus,
-        completedAt: new Date(),
-        isActive: false
-      }
-    });
-  
-    return newStatus;
-  }
-
-  
-
-  private async unlockNextChapter(tx: any, userId: string, courseId: string, currentChapterId: string) {
-    // 現在のチャプターの情報を取得
-    const currentChapter = await tx.chapter.findUnique({
-      where: { id: currentChapterId },
-      select: { orderIndex: true }
-    });
-
-    // 次のチャプターを検索
-    const nextChapter = await tx.chapter.findFirst({
-      where: {
-        courseId,
-        orderIndex: {
-          gt: currentChapter.orderIndex
-        }
-      },
-      orderBy: {
-        orderIndex: 'asc'
-      }
-    });
-
-    if (nextChapter) {
-      // 次のチャプターの進捗レコードを作成
-      await tx.userChapterProgress.upsert({
-        where: {
-          userId_courseId_chapterId: {
-            userId,
-            courseId,
-            chapterId: nextChapter.id
-          }
-        },
-        update: {
-          status: 'ready'
-        },
-        create: {
-          userId,
-          courseId,
-          chapterId: nextChapter.id,
-          status: 'ready',
-          lessonWatchRate: 0
-        }
-      });
-
-      return nextChapter;
-    }
-
-    // 最終チャプター完了時はコースのステータスを更新
-    return this.updateCourseCompletion(tx, userId, courseId);
-  }
-  private async handleChapterTimeout(tx: any, userId: string, courseId: string, chapterId: string) {
-    const progress = await tx.userChapterProgress.update({
-      where: {
-        userId_courseId_chapterId: {
-          userId,
-          courseId,
-          chapterId
-        }
-      },
-      data: {
-        status: 'failed',
-        isTimedOut: true,
-        timeOutAt: new Date()
-      }
-    });
-
-    return progress;
-  }
-
-  async canAccessChapter(
-    userId: string,
-    courseId: string,
-    chapterId: string
-  ): Promise<boolean> {
-    const progress = await prisma.userChapterProgress.findUnique({
-      where: {
-        userId_courseId_chapterId: {
-          userId,
-          courseId,
-          chapterId
-        }
-      },
-      include: {
-        chapter: {
-          select: {
-            orderIndex: true
-          }
-        }
-      }
-    });
-
-    if (!progress) return false;
-    if (progress.status === 'failed') return false;
-    
-    // completedならいつでもアクセス可能
-    if (progress.status === 'completed') return true;
-
-    // タイムアウトチェック
-    const timeoutCheck = await timeoutService.checkChapterTimeout(
-      userId,
-      courseId,
-      chapterId
-    );
-    
-    return !timeoutCheck.isTimedOut;
-  }
-
   async getCurrentUserCourse(userId: string, courseId?: string) {
     const whereClause: any = {
       userId,
       isActive: true,
       isTimedOut: false
     };
-
+  
     if (courseId) {
       whereClause.courseId = courseId;
     }
-
+  
     const userCourse = await prisma.userCourse.findFirst({
       where: whereClause,
       include: {
@@ -472,7 +276,7 @@ export class UserCourseService {
         }
       }
     });
-
+  
     if (userCourse) {
       if (userCourse.courseId) {
         const timeoutCheck = await timeoutService.checkCourseTimeout(userId, userCourse.courseId);
@@ -482,7 +286,7 @@ export class UserCourseService {
         }
       }
     }
-
+  
     return userCourse;
   }
 
@@ -492,7 +296,7 @@ export class UserCourseService {
         courseId,
         isActive: true,
         status: {
-          in: ['active', 'ACTIVE']
+          in: ['active', 'ACTIVE']  // 両方のケースに対応
         }
       },
       include: {
@@ -505,92 +309,105 @@ export class UserCourseService {
         }
       }
     });
-
+  
     return activeUsers.map(uc => ({
       id: uc.user.id,
       name: uc.user.name,
       avatarUrl: uc.user.avatarUrl
     }));
   }
+// userCourseService.ts の getChapterPeerSubmissions メソッドを修正
+// backend/src/courses/user/userCourseService.ts
+async getChapterPeerSubmissions(
+  courseId: string,
+  chapterId: string,
+  currentUserId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<GetPeerSubmissionsResponse> {
+  try {
+    console.log('Getting peer submissions:', { courseId, chapterId, currentUserId });
 
-  async getChapterPeerSubmissions(
-    courseId: string,
-    chapterId: string,
-    currentUserId: string,
-    page: number = 1,
-    perPage: number = 10
-  ): Promise<GetPeerSubmissionsResponse> {
-    try {
-      console.log('Getting peer submissions:', { courseId, chapterId, currentUserId });
-
-      const chapter = await prisma.chapter.findUnique({
-        where: { id: chapterId },
-        select: { 
-          taskId: true,
-          courseId: true
-        }
-      });
-
-      if (!chapter || !chapter.taskId) {
-        throw new Error('チャプターが見つかりません');
+    // 1. チャプターの存在確認とtaskIdの取得
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      select: { 
+        taskId: true,
+        courseId: true
       }
+    });
 
-      console.log('Found chapter:', {
-        requestedCourseId: courseId,
-        actualCourseId: chapter.courseId,
-        chapterId,
-        taskId: chapter.taskId
-      });
+    if (!chapter || !chapter.taskId) {
+      throw new Error('チャプターが見つかりません');
+    }
 
-      const submissions = await prisma.submission.findMany({
-        where: {
-          taskId: chapter.taskId,
-          userId: {
-            not: currentUserId
-          }
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              avatarUrl: true,
-              rank: true
-            }
-          }
-        },
-        orderBy: [
-          { points: 'desc' },
-          { submittedAt: 'desc' }
-        ],
-        skip: (page - 1) * perPage,
-        take: perPage
-      });
+    // courseIdの検証を削除し、実際のcourseIdを使用
+    console.log('Found chapter:', {
+      requestedCourseId: courseId,
+      actualCourseId: chapter.courseId,
+      chapterId,
+      taskId: chapter.taskId
+    });
 
-      const total = await prisma.submission.count({
-        where: {
-          taskId: chapter.taskId,
-          userId: {
-            not: currentUserId
+    // 2. 提出一覧の取得
+    const submissions = await prisma.submission.findMany({
+      where: {
+        taskId: chapter.taskId,
+        userId: {
+          not: currentUserId
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            rank: true
           }
         }
-      });
+      },
+      orderBy: [
+        { points: 'desc' },
+        { submittedAt: 'desc' }
+      ],
+      skip: (page - 1) * perPage,
+      take: perPage
+    });
 
-      return {
-        submissions,
-        total,
-        page,
-        perPage
-      };
+    // 3. 総件数の取得
+    const total = await prisma.submission.count({
+      where: {
+        taskId: chapter.taskId,
+        userId: {
+          not: currentUserId
+        }
+      }
+    });
 
-    } catch (error) {
-      console.error('Error in getChapterPeerSubmissions:', error);
-      throw error;
-    }
+    console.log('Successfully retrieved submissions:', {
+      total,
+      returnedCount: submissions.length,
+      page,
+      perPage
+    });
+
+    return {
+      submissions,
+      total,
+      page,
+      perPage
+    };
+
+  } catch (error) {
+    console.error('Error in getChapterPeerSubmissions:', error);
+    throw error;
   }
+}
+
   async getCurrentChapter(userId: string, courseId: string) {
     console.log('Getting current chapter for:', { userId, courseId });
-
+  
     const userCourse = await prisma.userCourse.findUnique({
       where: {
         userId_courseId: {
@@ -599,11 +416,11 @@ export class UserCourseService {
         }
       }
     });
-
+  
     if (!userCourse || !userCourse.isActive) {
       throw new Error('Active course not found');
     }
-
+  
     const chapterProgress = await prisma.userChapterProgress.findMany({
       where: {
         userId,
@@ -622,7 +439,7 @@ export class UserCourseService {
         },
       },
     });
-
+  
     const courseChapters = await prisma.chapter.findMany({
       where: {
         courseId,
@@ -634,16 +451,16 @@ export class UserCourseService {
         orderIndex: 'asc',
       },
     });
-
+  
     const nextChapter = courseChapters.find(chapter => {
       const progress = chapterProgress.find(p => p.chapterId === chapter.id);
-      return !progress || progress.status !== 'completed';
+      return !progress || progress.status !== 'COMPLETED';
     });
-
+  
     if (!nextChapter) {
       return courseChapters[courseChapters.length - 1];
     }
-
+  
     return {
       ...nextChapter,
       progress: chapterProgress.find(p => p.chapterId === nextChapter.id)
@@ -669,7 +486,6 @@ export class UserCourseService {
       }
     });
   }
-
   private async handleTimeout(userId: string, courseId: string) {
     await prisma.userCourse.update({
       where: {
@@ -688,6 +504,7 @@ export class UserCourseService {
     });
   }
 
+  // calculateFinalStatus と updateCourseStatus をクラス内に正しく配置
   async calculateFinalStatus(
     userId: string,
     courseId: string,

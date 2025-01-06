@@ -1,9 +1,10 @@
 // userCourseTypes.ts
+import { CourseStatus, ChapterProgressStatus } from '../courseTypes';
 import { Course } from '@prisma/client';
-// CourseStatusのインポートを追加
-import { CourseStatus } from '../courseTypes';
-import { User, Submission } from '@prisma/client';
 
+export interface CourseWithStatus extends Course {
+  status: CourseStatus;
+}
 
 export const USER_RANKS = {
   退会者: -1,    // 変更
@@ -17,21 +18,42 @@ export const USER_RANKS = {
 
 export type UserRank = keyof typeof USER_RANKS;
 
-// 古いCourseStatus定義を削除
 
-export interface CourseWithStatus extends Course {
-  status: CourseStatus;  // 新しいCourseStatusを使用
+
+
+
+export interface ChapterAccess {
+  chapterId: string;
+  canAccess: boolean;
+  isCompleted: boolean;
+  nextChapterId?: string;
 }
 
-export type ChapterProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-
-export interface PurchaseResult {
-  error?: string;
-  success?: boolean;
-  userCourse?: any;
+export interface CourseProgressManagement {
+  currentChapterId: string;
+  completedChapterIds: string[];
+  completedCount: number;
+  status: CourseStatus;
+  timeoutStatus: {
+    isTimedOut: boolean;
+    timeOutAt?: Date;
+  };
 }
 
-// backend/src/courses/user/userCourseTypes.ts に追加
+export type ChapterStatus = 
+  | 'ready'             // 受講可能だが未開始
+  | 'in_progress'       // 受講中
+  | 'lesson_completed'  // レッスン完了
+  | 'completed'         // チャプター完了
+  | 'failed';           // 失敗（タイムアウトなど）
+
+export const ChapterStatus = {
+  READY: 'ready' as ChapterStatus,
+  IN_PROGRESS: 'in_progress' as ChapterStatus,
+  LESSON_COMPLETED: 'lesson_completed' as ChapterStatus,
+  COMPLETED: 'completed' as ChapterStatus,
+  FAILED: 'failed' as ChapterStatus,
+} as const;
 
 export interface PeerSubmissionResponse {
   id: string;

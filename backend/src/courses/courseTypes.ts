@@ -49,15 +49,14 @@ export interface CourseTimeInfo {
   timeOutAt?: Date;
   remainingDays?: number;
 }
-
 export type CourseStatus = 
-  | 'restricted'     // すべて小文字
+  | 'restricted'     // すべて小文字に統一
   | 'available'
   | 'active'
-  | 'completed'
-  | 'certified'
-  | 'perfect'
-  | 'failed';
+  | 'completed'      // 70点以上
+  | 'certified'      // 85点以上
+  | 'perfect'        // 95点以上
+  | 'failed';        // 70点未満またはタイムアウト
 
 // 定数として使用できるように追加
 export const CourseStatus = {
@@ -69,6 +68,17 @@ export const CourseStatus = {
   PERFECT: 'perfect' as CourseStatus,
   FAILED: 'failed' as CourseStatus,
 } as const;
+
+export const ChapterStatus = {
+  READY: 'ready' as ChapterStatus,
+  IN_PROGRESS: 'in_progress' as ChapterStatus,
+  LESSON_COMPLETED: 'lesson_completed' as ChapterStatus,
+  COMPLETED: 'completed' as ChapterStatus,
+  FAILED: 'failed' as ChapterStatus,
+} as const;
+export interface ChapterProgressWithStatus extends ChapterProgressStatus {
+  currentStatus: ChapterStatus;
+}
 
 export interface CourseResponse {
   id: string;
@@ -136,6 +146,14 @@ export interface CourseProgress {
   remainingDays?: number;
   lessonWatchRate?: number;
 }
+
+export type ChapterStatus = 
+  | 'ready'             // 受講可能だが未開始
+  | 'in_progress'       // 受講中
+  | 'lesson_completed'  // レッスン完了
+  | 'completed'         // チャプター完了
+  | 'failed';           // 失敗（タイムアウトなど）
+
 
 
 
