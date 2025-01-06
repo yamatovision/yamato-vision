@@ -1,8 +1,10 @@
+// backend/src/courses/chapters/chapterRoutes.ts
+
 import { Router } from 'express';
 import { chapterController } from './chapterController';
 import { authMiddleware } from '../../auth/authMiddleware';
 import { userCourseService } from '../user/userCourseService';
-import { chapterService } from './chapterService';  // 追加
+import { chapterService } from './chapterService';
 
 const router = Router({ mergeParams: true });
 
@@ -48,7 +50,8 @@ router.get('/current-chapter', authMiddleware, async (req, res) => {
     });
   }
 });
-// chapterRoutes.tsに追加
+
+// Chapter settings routes
 router.patch('/:chapterId/visibility', 
   authMiddleware, 
   chapterController.updateVisibility.bind(chapterController)
@@ -57,6 +60,18 @@ router.patch('/:chapterId/visibility',
 router.patch('/:chapterId/perfect-only', 
   authMiddleware, 
   chapterController.updatePerfectOnly.bind(chapterController)
+);
+
+// Chapter progress routes
+router.post('/:chapterId/start', 
+  authMiddleware, 
+  chapterController.startChapter.bind(chapterController)
+);
+
+// 新規追加: レッスン視聴進捗の更新ルート
+router.patch('/:chapterId/watch-progress',
+  authMiddleware,
+  chapterController.updateWatchProgress.bind(chapterController)
 );
 
 // Complete chapter endpoint

@@ -120,3 +120,29 @@ export interface ChapterTimeoutStatus {
   timeOutAt?: Date;
   remainingDays?: number;warningLevel?: 'none' | 'warning' | 'danger';
 }
+
+
+
+export type ChapterProgressStatus = 
+  | 'NOT_STARTED'
+  | 'LESSON_IN_PROGRESS'
+  | 'LESSON_COMPLETED'
+  | 'TASK_IN_PROGRESS'
+  | 'COMPLETED'
+
+export type ChapterEvaluationStatus = 
+  | 'PERFECT'    // 95点以上
+  | 'GREAT'      // 85点以上
+  | 'GOOD'       // 70点以上
+  | 'PASS'       // 提出のみ
+  | 'FAILED'     // タイムアウト
+
+export interface SubmissionVisibilityState {
+  canViewContent: boolean;
+  canViewPoints: boolean;
+  canViewAiFeedback: boolean;
+}
+
+export interface ChapterProgressWithVisibility extends ChapterProgress {
+  visibility: SubmissionVisibilityState;
+}

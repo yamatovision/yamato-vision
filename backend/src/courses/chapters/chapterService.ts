@@ -7,15 +7,153 @@ import {
   UpdateChapterDTO, 
   ChapterOrderItem, 
   ChapterWithTask,
-  ChapterAccessStatus
+  ChapterAccessStatus,
+  ChapterProgressStatus,
+  ChapterEvaluationStatus,  // 追加
+  SubmissionVisibilityState
 } from './chapterTypes';
 
 const prisma = new PrismaClient();
 
 
 export class ChapterService {
-  // チャプター作成
-  // chapterService.ts の createChapter メソッドを修正
+
+
+  async updateChapterProgress(
+    userId: string,
+    courseId: string,
+    chapterId: string,
+    lessonWatchRate?: number,
+    submissionPoints?: number
+  ) {
+    const progress = await prisma.$transaction(async (tx) => {
+      const current = await tx.userChapterProgress.findUnique({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        }
+      });
+
+      if (!current) {
+        throw new Error('Chapter progress not found');
+      }
+
+      // タイムアウトチェック
+      const timeoutCheck = await timeoutService.checkChapterTimeout(
+        userId,
+        courseId,
+        chapterId
+      );
+
+      let newStatus = current.status;
+      let completedAt = current.completedAt;
+
+      // 状態遷移ロジック
+      if (timeoutCheck.isTimedOut) {
+        newStatus = 'COMPLETED';
+        completedAt = new Date();
+      } else if (lessonWatchRate !== undefined) {
+        if (lessonWatchRate >= 95) {
+          if (current.status === 'LESSON_IN_PROGRESS') {
+            newStatus = 'LESSON_COMPLETED';
+          }
+        } else if (current.status === 'NOT_STARTED') {
+          newStatus = 'LESSON_IN_PROGRESS';
+        }
+      }
+
+      if (submissionPoints !== undefined && !timeoutCheck.isTimedOut) {
+        if (current.status === 'LESSON_COMPLETED') {
+          newStatus = 'TASK_IN_PROGRESS';
+        }
+        if (submissionPoints >= 70) {
+          newStatus = 'COMPLETED';
+          completedAt = new Date();
+        }
+      }
+
+      // 進捗更新
+      const updated = await tx.userChapterProgress.update({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        },
+        data: {
+          status: newStatus,
+          lessonWatchRate: lessonWatchRate ?? current.lessonWatchRate,
+          score: submissionPoints ?? current.score,
+          completedAt,
+          isTimedOut: timeoutCheck.isTimedOut,
+          timeOutAt: timeoutCheck.isTimedOut ? new Date() : null
+        }
+      });
+
+      // 完了時は次のチャプターを解放
+      if (newStatus === 'COMPLETED' && !current.completedAt) {
+        await this.unlockNextChapter(tx, userId, courseId, chapterId);
+      }
+
+      return updated;
+    });
+
+    return progress;
+  }
+
+  // 新規追加: 評価状態の計算
+  private calculateEvaluationStatus(
+    points: number | null,
+    isTimedOut: boolean
+  ): ChapterEvaluationStatus {
+    if (isTimedOut && !points) return 'FAILED';
+    if (!points) return 'PASS';
+    if (points >= 95) return 'PERFECT';
+    if (points >= 85) return 'GREAT';
+    if (points >= 70) return 'GOOD';
+    return 'PASS';
+  }
+
+  // 新規追加: 次のチャプター解放
+  private async unlockNextChapter(
+    tx: any,
+    userId: string,
+    courseId: string,
+    currentChapterId: string
+  ) {
+    const currentChapter = await tx.chapter.findUnique({
+      where: { id: currentChapterId },
+      select: { orderIndex: true }
+    });
+
+    const nextChapter = await tx.chapter.findFirst({
+      where: {
+        courseId,
+        orderIndex: {
+          gt: currentChapter.orderIndex
+        }
+      },
+      orderBy: {
+        orderIndex: 'asc'
+      }
+    });
+
+    if (nextChapter) {
+      await tx.userChapterProgress.create({
+        data: {
+          userId,
+          courseId,
+          chapterId: nextChapter.id,
+          status: 'NOT_STARTED',
+          lessonWatchRate: 0
+        }
+      });
+    }
+  }
 
 async createChapter(courseId: string, data: CreateChapterDTO) {
   try {
@@ -324,7 +462,7 @@ private async checkAllChaptersPerfect(
 
 // chapterService.ts
 async startChapter(userId: string, courseId: string, chapterId: string) {
-  const existingProgress = await prisma.userChapterProgress.findUnique({
+  const exists = await prisma.userChapterProgress.findUnique({
     where: {
       userId_courseId_chapterId: {
         userId,
@@ -334,29 +472,33 @@ async startChapter(userId: string, courseId: string, chapterId: string) {
     }
   });
 
-  // 初めてのアクセス時のみ開始時間を記録
-  if (!existingProgress?.startedAt) {
-    return await prisma.userChapterProgress.upsert({
-      where: {
-        userId_courseId_chapterId: {
-          userId,
-          courseId,
-          chapterId
-        }
-      },
-      update: {},  // 既存の場合は更新しない
-      create: {
-        userId,
-        courseId,
-        chapterId,
-        status: 'IN_PROGRESS',
-        startedAt: new Date(),
-        isTimedOut: false
-      }
-    });
+  if (exists) {
+    return await this.updateChapterProgress(userId, courseId, chapterId);
   }
 
-  return existingProgress;
+  return await prisma.userChapterProgress.create({
+    data: {
+      userId,
+      courseId,
+      chapterId,
+      status: 'NOT_STARTED',
+      lessonWatchRate: 0
+    }
+  });
+}
+
+async updateWatchProgress(
+  userId: string,
+  courseId: string,
+  chapterId: string,
+  watchRate: number
+) {
+  return await this.updateChapterProgress(
+    userId,
+    courseId,
+    chapterId,
+    watchRate
+  );
 }
 
 async updateChapterVisibility(chapterId: string, isVisible: boolean) {

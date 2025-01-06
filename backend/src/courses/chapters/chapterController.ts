@@ -102,6 +102,53 @@ export class ChapterController {
 
 
 
+  async updateWatchProgress(
+    req: Request<
+      { courseId: string; chapterId: string },
+      {},
+      { watchRate: number }
+    >,
+    res: Response
+  ) {
+    try {
+      const { courseId, chapterId } = req.params;
+      const { watchRate } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
+      }
+
+      if (typeof watchRate !== 'number' || watchRate < 0 || watchRate > 100) {
+        return res.status(400).json({
+          success: false,
+          message: '視聴率は0から100の間である必要があります'
+        });
+      }
+
+      const progress = await chapterService.updateWatchProgress(
+        userId,
+        courseId,
+        chapterId,
+        watchRate
+      );
+
+      return res.json({
+        success: true,
+        data: progress
+      });
+
+    } catch (error) {
+      console.error('Error updating watch progress:', error);
+      return res.status(500).json({
+        success: false,
+        message: '視聴進捗の更新に失敗しました'
+      });
+    }
+  }
 
 
 

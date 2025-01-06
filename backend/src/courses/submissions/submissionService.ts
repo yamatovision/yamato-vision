@@ -1,110 +1,129 @@
+// backend/src/courses/submissions/submissionService.ts
+
 import { PrismaClient } from '@prisma/client';
 import { 
   CreateSubmissionDTO, 
-  SubmissionResult,  
+  SubmissionResult,
+  PeerSubmissionResponse,
+  GetPeerSubmissionsResponse,
+  SubmissionDisplayControl,
+  DbSubmission,
   UserSubmissionStatus,
-  DbSubmission
+  SubmissionWithDetails
 } from './submissionTypes';
-import { taskService } from '../tasks/taskService';
 import { timeoutService } from '../timeouts/timeoutService';
-import { evaluationService } from './evaluationService';  // 追加
-
+import { evaluationService } from './evaluationService';
+import { SubmissionVisibilityState } from '../chapters/chapterTypes';
 
 const prisma = new PrismaClient();
 
 export class SubmissionService {
   async createSubmission(data: CreateSubmissionDTO): Promise<SubmissionResult> {
-    // データの存在チェック
     if (!data.userId || !data.taskId) {
       throw new Error('ユーザーIDとタスクIDは必須です');
     }
 
-    const task = await prisma.task.findUnique({
-      where: { id: data.taskId },
-      include: {
-        chapter: {
-          include: {
-            course: {
-              include: {
-                users: {
-                  where: { userId: data.userId }
+    return await prisma.$transaction(async (tx) => {
+      const task = await tx.task.findUnique({
+        where: { id: data.taskId },
+        include: {
+          chapter: {
+            include: {
+              course: {
+                include: {
+                  users: {
+                    where: { userId: data.userId }
+                  }
                 }
               }
             }
           }
         }
+      });
+
+      if (!task?.chapter) {
+        throw new Error('Task or chapter not found');
       }
-    });
 
-    if (!task || !task.chapter) {
-      throw new Error('課題が見つかりません');
-    }
+      const courseTimeout = await timeoutService.checkCourseTimeout(
+        data.userId,
+        task.chapter.courseId
+      );
 
-    // コースのタイムアウトチェック
-    const courseTimeout = await timeoutService.checkCourseTimeout(
-      data.userId,
-      task.chapter.courseId
-    );
-
-    if (courseTimeout.isTimedOut) {
-      throw new Error('コースの期限が終了しています。再購入が必要です。');
-    }
-
-    // チャプターのタイムアウトチェック
-    const chapterTimeout = await timeoutService.checkChapterTimeout(
-      data.userId,
-      task.chapter.courseId,
-      task.chapter.id
-    );
-
-    if (chapterTimeout.isTimedOut) {
-      throw new Error('チャプターの制限時間が終了しています。');
-    }
-
-    // システムメッセージから各セクションを抽出
-    const materials = this.extractSection(task.systemMessage, 'materials');
-    const taskContent = this.extractSection(task.systemMessage, 'task');
-    const evaluationCriteria = this.extractSection(task.systemMessage, 'evaluation_criteria');
-
-    // 評価用のXMLデータを構築
-    const evaluationXML = `
-<materials>${materials}</materials>
-<task>${taskContent}</task>
-<evaluation_criteria>${evaluationCriteria}</evaluation_criteria>
-<submission>${data.submission}</submission>`;
-
-    const evaluationResult = await evaluationService.evaluateSubmission({
-      materials,
-      task: taskContent,
-      evaluationCriteria,
-      submission: data.submission
-    });
-
-    const submission = await prisma.submission.create({
-      data: {
-        content: data.submission,
-        userId: data.userId,
-        taskId: data.taskId,
-        points: evaluationResult.evaluation.total_score,
-        feedback: evaluationResult.evaluation.feedback,
-        nextStep: evaluationResult.evaluation.next_step,
-        evaluatedAt: new Date(),
-        submittedAt: new Date()
+      if (courseTimeout.isTimedOut) {
+        throw new Error('コースの期限が終了しています。再購入が必要です。');
       }
-    }) as DbSubmission;
 
-    return {
-      submission: {
-        id: submission.id,
-        content: submission.content,
-        points: submission.points,
-        feedback: submission.feedback,
-        nextStep: submission.nextStep  // これを追加
-      },
-      finalScore: evaluationResult.evaluation.total_score,
-      originalScore: evaluationResult.evaluation.total_score,
-      feedback: evaluationResult.evaluation.feedback
-    };
+      const chapterTimeout = await timeoutService.checkChapterTimeout(
+        data.userId,
+        task.chapter.courseId,
+        task.chapter.id
+      );
+
+      if (chapterTimeout.isTimedOut) {
+        throw new Error('チャプターの制限時間が終了しています。');
+      }
+
+      const materials = this.extractSection(task.systemMessage, 'materials');
+      const taskContent = this.extractSection(task.systemMessage, 'task');
+      const evaluationCriteria = this.extractSection(task.systemMessage, 'evaluation_criteria');
+
+      const evaluationResult = await evaluationService.evaluateSubmission({
+        materials,
+        task: taskContent,
+        evaluationCriteria,
+        submission: data.submission
+      });
+
+      const submission = await tx.submission.create({
+        data: {
+          content: data.submission,
+          userId: data.userId,
+          taskId: data.taskId,
+          points: evaluationResult.evaluation.total_score,
+          feedback: evaluationResult.evaluation.feedback,
+          nextStep: evaluationResult.evaluation.next_step || null,
+          evaluatedAt: new Date(),
+          submittedAt: new Date()
+        }
+      });
+
+      // 進捗状況の更新
+      await tx.userChapterProgress.update({
+        where: {
+          userId_courseId_chapterId: {
+            userId: data.userId,
+            courseId: task.chapter.courseId,
+            chapterId: task.chapter.id
+          }
+        },
+        data: {
+          status: 'TASK_IN_PROGRESS',
+          score: submission.points,
+          completedAt: submission.points >= 70 ? new Date() : null
+        }
+      });
+
+      const visibility = this.calculateVisibility(
+        chapterTimeout.isTimedOut,
+        true,
+        submission.points
+      );
+
+      return {
+        submission: {
+          id: submission.id,
+          content: submission.content,
+          points: submission.points,
+          feedback: submission.feedback,
+          nextStep: submission.nextStep
+        },
+        visibility,
+        finalScore: evaluationResult.evaluation.total_score,
+        originalScore: evaluationResult.evaluation.total_score,
+        feedback: evaluationResult.evaluation.feedback
+      };
+    });
   }
 
   async getLatestSubmission(userId: string, chapterId: string) {
@@ -128,38 +147,52 @@ export class SubmissionService {
         submittedAt: true
       }
     });
-  
+
     if (!submission) {
       throw new Error('提出結果が見つかりません');
     }
-  
+
     return submission;
   }
-
-  async getSubmission(submissionId: string) {
-    return prisma.submission.findUnique({
+  async getSubmission(submissionId: string): Promise<SubmissionWithDetails | null> {
+    const submission = await prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
         task: {
-          select: {
-            title: true,
-            maxPoints: true,
+          include: {
             chapter: {
               select: {
                 title: true,
-                timeLimit: true
+                releaseTime: true
               }
-            }
+            },
+          },
+          select: {
+            title: true,
+            maxPoints: true,
           }
         }
       }
     });
-  }
 
-  async getUserTaskStatus(
-    userId: string,
-    taskId: string
-  ): Promise<UserSubmissionStatus> {
+    if (!submission) return null;
+
+    const submissionWithDetails: SubmissionWithDetails = {
+      ...submission,
+      task: {
+        title: submission.task.title,
+        maxPoints: submission.task.maxPoints,
+        timeLimit: undefined
+      },
+      chapter: {
+        title: submission.task.chapter?.title || '',
+        releaseTime: submission.task.chapter?.releaseTime || undefined  // nullの場合はundefinedに変換
+      }
+    };
+
+    return submissionWithDetails;
+}
+  async getUserTaskStatus(userId: string, taskId: string): Promise<UserSubmissionStatus> {
     const submission = await prisma.submission.findFirst({
       where: {
         userId,
@@ -225,6 +258,114 @@ export class SubmissionService {
       completed: !!submission,
       score: submission?.points ?? 0,
       submittedAt: submission?.submittedAt
+    };
+  }
+
+  private calculateVisibility(
+    isTimedOut: boolean,
+    isOwnSubmission: boolean,
+    points: number
+  ): SubmissionVisibilityState {
+    if (isTimedOut) {
+      const hasMinimumScore = points >= 80;
+      return {
+        canViewContent: isOwnSubmission || hasMinimumScore,
+        canViewPoints: true,
+        canViewAiFeedback: true
+      };
+    }
+
+    return {
+      canViewContent: true,
+      canViewPoints: false,
+      canViewAiFeedback: false
+    };
+  }
+
+  async getPeerSubmissions(
+    chapterId: string,
+    currentUserId: string,
+    page: number = 1,
+    perPage: number = 10
+  ): Promise<GetPeerSubmissionsResponse> {
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: {
+        userProgress: {
+          where: { userId: currentUserId }
+        }
+      }
+    });
+
+    if (!chapter || !chapter.taskId) {
+      throw new Error('Chapter not found or has no task');
+    }
+
+    const isTimedOut = chapter.userProgress[0]?.isTimedOut ?? false;
+    const timeOutAt = chapter.userProgress[0]?.timeOutAt ?? undefined;
+
+    const orderBy = isTimedOut
+      ? [{ points: 'desc' as const }, { submittedAt: 'desc' as const }]
+      : [{ submittedAt: 'desc' as const }];
+
+    const submissions = await prisma.submission.findMany({
+      where: {
+        taskId: chapter.taskId
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            rank: true
+          }
+        }
+      },
+      orderBy,
+      skip: (page - 1) * perPage,
+      take: perPage
+    });
+
+    const total = await prisma.submission.count({
+      where: {
+        taskId: chapter.taskId
+      }
+    });
+
+    const processedSubmissions = submissions.map(submission => {
+      const visibility = this.calculateVisibility(
+        isTimedOut,
+        submission.userId === currentUserId,
+        submission.points
+      );
+
+      return {
+        id: submission.id,
+        content: submission.content,
+        points: visibility.canViewPoints ? submission.points : null,
+        feedback: visibility.canViewAiFeedback ? submission.feedback : null,
+        submittedAt: submission.submittedAt,
+        user: {
+          id: submission.user.id,
+          name: submission.user.name ?? '名称未設定',
+          avatarUrl: submission.user.avatarUrl,
+          rank: submission.user.rank,
+          isCurrentUser: submission.userId === currentUserId
+        },
+        visibility
+      };
+    });
+
+    return {
+      submissions: processedSubmissions,
+      total,
+      page,
+      perPage,
+      timeoutStatus: {
+        isTimedOut,
+        timeOutAt
+      }
     };
   }
 

@@ -9,7 +9,6 @@ import {
   UserRank,
 } from './userCourseTypes';
 import { timeoutService } from '../timeouts/timeoutService';
-import { progressTrackingService } from '../progress/progressTrackingService';
 
 const prisma = new PrismaClient();
 
