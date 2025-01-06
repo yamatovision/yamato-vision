@@ -86,13 +86,7 @@ export function CourseHeader({ courseData }: CourseHeaderProps) {
       {(timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) && (
         <div className="flex items-center space-x-4">
           {formatTimeDisplay()}
-          <button className={`px-4 py-2 ${
-            theme === 'dark' 
-              ? 'bg-gray-700 hover:bg-gray-600' 
-              : 'bg-gray-100 hover:bg-gray-200'
-          } rounded-lg text-sm transition-colors`}>
-            コース概要
-          </button>
+         
         </div>
       )}
     </div>

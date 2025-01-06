@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { timeoutService } from '../timeouts/timeoutService';
 import { CourseStatus } from '../courseTypes';  // 追加
+import { Chapter, UserChapterProgress } from '@prisma/client';
 
 import { 
   CreateChapterDTO, 
@@ -15,6 +16,10 @@ import {
 
 const prisma = new PrismaClient();
 
+type ChapterWithUserProgress = Chapter & {
+  userProgress: UserChapterProgress[];
+  content: any; // または具体的な型定義
+};
 
 export class ChapterService {
 
@@ -223,7 +228,99 @@ private getFinalStatus(isPerfect: boolean): CourseStatus {
   }
   return 'completed';  // 小文字に変更
 }
-// chapterService.ts
+
+async getChapterWithMetadata(chapter: ChapterWithUserProgress) {
+  try {
+    const content = typeof chapter.content === 'string' 
+      ? JSON.parse(chapter.content) 
+      : chapter.content;
+
+    // BunnyCDNの設定を環境変数から取得
+    const cdnUrl = process.env.BUNNY_CDN_URL;
+    const metadata = {
+      thumbnailUrl: content.type === 'video' && content.videoId && cdnUrl
+        ? `${cdnUrl}/${content.videoId}/thumbnail.jpg`
+        : null
+    };
+
+    return {
+      ...chapter,
+      metadata
+    };
+  } catch (error) {
+    console.error('Error processing chapter metadata:', error);
+    return {
+      ...chapter,
+      metadata: { thumbnailUrl: null }
+    };
+  }
+}
+async calculateChapterAccess(
+  chapter: ChapterWithUserProgress,
+  chapters: ChapterWithUserProgress[],
+  index: number,
+  userCourse?: { status: string }
+): Promise<boolean> {
+  try {
+    // Perfect専用チャプターのチェック
+    if (chapter.isPerfectOnly && userCourse?.status !== 'perfect') {
+      return false;
+    }
+
+    const progress = chapter.userProgress[0];
+
+    // 進行中または完了済みのチャプターには常にアクセス可能
+    if (progress?.status === 'IN_PROGRESS' || progress?.status === 'COMPLETED') {
+      return true;
+    }
+
+    // 最初のチャプターは常にアクセス可能
+    if (index === 0) {
+      return true;
+    }
+
+    // 前のチャプターが完了している場合、このチャプターにアクセス可能
+    const previousChapter = chapters[index - 1];
+    const previousProgress = previousChapter?.userProgress[0];
+    
+    return previousProgress?.status === 'COMPLETED';
+  } catch (error) {
+    console.error('Error calculating chapter access:', {
+      chapterId: chapter.id,
+      error
+    });
+    return false;
+  }
+}
+
+
+async getChaptersWithProgress(courseId: string, userId: string): Promise<ChapterWithUserProgress[]> {
+  try {
+    console.log('Fetching chapters with progress:', { courseId, userId });
+
+    const chapters = await prisma.chapter.findMany({
+      where: { courseId },
+      include: {
+        userProgress: {
+          where: { userId }
+        }
+      },
+      orderBy: {
+        orderIndex: 'asc'
+      }
+    });
+
+    return chapters as ChapterWithUserProgress[];
+  } catch (error) {
+    console.error('Error fetching chapters with progress:', error);
+    throw error;
+  }
+}
+
+
+
+
+
 async updateChapter(chapterId: string, data: UpdateChapterDTO) {
   try {
     // デバッグログ追加

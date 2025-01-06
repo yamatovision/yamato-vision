@@ -1,9 +1,7 @@
 {
   "/user/home/page": "app/user/home/page.js",
-  "/admin/page": "app/admin/page.js",
   "/admin/courses/[courseId]/page": "app/admin/courses/[courseId]/page.js",
-  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js",
   "/admin/courses/[courseId]/chapters/[chapterId]/page": "app/admin/courses/[courseId]/chapters/[chapterId]/page.js",
-  "/api/users/courses/[courseId]/chapters/[chapterId]/submission/route": "app/api/users/courses/[courseId]/chapters/[chapterId]/submission/route.js",
-  "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": "app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
+  "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": "app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js",
+  "/user/courses/[courseId]/chapters/[chapterId]/page": "app/user/courses/[courseId]/chapters/[chapterId]/page.js"
 }

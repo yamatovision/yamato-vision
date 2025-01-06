@@ -9,6 +9,8 @@ import { ActiveUsers } from './CurrentCourse/ActiveUsers';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { courseApi } from '@/lib/api/courses';
+import { useState } from 'react'; // 追加
+import { CourseOverviewModal } from './CurrentCourse/CourseOverviewModal'; // 追加
 
 interface ChapterContent {
   type: 'video' | 'audio';
@@ -20,6 +22,7 @@ export function CurrentCourse() {
   const { theme } = useTheme();
   const router = useRouter();
   const { courseData, loading, determineChapterProgress } = useCurrentCourse();
+  const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false); // 追加
   
   const handleContinueLearning = async () => {
     if (!courseData) return;
@@ -90,33 +93,34 @@ export function CurrentCourse() {
       status: determineChapterProgress(chapter),
       title: chapter.title
     }));
-    const parseContent = (contentString: string | any): ChapterContent => {
-      try {
-        // すでにオブジェクトの場合はそのまま返す
-        if (typeof contentString === 'object' && contentString !== null) {
-          return {
-            type: contentString.type || 'video',
-            videoId: contentString.videoId || '',
-            transcription: contentString.transcription || ''
-          };
-        }
-    
-        // 文字列の場合はJSONパースを試みる
-        const parsed = JSON.parse(contentString);
+
+  const parseContent = (contentString: string | any): ChapterContent => {
+    try {
+      // すでにオブジェクトの場合はそのまま返す
+      if (typeof contentString === 'object' && contentString !== null) {
         return {
-          type: parsed.type || 'video',
-          videoId: parsed.videoId || '',
-          transcription: parsed.transcription || ''
-        };
-      } catch (error) {
-        console.error('コンテンツ解析エラー:', error);
-        return {
-          type: 'video',
-          videoId: '',
-          transcription: ''
+          type: contentString.type || 'video',
+          videoId: contentString.videoId || '',
+          transcription: contentString.transcription || ''
         };
       }
-    };
+    
+      // 文字列の場合はJSONパースを試みる
+      const parsed = JSON.parse(contentString);
+      return {
+        type: parsed.type || 'video',
+        videoId: parsed.videoId || '',
+        transcription: parsed.transcription || ''
+      };
+    } catch (error) {
+      console.error('コンテンツ解析エラー:', error);
+      return {
+        type: 'video',
+        videoId: '',
+        transcription: ''
+      };
+    }
+  };
 
   // 現在のチャプターを取得と処理
   const currentChapter = courseData.course.chapters[0];
@@ -144,13 +148,23 @@ export function CurrentCourse() {
 
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-      {/* ヘッダー部分 */}
-      <CourseHeader courseData={courseData} />
+      {/* ヘッダー部分を修正 */}
+      <div className="flex items-center justify-between mb-4">
+        <CourseHeader courseData={courseData} />
+        <button 
+          onClick={() => setIsOverviewModalOpen(true)}
+          className={`px-4 py-2 ${
+            theme === 'dark' 
+              ? 'bg-gray-700 hover:bg-gray-600' 
+              : 'bg-gray-100 hover:bg-gray-200'
+          } rounded-lg text-sm transition-colors`}
+        >
+          コース概要
+        </button>
+      </div>
 
-      {/* 進捗トラッカー */}
       <ProgressStages stages={activeChapters} />
 
-      {/* チャプタープレビュー - チャプターが存在する場合のみ表示 */}
       {currentChapter && parsedChapter && (
         <ChapterPreview
           chapter={parsedChapter}
@@ -163,13 +177,11 @@ export function CurrentCourse() {
         />
       )}
 
-      {/* アクティブユーザー */}
       <ActiveUsers
         users={[]} 
         totalCount={0}
       />
 
-      {/* 続きから学習するボタン */}
       <button 
         onClick={handleContinueLearning}
         className={`w-full mt-4 ${
@@ -180,6 +192,15 @@ export function CurrentCourse() {
       >
         続きから学習する
       </button>
+
+      {/* モーダルコンポーネントを追加 */}
+      {courseData && (
+        <CourseOverviewModal
+          isOpen={isOverviewModalOpen}
+          onClose={() => setIsOverviewModalOpen(false)}
+          courseData={courseData}
+        />
+      )}
     </div>
   );
 }
