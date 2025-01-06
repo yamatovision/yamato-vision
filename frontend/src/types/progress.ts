@@ -12,6 +12,19 @@ export interface CourseProgress {
   status: 'ongoing' | 'completed' | 'expired';
   chapters: ChapterProgress[];
 }
+export type ChapterStageStatus = {
+  lessonWatchRate: number;
+  submission?: {
+    score?: number;
+  };
+  status: string;
+};
+
+export type StageIconType = {
+  icon: string;
+  color: string;
+  animation?: boolean;
+};
 
 export interface ChapterProgress {
   id: string;
