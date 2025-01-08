@@ -142,6 +142,36 @@ export class UserChapterController {
     }
   };
 
+  getChaptersProgress = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorized'
+        });
+        return;
+      }
+  
+      const chaptersProgress = await this.chapterService.getChaptersProgress(
+        userId,
+        courseId
+      );
+  
+      res.json({
+        success: true,
+        data: chaptersProgress
+      });
+    } catch (error) {
+      console.error('Error getting chapters progress:', error);
+      res.status(500).json({
+        success: false,
+        message: 'チャプター進捗の取得に失敗しました'
+      });
+    }
+  };
   getPeerSubmissionDetails = async (req: Request, res: Response): Promise<void> => {
     try {
       const { submissionId } = req.params;

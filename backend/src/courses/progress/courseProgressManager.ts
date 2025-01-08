@@ -11,7 +11,10 @@ import {
 
 import { EventEmitter } from 'events';
 
-
+interface TimeoutResult {
+  currentProgress: UserChapterProgress;
+  nextChapter: Chapter | null;
+}
 
 import { 
   ChapterProgressStatus, 
@@ -71,6 +74,52 @@ export class CourseProgressManager {
     this.prisma = new PrismaClient();
     this.eventEmitter = new EventEmitter();
   }
+
+  async handleFirstAccess(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    courseId: string,
+    chapterId: string
+  ) {
+    const progress = await tx.userChapterProgress.findUnique({
+      where: {
+        userId_courseId_chapterId: {
+          userId,
+          courseId,
+          chapterId
+        }
+      },
+      include: {
+        chapter: true
+      }
+    });
+
+    if (progress?.status === 'NOT_STARTED' && !progress.startedAt) {
+      const now = new Date();
+      const timeOutAt = progress.chapter.timeLimit 
+        ? new Date(now.getTime() + progress.chapter.timeLimit * 24 * 60 * 60 * 1000)
+        : null;
+
+      return await tx.userChapterProgress.update({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        },
+        data: {
+          status: 'LESSON_IN_PROGRESS',
+          startedAt: now,
+          timeOutAt,
+          updatedAt: now
+        }
+      });
+    }
+
+    return progress;
+  }
+
 
 
   async updateChapterProgress(
@@ -216,32 +265,107 @@ this.emit({
       throw error;
     }
   }
+  
 
-
-
-async handleTimeout(userId: string, courseId: string, chapterId?: string) {
-  try {
-    return await this.prisma.$transaction(async (tx) => {
-      const timeoutStatus = await this.checkTimeoutStatus(tx, userId, courseId, chapterId);
-      
-      if (!timeoutStatus.isTimedOut) {
-        return null;
-      }
-
-      if (!chapterId) {
-        // コースレベルのタイムアウト
-        const updatedCourse = await tx.userCourse.update({
+  async handleTimeout(userId: string, courseId: string, chapterId?: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const timeoutStatus = await this.checkTimeoutStatus(tx, userId, courseId, chapterId);
+        
+        if (!timeoutStatus.isTimedOut) {
+          return null;
+        }
+  
+        if (!chapterId) {
+          // コースレベルのタイムアウト処理
+          const updatedCourse = await tx.userCourse.update({
+            where: {
+              userId_courseId: { userId, courseId }
+            },
+            data: {
+              status: 'failed',
+              isActive: false,
+              isTimedOut: true,
+              timeOutAt: timeoutStatus.timeOutAt
+            }
+          });
+  
+          this.emit({
+            type: 'TIMEOUT_OCCURRED',
+            userId,
+            courseId,
+            data: {
+              level: 'course',
+              timeOutAt: timeoutStatus.timeOutAt ?? new Date()
+            }
+          });
+  
+          return updatedCourse;
+        }
+  
+        // チャプターレベルのタイムアウト処理
+        const updatedProgress = await tx.userChapterProgress.update({
           where: {
-            userId_courseId: { userId, courseId }
+            userId_courseId_chapterId: { userId, courseId, chapterId }
           },
           data: {
-            status: 'failed',
-            isActive: false,
+            status: 'COMPLETED',
+            score: 0,
             isTimedOut: true,
-            timeOutAt: timeoutStatus.timeOutAt
+            timeOutAt: timeoutStatus.timeOutAt,
+            completedAt: new Date()
           }
         });
-
+  
+        // 現在のチャプターの情報を取得
+        const currentChapter = await tx.chapter.findUnique({
+          where: { id: chapterId }
+        });
+  
+        if (!currentChapter) {
+          throw new Error('Current chapter not found');
+        }
+  
+        // 次のチャプターを直接取得
+        const nextChapter = await tx.chapter.findFirst({
+          where: {
+            courseId: currentChapter.courseId,
+            orderIndex: {
+              gt: currentChapter.orderIndex
+            }
+          },
+          orderBy: {
+            orderIndex: 'asc'
+          }
+        });
+  
+        if (nextChapter) {
+          // 次のチャプターの進捗レコードを作成（upsertを使用）
+          await tx.userChapterProgress.upsert({
+            where: {
+              userId_courseId_chapterId: {
+                userId,
+                courseId,
+                chapterId: nextChapter.id
+              }
+            },
+            create: {
+              userId,
+              courseId,
+              chapterId: nextChapter.id,
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              lessonWatchRate: 0
+            },
+            update: {
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              lessonWatchRate: 0
+            }
+          });
+        }
+  
+        // タイムアウトイベントの発行
         this.emit({
           type: 'TIMEOUT_OCCURRED',
           userId,
@@ -252,159 +376,29 @@ async handleTimeout(userId: string, courseId: string, chapterId?: string) {
             timeOutAt: timeoutStatus.timeOutAt ?? new Date()
           }
         });
-
-        return updatedCourse;
-      }
-
-      // チャプターレベルのタイムアウト
-      const updatedProgress = await tx.userChapterProgress.update({
-        where: {
-          userId_courseId_chapterId: { userId, courseId, chapterId }
-        },
-        data: {
-          status: 'COMPLETED',
-          score: 0,
-          isTimedOut: true,
-          timeOutAt: timeoutStatus.timeOutAt,
-          completedAt: new Date()
-        }
-      });
-
-      this.emit({
-        type: 'TIMEOUT_OCCURRED',
-        userId,
-        courseId,
-        chapterId,
-        data: {
-          level: 'chapter',
-          timeOutAt: timeoutStatus.timeOutAt ?? new Date()
-        }
-      });
-
-      this.emit({
-        type: 'CHAPTER_COMPLETED',
-        userId,
-        courseId,
-        chapterId,
-        data: {
-          timeoutOccurred: true,
-          score: 0
-        }
-      });
-
-      return updatedProgress;
-    });
-  } catch (error) {
-    console.error('Error in handleTimeout:', error);
-    throw error;
-  }
-}
-
-
-async handleAdminStateChange(notification: {
-  type: 'COURSE_STATE_CHANGE' | 'CHAPTER_STATE_CHANGE';
-  courseId: string;
-  chapterId?: string;
-  changes: {
-    isVisible?: boolean;
-    isPerfectOnly?: boolean;
-    isFinalExam?: boolean;
-    releaseTime?: number;
-    timeLimit?: number;
-  };
-  affectedUserIds?: string[];
-}) {
-  try {
-    return await this.prisma.$transaction(async (tx) => {
-      const { type, courseId, chapterId, changes, affectedUserIds } = notification;
-
-      if (type === 'COURSE_STATE_CHANGE') {
-        // コース全体の設定変更
-        const course = await tx.course.update({
-          where: { id: courseId },
-          data: {
-            timeLimit: changes.timeLimit,
-            updatedAt: new Date()
-          }
-        });
-
-        // 影響を受けるユーザーのタイムアウト日時を更新
-        if (affectedUserIds?.length && changes.timeLimit) {
-          await tx.userCourse.updateMany({
-            where: {
-              courseId,
-              userId: { in: affectedUserIds },
-              isActive: true
-            },
-            data: {
-              timeOutAt: changes.timeLimit 
-                ? this.calculateTimeoutDate(new Date(), changes.timeLimit)
-                : undefined
-            }
-          });
-        }
-
+  
+        // チャプター完了イベントの発行
         this.emit({
-          type: 'STATUS_CHANGED',
-          courseId,
-          data: {
-            type: 'admin_course_update',
-            changes,
-            affectedUsers: affectedUserIds?.length || 0
-          }
-        });
-
-        return course;
-      }
-
-      if (chapterId) {
-        // チャプター設定の変更
-        const chapter = await tx.chapter.update({
-          where: { id: chapterId },
-          data: {
-            isVisible: changes.isVisible,
-            isPerfectOnly: changes.isPerfectOnly,
-            isFinalExam: changes.isFinalExam,
-            releaseTime: changes.releaseTime,
-            timeLimit: changes.timeLimit,
-            updatedAt: new Date()
-          }
-        });
-
-        // 影響を受けるユーザーのタイムアウト日時を更新
-        if (affectedUserIds?.length && changes.timeLimit) {
-          await tx.userChapterProgress.updateMany({
-            where: {
-              chapterId,
-              userId: { in: affectedUserIds }
-            },
-            data: {
-              timeOutAt: changes.timeLimit 
-                ? this.calculateTimeoutDate(new Date(), changes.timeLimit)
-                : undefined
-            }
-          });
-        }
-
-        this.emit({
-          type: 'STATUS_CHANGED',
+          type: 'CHAPTER_COMPLETED',
+          userId,
           courseId,
           chapterId,
           data: {
-            type: 'admin_chapter_update',
-            changes,
-            affectedUsers: affectedUserIds?.length || 0
+            timeoutOccurred: true,
+            score: 0
           }
         });
-
-        return chapter;
-      }return null;  // 
-    });
-  } catch (error) {
-    console.error('Error in handleAdminStateChange:', error);
-    throw error;
+  
+        return {
+          currentProgress: updatedProgress,
+          nextChapter
+        };
+      });
+    } catch (error) {
+      console.error('Error in handleTimeout:', error);
+      throw error;
+    }
   }
-}
 
 
 
@@ -793,6 +787,51 @@ private async findPreviousChapterInCourse(
   }
 }
 
+public async handleCourseStateChange(params: {
+  courseId: string;
+  changes: {
+    timeLimit?: number;
+    isPublished?: boolean;
+    isArchived?: boolean;
+  };
+  affectedUserIds?: string[];
+}): Promise<void> {
+  try {
+    const { courseId, changes } = params;
+
+    await this.prisma.$transaction(async (tx) => {
+      // タイムリミットの変更があれば、影響を受けるユーザーのタイムアウト日時を更新
+      if (changes.timeLimit !== undefined && params.affectedUserIds?.length) {
+        await tx.userCourse.updateMany({
+          where: {
+            courseId,
+            userId: { in: params.affectedUserIds },
+            isActive: true
+          },
+          data: {
+            timeOutAt: changes.timeLimit 
+              ? this.calculateTimeoutDate(new Date(), changes.timeLimit)
+              : null
+          }
+        });
+      }
+
+      // 状態変更イベントの発行
+      this.emit({
+        type: 'STATUS_CHANGED',
+        courseId,
+        data: {
+          type: 'admin_course_update',
+          changes,
+          affectedUsers: params.affectedUserIds?.length || 0
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error in handleCourseStateChange:', error);
+    throw error;
+  }
+}
 
 public async handleCourseCompletion(
   tx: Prisma.TransactionClient,

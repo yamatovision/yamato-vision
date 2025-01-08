@@ -1,6 +1,13 @@
+import { 
+  PrismaClient,
+  UserChapterProgress,
+  Chapter,
+  Task,
+  Prisma
+} from '@prisma/client';
 import { EventEmitter } from 'events';
-import { PrismaClient } from '@prisma/client';
 import { ChapterProgressWithStatus } from '../types/progress';
+import { ChapterEvaluationStatus } from '../types/status';
 import { 
   ChapterProgressStatus,
   ChapterStatus,
@@ -13,6 +20,78 @@ import {
 import { CourseProgressManager } from '../progress/courseProgressManager';
 import { evaluationService } from '../submissions/evaluationService';
 
+function isChapterContent(content: unknown): content is ChapterContent {
+  if (!content || typeof content !== 'object') return false;
+  
+  const contentObj = content as any;
+  return (
+    'type' in contentObj &&
+    'videoId' in contentObj &&
+    (contentObj.type === 'video' || contentObj.type === 'audio') &&
+    typeof contentObj.videoId === 'string'
+  );
+}
+
+
+
+  // 戻り値の型を定義
+  interface ChapterProgressWithNext {
+    id: string;
+    chapterId: string;
+    userId: string;
+    courseId: string;
+    status: string;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    lessonWatchRate: number;
+    isTimedOut: boolean;
+    timeOutAt: Date | null;
+    chapter: {
+      id: string;
+      title: string;
+      content: any;
+      task?: any;
+    };
+    nextChapter?: {
+      id: string;
+      title: string;
+    };
+    nextChapterProgress?: {
+      id: string;
+      status: string;
+      startedAt: Date;
+      lessonWatchRate: number;
+    };
+  }
+  type ChapterProgressWithDetails = UserChapterProgress & {
+    chapter: (Chapter & {
+      task: Task | null;
+    });
+  };
+  
+  interface TimeoutResult {
+    currentProgress: UserChapterProgress;
+    nextChapter: Chapter | null;
+  }
+  
+  
+interface ChapterProgressResponse {
+  id: string;
+  title: string;
+  subtitle?: string;
+  orderIndex: number;
+  status: ChapterProgressStatus;
+  evaluationStatus?: ChapterEvaluationStatus;
+  score?: number;
+  timeOutAt?: Date | null;
+  releaseTime?: Date | null;
+  thumbnailUrl?: string;
+  lessonWatchRate: number;
+  isLocked: boolean;
+  canAccess: boolean;
+  nextUnlockTime?: Date;
+}
+
 export class UserChapterService extends EventEmitter {
   private prisma: PrismaClient;
   private progressManager: CourseProgressManager;
@@ -24,76 +103,191 @@ export class UserChapterService extends EventEmitter {
     this.progressManager = new CourseProgressManager();
   }
 
-
-  
-
   async getCurrentChapter(userId: string, courseId: string) {
-    const userCourse = await this.prisma.userCourse.findUnique({
-      where: {
-        userId_courseId: {
-          userId,
-          courseId
-        }
-      }
-    });
-  
-    if (!userCourse || !userCourse.isActive) {
-      throw new Error('Active course not found');
-    }
-  
-    const chapterProgress = await this.prisma.userChapterProgress.findMany({
-      where: {
-        userId,
-        courseId,
-      },
-      include: {
-        chapter: {
-          include: {
-            task: true
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. コースの有効性確認
+      const userCourse = await tx.userCourse.findUnique({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId
           }
         }
-      },
-      orderBy: {
-        chapter: {
-          orderIndex: 'asc'
+      });
+  
+      if (!userCourse?.isActive) {
+        throw new Error('Active course not found');
+      }
+  
+      // 2. 最新の進捗状態を取得（updatedAtでソート）
+      const lastProgress = await tx.userChapterProgress.findFirst({
+        where: {
+          userId,
+          courseId
+        },
+        orderBy: {
+          updatedAt: 'desc'
+        },
+        include: {
+          chapter: true
+        }
+      });
+      console.log('【進捗確認】最後に更新されたチャプター:', {
+        チャプター名: lastProgress?.chapter?.title,
+        進捗状態: lastProgress?.status,
+        タイムアウト: lastProgress?.isTimedOut,
+        更新日時: lastProgress?.updatedAt
+      });
+  
+      // 3. タイムアウトしている場合、次のチャプターを取得
+      if (lastProgress?.isTimedOut) {
+        const nextChapter = await tx.chapter.findFirst({
+          where: {
+            courseId,
+            orderIndex: {
+              gt: lastProgress.chapter.orderIndex
+            },
+            isVisible: true
+          },
+          orderBy: {
+            orderIndex: 'asc'
+          }
+        });
+        console.log('【次チャプター確認】タイムアウト後の次チャプター:', {
+          現在のチャプター: lastProgress.chapter.title,
+          次のチャプター: nextChapter?.title,
+          次のチャプターID: nextChapter?.id,
+          次のチャプターIndex: nextChapter?.orderIndex
+        });
+        if (nextChapter) {
+          // 次のチャプターの進捗状態を取得または作成
+          return await tx.userChapterProgress.upsert({
+            where: {
+              userId_courseId_chapterId: {
+                userId,
+                courseId,
+                chapterId: nextChapter.id
+              }
+            },
+            create: {
+              userId,
+              courseId,
+              chapterId: nextChapter.id,
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              lessonWatchRate: 0,
+              updatedAt: new Date()
+            },
+            update: {
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              updatedAt: new Date()
+            }
+          });
         }
       }
-    });
   
-    // 現在のチャプターを特定
-    const currentChapter = chapterProgress.find(progress => 
-      progress.status !== 'COMPLETED'
-    );
+      // 4. まだ進捗がない場合、最初のチャプターを取得
+      if (!lastProgress) {
+        const firstChapter = await tx.chapter.findFirst({
+          where: {
+            courseId,
+            isVisible: true
+          },
+          orderBy: {
+            orderIndex: 'asc'
+          }
+        });
   
-    // 見つからない場合は最後のチャプターを返す
-    if (!currentChapter && chapterProgress.length > 0) {
-      return chapterProgress[chapterProgress.length - 1];
-    }
-  
-    // タイムアウトチェック
-    if (currentChapter) {
-      const timeoutStatus = await this.progressManager.checkTimeoutStatus(
-        this.prisma,  // トランザクションクライアントとしてPrismaインスタンスを渡す
-        userId,
-        courseId,
-        currentChapter.chapterId
-      );
-  
-      if (timeoutStatus.isTimedOut) {
-        await this.progressManager.handleTimeout(
-          userId,
-          courseId,
-          currentChapter.chapterId
-        );
+        if (firstChapter) {
+          return await tx.userChapterProgress.create({
+            data: {
+              userId,
+              courseId,
+              chapterId: firstChapter.id,
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              lessonWatchRate: 0,
+              updatedAt: new Date()
+            }
+          });
+        }
       }
-    }
   
-    return currentChapter;
+      // 5. 既存の進捗を返す
+      return lastProgress;
+    });
   }
 
 
 
-
+  async getChaptersProgress(userId: string, courseId: string): Promise<ChapterProgressResponse[]> {
+    const chapters = await this.prisma.chapter.findMany({
+      where: {
+        courseId
+      },
+      include: {
+        task: true,
+        userProgress: {
+          where: {
+            userId
+          }
+        }
+      },
+      orderBy: {
+        orderIndex: 'asc'
+      }
+    });
+  
+    // 前のチャプターの完了状態を追跡
+    let previousChapterCompleted = true; // 最初のチャプターはデフォルトでアクセス可能
+  
+    return chapters.map((chapter, index) => {
+      const progress = chapter.userProgress[0];
+      const prevChapter = index > 0 ? chapters[index - 1] : null;
+      const prevProgress = prevChapter?.userProgress[0];
+  
+      // ロック状態の判定を修正
+      const isLocked = !previousChapterCompleted && chapter.orderIndex > 0;
+      const canAccess = !isLocked && (!chapter.releaseTime || chapter.releaseTime === 0);
+  
+      // 現在のチャプターの完了状態を次のイテレーション用に保存
+      previousChapterCompleted = progress?.status === 'COMPLETED';
+  
+      let thumbnailUrl: string | undefined;
+      if (chapter.content && isChapterContent(chapter.content)) {
+        thumbnailUrl = chapter.content.videoId 
+          ? `${process.env.BUNNY_CDN_URL}/${chapter.content.videoId}/thumbnail.jpg`
+          : undefined;
+      }
+  
+      return {
+        id: chapter.id,
+        title: chapter.title,
+        subtitle: chapter.subtitle ?? undefined,
+        orderIndex: chapter.orderIndex,
+        status: (progress?.status as ChapterProgressStatus) || 'NOT_STARTED',
+        evaluationStatus: this.determineEvaluationStatus(progress?.score ?? undefined),
+        score: progress?.score ?? undefined,
+        timeOutAt: progress?.timeOutAt ?? null,
+        releaseTime: chapter.releaseTime ? new Date(chapter.releaseTime) : null,
+        thumbnailUrl,
+        lessonWatchRate: progress?.lessonWatchRate ?? 0,
+        isLocked,
+        canAccess,
+        nextUnlockTime: chapter.releaseTime ? new Date(chapter.releaseTime) : undefined
+      };
+    });
+  }
+  
+  private determineEvaluationStatus(score?: number): ChapterEvaluationStatus | undefined {
+    if (score === undefined) return undefined;
+    if (score >= 95) return 'PERFECT';
+    if (score >= 85) return 'GREAT';
+    if (score >= 70) return 'GOOD';
+    if (score >= 0) return 'PASS';
+    return 'FAILED';
+  }
 
   async getChapterDetails(userId: string, courseId: string, chapterId: string) {
     const [chapter, progress] = await Promise.all([
@@ -322,6 +516,9 @@ export class UserChapterService extends EventEmitter {
         submission: submission.content
       });
 
+
+      
+      
       // 採点結果の保存
       const updatedSubmission = await tx.submission.update({
         where: { id: submissionRecord.id },

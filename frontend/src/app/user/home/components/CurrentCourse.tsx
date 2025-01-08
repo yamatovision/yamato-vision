@@ -5,166 +5,77 @@ import { useCurrentCourse } from './hooks/useCurrentCourse';
 import { CourseHeader } from './CurrentCourse/CourseHeader';
 import { ProgressStages } from './CurrentCourse/ProgressStages';
 import { ChapterPreview } from './CurrentCourse/ChapterPreview';
-import { ActiveUsers } from './CurrentCourse/ActiveUsers';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import { courseApi } from '@/lib/api/courses';
-import { useState } from 'react'; // 追加
-import { CourseOverviewModal } from './CurrentCourse/CourseOverviewModal'; // 追加
+import { useState } from 'react';
+import { CourseOverviewModal } from './CurrentCourse/CourseOverviewModal';
 
-interface ChapterContent {
-  type: 'video' | 'audio';
-  videoId: string;
-  transcription?: string;
-}
+// LoadingStateコンポーネント
+const LoadingState = ({ theme }: { theme: string }) => (
+  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
+    <div className="animate-pulse">
+      <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+      <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
+    </div>
+  </div>
+);
 
+// EmptyStateコンポーネント
+const EmptyState = ({ theme }: { theme: string }) => (
+  <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
+    <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+      現在受講中のコースはありません
+    </p>
+  </div>
+);
+
+// メインコンポーネント
 export function CurrentCourse() {
   const { theme } = useTheme();
-  const router = useRouter();
-  const { courseData, loading, determineChapterProgress } = useCurrentCourse();
-  const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false); // 追加
-  
-  const handleContinueLearning = async () => {
-    if (!courseData) return;
-    
-    try {
-      console.log('Starting handleContinueLearning for course:', courseData.courseId);
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/courses/user/${courseData.courseId}/current-chapter`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          },
-          credentials: 'include'
-        }
-      );
-  
-      if (!response.ok) {
-        throw new Error('Failed to fetch current chapter');
-      }
-  
-      const data = await response.json();
-      console.log('Current chapter response:', data);
-  
-      if (data.success && data.data) {
-        const chapterId = data.data.id || data.data.chapterId;
-        if (!chapterId) {
-          throw new Error('Chapter ID not found in response');
-        }
-        console.log('Redirecting to chapter:', chapterId);
-        router.push(`/user/courses/${courseData.courseId}/chapters/${chapterId}`);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      console.error('Error in handleContinueLearning:', error);
-      toast.error('チャプターへの移動に失敗しました');
-    }
-  };
+  const {
+    courseData,
+    loading,
+    determineChapterProgress,
+    handleContinueLearning,
+    parseChapterContent
+  } = useCurrentCourse();
+  const [isOverviewModalOpen, setIsOverviewModalOpen] = useState(false);
 
   // ローディング中の表示
   if (loading) {
-    return (
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-8 bg-gray-200 rounded w-3/4 mb-6"></div>
-        </div>
-      </div>
-    );
+    return <LoadingState theme={theme} />;
   }
 
   // コースデータが存在しない場合の表示
   if (!courseData || !courseData.course) {
-    return (
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-        <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          現在受講中のコースはありません
-        </p>
-      </div>
-    );
+    return <EmptyState theme={theme} />;
   }
-
-  // 最初の3つのチャプターの進捗状態を取得
-  const activeChapters = courseData.course.chapters
-    .slice(0, 3)
-    .map(chapter => ({
-      status: determineChapterProgress(chapter),
-      title: chapter.title
-    }));
-
-  const parseContent = (contentString: string | any): ChapterContent => {
-    try {
-      // すでにオブジェクトの場合はそのまま返す
-      if (typeof contentString === 'object' && contentString !== null) {
-        return {
-          type: contentString.type || 'video',
-          videoId: contentString.videoId || '',
-          transcription: contentString.transcription || ''
-        };
-      }
-    
-      // 文字列の場合はJSONパースを試みる
-      const parsed = JSON.parse(contentString);
-      return {
-        type: parsed.type || 'video',
-        videoId: parsed.videoId || '',
-        transcription: parsed.transcription || ''
-      };
-    } catch (error) {
-      console.error('コンテンツ解析エラー:', error);
-      return {
-        type: 'video',
-        videoId: '',
-        transcription: ''
-      };
-    }
-  };
 
   // 現在のチャプターを取得と処理
   const currentChapter = courseData.course.chapters[0];
-  let parsedChapter;
-
-  // チャプターが存在する場合のみログを出力と処理を実行
-  if (currentChapter) {
-    console.group('チャプター情報');
-    console.log('取得したチャプター:', {
-      ID: currentChapter.id,
-      タイトル: currentChapter.title,
-      コンテンツ: currentChapter.content
-    });
-    console.log('コンテンツ型:', typeof currentChapter.content);
-
-    // パース処理
-    parsedChapter = {
-      ...currentChapter,
-      content: parseContent(currentChapter.content as string)
-    };
-    
-    console.log('パース後のチャプター:', parsedChapter);
-    console.groupEnd();
-  }
-
+  const parsedChapter = currentChapter ? parseChapterContent(currentChapter) : null;
+  
+  console.log('【ChapterPreview表示チェック】', {
+    currentChapter: currentChapter,
+    parsedChapter: parsedChapter,
+    表示条件: !!(currentChapter && parsedChapter)
+  });
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
-      {/* ヘッダー部分を修正 */}
-      <div className="flex items-center justify-between mb-4">
-        <CourseHeader courseData={courseData} />
-        <button 
-          onClick={() => setIsOverviewModalOpen(true)}
-          className={`px-4 py-2 ${
-            theme === 'dark' 
-              ? 'bg-gray-700 hover:bg-gray-600' 
-              : 'bg-gray-100 hover:bg-gray-200'
-          } rounded-lg text-sm transition-colors`}
-        >
-          コース概要
-        </button>
-      </div>
+      {/* コースヘッダー */}
+      <CourseHeader 
+        courseData={courseData} 
+        onOverviewClick={() => setIsOverviewModalOpen(true)}
+      />
 
-      <ProgressStages stages={activeChapters} />
+{currentChapter && parsedChapter && (
+  <ProgressStages
+    lessonWatchRate={parsedChapter.lessonWatchRate}
+    submission={parsedChapter.submission}
+    status={determineChapterProgress(currentChapter)}
+  />
+)}
 
+
+      {/* チャプタープレビュー */}
       {currentChapter && parsedChapter && (
         <ChapterPreview
           chapter={parsedChapter}
@@ -177,11 +88,8 @@ export function CurrentCourse() {
         />
       )}
 
-      <ActiveUsers
-        users={[]} 
-        totalCount={0}
-      />
 
+      {/* 続きから学習するボタン */}
       <button 
         onClick={handleContinueLearning}
         className={`w-full mt-4 ${
@@ -193,7 +101,7 @@ export function CurrentCourse() {
         続きから学習する
       </button>
 
-      {/* モーダルコンポーネントを追加 */}
+      {/* コース概要モーダル */}
       {courseData && (
         <CourseOverviewModal
           isOpen={isOverviewModalOpen}

@@ -1,5 +1,7 @@
 import { Prisma, Course } from '@prisma/client';
 import { CourseStatus } from './status';
+import { ChapterContent } from './chapter';  // 先頭に追加
+
 
 // Prismaの型定義
 export type CourseWithChapters = Prisma.CourseGetPayload<{
@@ -70,6 +72,24 @@ export interface CourseResponse {
     };
   };
   lastAccessedChapterId?: string;
+  chapters: Array<{  // chaptersを追加
+    id: string;
+    title: string;
+    subtitle?: string;
+    content: ChapterContent;
+    orderIndex: number;
+    timeLimit?: number;
+    isVisible?: boolean;
+    isPerfectOnly?: boolean;
+    isFinalExam?: boolean;
+    task?: {
+      title: string;
+      materials?: string;
+      task?: string;
+      evaluationCriteria?: string;
+      maxPoints: number;
+    };
+  }>;
 }
 
 // Time Management

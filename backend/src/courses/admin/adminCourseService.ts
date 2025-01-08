@@ -38,8 +38,7 @@ export class AdminCourseService {
         }
       });
 
-      await this.progressManager.handleAdminStateChange({
-        type: 'COURSE_STATE_CHANGE',
+      await this.progressManager.handleCourseStateChange({
         courseId: course.id,
         changes: {
           timeLimit: data.timeLimit
@@ -86,11 +85,12 @@ export class AdminCourseService {
 
       // コース設定変更時のプログレス管理通知
       if (data.timeLimit !== undefined || data.isPublished !== undefined || data.isArchived !== undefined) {
-        await this.progressManager.handleAdminStateChange({
-          type: 'COURSE_STATE_CHANGE',
+        await this.progressManager.handleCourseStateChange({
           courseId: course.id,
           changes: {
-            timeLimit: data.timeLimit
+            timeLimit: data.timeLimit,
+            isPublished: data.isPublished,
+            isArchived: data.isArchived
           }
         });
       }

@@ -45,19 +45,24 @@ export interface Chapter {
   orderIndex: number;
   timeLimit: number;
   isVisible: boolean;
-  content?: {
-    type: 'video' | 'audio';
-    videoId?: string;
-    url?: string;
-    transcription?: string;
-    id?: string;
-  };
-  taskContent?: TaskContent;  // 追加
-  referenceFiles?: ReferenceFile[];  // 追加
+  isPerfectOnly?: boolean;
+  isFinalExam?: boolean;
+  releaseTime?: number;
+  content?: ChapterContent;  // この部分を修正
+  taskContent?: TaskContent;
+  referenceFiles?: ReferenceFile[];
   experienceWeight: number;
   task?: Task;
 }
 
+// ChapterContent型も修正
+export interface ChapterContent {
+  type: 'video' | 'audio';
+  videoId?: string;
+  url?: string;
+  transcription?: string;
+  id?: string;
+}
 
 // コースのステータス定義
 export type CourseStatus = 
@@ -250,6 +255,12 @@ export interface CourseData {
       isPerfectOnly?: boolean;  // 追加必要
       isFinalExam?: boolean;    // 追加必要
       releaseTime?: number;     // 追加必要
+      content: ChapterContent;
+      lessonWatchRate: number;
+      submission?: {
+        score?: number;
+        status?: string;
+      };
     }>;
   };
 }

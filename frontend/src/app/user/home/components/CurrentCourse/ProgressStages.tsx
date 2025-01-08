@@ -10,7 +10,12 @@ interface ProgressStagesProps {
     status?: string;
   };
   status: string;
+  stages?: Array<{
+    status: string;
+    title: string;
+  }>;
 }
+
 
 export function ProgressStages({ lessonWatchRate, submission, status }: ProgressStagesProps) {
   const { theme } = useTheme();

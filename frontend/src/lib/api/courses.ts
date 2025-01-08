@@ -1,7 +1,11 @@
 import api from './auth';
 import { APIResponse } from '@/types/api';
 import { handleApiError } from './errorHandler';
-
+import { 
+  ChapterPreviewData,
+  CurrentChapterData,
+  ChapterContent 
+} from '@/types/chapter';
 import { 
   Course, 
   Chapter,
@@ -160,51 +164,104 @@ export const courseApi = {
       };
     }
   },
+  getChaptersProgress: async (courseId: string): Promise<APIResponse<ChapterPreviewData[]>> => {
+    try {
+      console.log('【API呼び出し開始】getChaptersProgress', { courseId });
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/progress`,
+        {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
 
-  getCurrentChapter: async (courseId: string): Promise<APIResponse<{
-  chapterId: string;
-  courseId: string;
-  nextUrl: string;
-  chapter: Chapter;
-}>> => {
-  try {
-    // APIのベースURLを修正
-    const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/user/${courseId}/current-chapter`,
-      {
+      if (!response.ok) {
+        throw new Error('Failed to fetch chapters progress');
+      }
+
+      const data = await response.json();
+      console.log('【APIレスポンス】getChaptersProgress:', data);
+
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Error fetching chapters progress:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  getCurrentChapter: async (courseId: string): Promise<APIResponse<CurrentChapterData>> => {
+    try {
+      // リクエスト前のデバッグ情報
+      const url = `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/current`;
+      console.log('【リクエスト準備】getCurrentChapter', {
+        エンドポイント: url,
+        コースID: courseId,
+        認証ヘッダー: getAuthHeaders(),
+        API基底URL: FRONTEND_API_BASE
+      });
+  
+      // リクエスト実行
+      console.log('【リクエスト開始】getCurrentChapter');
+      const response = await fetch(url, {
         headers: getAuthHeaders(),
         credentials: 'include'
+      });
+  
+      // レスポンスステータスのデバッグ
+      console.log('【レスポンス受信】getCurrentChapter', {
+        ステータスコード: response.status,
+        成功判定: response.ok,
+        レスポンスヘッダー: Object.fromEntries(response.headers.entries())
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Failed to fetch current chapter: ${response.status}`);
       }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch current chapter');
-    }
-
-    const data = await response.json();
-    if (!data.success || !data.data) {
-      throw new Error(data.message || 'Invalid response format');
-    }
-
-    const currentChapter = data.data;
-    return {
-      success: true,
-      data: {
-        chapterId: currentChapter.id,
-        courseId: courseId,
-        nextUrl: `/user/courses/${courseId}/chapters/${currentChapter.id}`,
-        chapter: currentChapter
+  
+      // レスポンスデータの解析
+      const data = await response.json();
+      console.log('【データ解析】getCurrentChapter', {
+        成功: data.success,
+        データ存在: !!data.data,
+        データ内容: data.data,
+        メッセージ: data.message || 'メッセージなし'
+      });
+  
+      if (!data.success || !data.data) {
+        throw new Error(data.message || 'Invalid response format');
       }
-    };
-  } catch (error) {
-    console.error('Error fetching current chapter:', error);
-    return { 
-      success: false, 
-      data: null,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
-},
+  
+      // 成功時のレスポンス
+      console.log('【処理完了】getCurrentChapter - 成功');
+      return {
+        success: true,
+        data: data.data
+      };
+  
+    } catch (error) {
+      // エラー詳細のログ
+      console.error('【エラー発生】getCurrentChapter:', {
+
+        タイムスタンプ: new Date().toISOString()
+      });
+  
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+
+  
 
   // コース作成
   createCourse: async (data: CreateCourseDTO) => {

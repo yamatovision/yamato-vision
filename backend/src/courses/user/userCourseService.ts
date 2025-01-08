@@ -149,23 +149,30 @@ export class UserCourseService {
   }
 
   async getActiveCourseUsers(courseId: string) {
-    return await this.prisma.userCourse.findMany({
+    const activeUsers = await this.prisma.userCourse.findMany({
       where: {
         courseId,
         isActive: true,
         status: 'active'
       },
-      include: {
+      select: {
         user: {
           select: {
             id: true,
             name: true,
-            avatarUrl: true,
-            rank: true
+            avatarUrl: true
           }
         }
       }
     });
+  
+    return {
+      users: activeUsers.map(userCourse => ({
+        id: userCourse.user.id,
+        name: userCourse.user.name,
+        avatarUrl: userCourse.user.avatarUrl
+      }))
+    };
   }
 
   async checkCourseAccess(userId: string, courseId: string): Promise<boolean> {
@@ -287,7 +294,8 @@ export class UserCourseService {
       certificationEligibility: userCourse.certificationEligibility,
       gradient: userCourse.course.gradient,
       archiveUntil: userCourse.course.archiveUntil,
-      lastAccessedChapterId: userCourse.lastAccessedChapterId
+      lastAccessedChapterId: userCourse.lastAccessedChapterId,
+      chapters: userCourse.course.chapters // ここにchaptersを追加
     };
   }
   private calculateRemainingDays(startedAt: Date, timeLimit?: number): number | undefined {

@@ -60,30 +60,32 @@ export class UserCourseController {
       });
     }
   };
-  getActiveUsers = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { courseId } = req.params;
-      if (!courseId) {
-        res.status(400).json({
-          success: false,
-          message: 'Course ID is required'
-        });
-        return;
-      }
+  // UserCourseController内のgetActiveUsersメソッドを修正
 
-      const activeUsers = await this.courseService.getActiveCourseUsers(courseId);
-      res.json({
-        success: true,
-        data: activeUsers
-      });
-    } catch (error) {
-      console.error('Error getting active users:', error);
-      res.status(500).json({
+getActiveUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { courseId } = req.params;
+    if (!courseId) {
+      res.status(400).json({
         success: false,
-        message: 'アクティブユーザーの取得に失敗しました'
+        message: 'Course ID is required'
       });
+      return;
     }
-  };
+
+    const { users } = await this.courseService.getActiveCourseUsers(courseId);
+    res.json({
+      success: true,
+      data: { users }  // data.usersの形式で返す
+    });
+  } catch (error) {
+    console.error('Error getting active users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'アクティブユーザーの取得に失敗しました'
+    });
+  }
+};
   getCurrentUserCourse = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.user?.id;
