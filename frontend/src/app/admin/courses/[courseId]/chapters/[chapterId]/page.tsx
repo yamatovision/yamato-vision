@@ -1,4 +1,3 @@
-// page.tsxの修正バージョン
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -39,11 +38,13 @@ export default function ChapterEditPage() {
   };
 
   const handleSuccess = () => {
-    router.push(`/admin/courses/${params.courseId}`);
+    // チャプターリストページに遷移するように修正
+    router.push(`/admin/courses/${params.courseId}/chapters`);
   };
 
   const handleCancel = () => {
-    router.push(`/admin/courses/${params.courseId}`);
+    // キャンセル時もチャプターリストページに遷移
+    router.push(`/admin/courses/${params.courseId}/chapters`);
   };
 
   if (isLoading) {
