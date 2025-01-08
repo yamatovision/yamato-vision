@@ -292,23 +292,58 @@ getChapterPeerSubmissions: async (
           headers: getAuthHeaders(),
         }
       );
-
+  
       if (!response.ok) {
         throw new Error('Failed to fetch courses');
       }
-
+  
       const data = await response.json();
       return { 
         success: true,
-        data: data
+        data: data.data  // レスポンスの正しい構造に対応
       };
     } catch (error) {
       console.error('Failed to fetch courses:', error);
-      throw error;
+      return {  // エラーをスローせずに適切なレスポンスを返す
+        success: false,
+        data: [],
+        message: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   },
 
+// /lib/api/courses.ts に追加
+getLatestSubmission: async (courseId: string, chapterId: string): Promise<APIResponse<{
+  points: number;
+  feedback: string;
+  nextStep: string;
+  submittedAt: Date;
+}>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/users/courses/${courseId}/chapters/${chapterId}/submission`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
 
+    if (!response.ok) {
+      throw new Error('Failed to fetch submission');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data: data.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
   // コース開始
   startCourse: async (courseId: string): Promise<APIResponse<{ success: boolean; data: any }>> => {
     try {
@@ -356,30 +391,35 @@ getChapterPeerSubmissions: async (
 
   // チャプター関連のAPI
   // src/lib/api/courses.ts の getChapter メソッドを修正
+// frontend/src/lib/api/courses.ts 内の getChapter メソッドを修正
+
 getChapter: async (courseId: string, chapterId: string): Promise<APIResponse<Chapter>> => {
   try {
     const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}`,
+      `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}`, // 修正: 正しいエンドポイントパス
       {
         headers: getAuthHeaders(),
       }
     );
 
     if (!response.ok) {
-      return { 
-        success: false, 
-        data: null,
-        error: 'Failed to fetch chapter'
-      };
+      throw new Error(`Failed to fetch chapter: ${response.statusText}`);
     }
 
-    const responseData = await response.json();
-    return { 
-      success: true, 
-      data: responseData.data 
+    const data = await response.json();
+    
+    // レスポンスの形式をチェック
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to fetch chapter data');
+    }
+
+    return {
+      success: true,
+      data: data.data // バックエンドから返されるチャプターデータ
     };
   } catch (error) {
-    return { 
+    console.error('Error in getChapter:', error);
+    return {
       success: false,
       data: null,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

@@ -1,7 +1,7 @@
 // backend/src/courses/submissions/submissionTypes.ts
 
 import { Submission as PrismaSubmission } from '@prisma/client';
-import { SubmissionVisibilityState } from '../chapters/chapterTypes';
+import { SubmissionVisibilityState } from '../types/progress';
 
 // 基本的な提出データの拡張型
 export interface SubmissionWithDetails extends PrismaSubmission {

@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 import { LoadingState } from '@/app/user/courses/components/TaskSubmission/LoadingState';
 import { ResultView } from '@/app/user/courses/components/TaskSubmission/ResultView';
+import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
 import { toast } from 'react-hot-toast';
+import { courseApi } from '@/lib/api/courses';
+import { SubmissionResult, PeerSubmission } from '@/types/submission';
 
 interface EvaluationPageProps {
   params: {
@@ -16,60 +19,36 @@ interface EvaluationPageProps {
 
 type EvaluationStatus = 'evaluating' | 'completed' | 'error';
 
-interface EvaluationResult {
-  score: number;
-  feedback: string;
-  nextStep: string;
-}
-
 export default function EvaluationPage({ params }: EvaluationPageProps) {
   const router = useRouter();
   const { theme } = useTheme();
   const [status, setStatus] = useState<EvaluationStatus>('evaluating');
-  const [result, setResult] = useState<EvaluationResult | null>(null);
+  const [result, setResult] = useState<SubmissionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submittedAt, setSubmittedAt] = useState<Date>(new Date());
+  const [peerSubmissions, setPeerSubmissions] = useState<PeerSubmission[]>([]);
+  const [timeoutStatus, setTimeoutStatus] = useState({
+    isTimedOut: false,
+    timeOutAt: undefined as Date | undefined
+  });
 
+  // 評価結果の取得
   const fetchLatestSubmission = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(
-        `/api/users/courses/${params.courseId}/chapters/${params.chapterId}/submission`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-          },
-        }
+      const response = await courseApi.getLatestSubmission(
+        params.courseId,
+        params.chapterId
       );
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('認証エラーが発生しました。再度ログインしてください。');
-          setStatus('error');
-          return;
-        }
+      if (!response.success || !response.data) {
         throw new Error('評価結果の取得に失敗しました');
       }
 
-      const data = await response.json();
-      if (!data?.data) {
-        throw new Error('無効な評価データ形式です');
-      }
-
-      // 新しい提出データかどうかをチェック
-      if (new Date(data.data.submittedAt) > submittedAt) {
-        setResult({
-          score: data.data.points,
-          feedback: data.data.feedback,
-          nextStep: data.data.nextStep
-        });
-        setStatus('completed');
-        setSubmittedAt(new Date(data.data.submittedAt));
-      } else {
-        // 古いデータの場合は再度取得を試みる
-        setTimeout(fetchLatestSubmission, 1000);
-      }
+      setResult({
+        score: response.data.points,
+        feedback: response.data.feedback,
+        nextStep: response.data.nextStep
+      });
+      setStatus('completed');
 
     } catch (error) {
       console.error('Error fetching evaluation result:', error);
@@ -80,8 +59,27 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
     }
   };
 
+  // ピア提出の取得
+  const fetchPeerSubmissions = async () => {
+    try {
+      const response = await courseApi.getChapterPeerSubmissions(
+        params.courseId,
+        params.chapterId
+      );
+
+      if (response.success && response.data) {
+        setPeerSubmissions(response.data.submissions);
+        setTimeoutStatus(response.data.timeoutStatus);
+      }
+    } catch (error) {
+      console.error('Error fetching peer submissions:', error);
+    }
+  };
+
+  // 初期データ取得
   useEffect(() => {
     fetchLatestSubmission();
+    fetchPeerSubmissions();
   }, [params.courseId, params.chapterId]);
 
   const handleBack = () => {
@@ -99,6 +97,7 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
       <div className={`${
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
       } rounded-lg shadow-lg p-6`}>
+        {/* ヘッダー */}
         <div className="mb-6 flex justify-between items-center">
           <h1 className={`text-2xl font-bold ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -117,6 +116,7 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
           </button>
         </div>
 
+        {/* 評価結果表示 */}
         {status === 'evaluating' && (
           <LoadingState
             onTimeout={handleTimeout}
@@ -140,6 +140,17 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
 
         {status === 'completed' && result && (
           <ResultView result={result} />
+        )}
+
+        {/* ピア提出一覧 */}
+        {peerSubmissions.length > 0 && (
+          <div className="mt-8">
+            <PeerSubmissions
+              submissions={peerSubmissions}
+              timeoutStatus={timeoutStatus}
+              onRefresh={fetchPeerSubmissions}
+            />
+          </div>
         )}
       </div>
     </div>

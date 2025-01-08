@@ -39,7 +39,8 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
   const { theme } = useTheme();
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
-
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   // 動画メタデータを取得
   useEffect(() => {
     const fetchVideoMetadata = async () => {
@@ -125,13 +126,33 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
         <div className="w-48 h-32 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0 relative">
           {chapter.content?.videoId ? (
             <>
-              <img
-                src={`${process.env.NEXT_PUBLIC_BUNNY_CDN_URL}/${chapter.content.videoId}/thumbnail.jpg`}
-                alt={chapter.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
+              {!imageError ? (
+  <div className="relative w-full h-full">
+    {imageLoading && (
+      <div className="absolute inset-0 bg-gray-700 animate-pulse" />
+    )}
+    <img
+      src={`${process.env.NEXT_PUBLIC_BUNNY_CDN_URL}/${chapter.content.videoId}/thumbnail.jpg`}
+      alt={chapter.title}
+      className={`w-full h-full object-cover transition-opacity duration-300 ${
+        imageLoading ? 'opacity-0' : 'opacity-100'
+      }`}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onLoad={() => setImageLoading(false)}
+      onError={() => {
+        setImageError(true);
+        setImageLoading(false);
+      }}
+    />
+  </div>
+) : (
+  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+    <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+  </div>
+)}
               {/* 動画時間の表示 */}
               {videoMetadata?.duration && (
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">

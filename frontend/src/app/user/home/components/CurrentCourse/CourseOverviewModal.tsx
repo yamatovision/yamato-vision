@@ -2,7 +2,7 @@
 
 import { useTheme } from '@/contexts/theme';
 import { CourseData } from '@/types/course';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 
@@ -51,6 +51,85 @@ export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverv
   const router = useRouter();
   const [chapters, setChapters] = useState<ChapterWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const ThumbnailImage = ({ url, title, isLocked }: { url: string; title: string; isLocked: boolean }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [retryCount, setRetryCount] = useState(0);
+    const maxRetries = 3;
+  
+    const loadImage = useCallback((retryAttempt: number) => {
+      if (!url || retryAttempt >= maxRetries) return;
+  
+      const img = new Image();
+      img.src = `${url}?timestamp=${Date.now()}`; // キャッシュバスティング
+      img.referrerPolicy = "no-referrer";
+  
+      img.onload = () => {
+        setImageLoading(false);
+        setImageError(false);
+      };
+  
+      img.onerror = () => {
+        console.error(`Failed to load thumbnail (attempt ${retryAttempt + 1}/${maxRetries})`);
+        if (retryAttempt < maxRetries - 1) {
+          setTimeout(() => {
+            setRetryCount(retryAttempt + 1);
+            loadImage(retryAttempt + 1);
+          }, 1000 * (retryAttempt + 1)); // 再試行間隔を徐々に増やす
+        } else {
+          setImageError(true);
+          setImageLoading(false);
+        }
+      };
+    }, [url]);
+  
+    useEffect(() => {
+      setImageLoading(true);
+      setImageError(false);
+      setRetryCount(0);
+      loadImage(0);
+    }, [url, loadImage]);
+  
+    return (
+      <div className="relative w-full h-full">
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gray-700 animate-pulse rounded" />
+        )}
+        {!imageError ? (
+          <>
+            <img
+              src={`${url}?timestamp=${Date.now()}`}
+              alt={title}
+              referrerPolicy="no-referrer"
+              className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
+                imageLoading ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            {isLocked && (
+              <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
+                <span className="text-xl text-white">🔒</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
+            <span className="text-2xl">📝</span>
+            {isLocked && (
+              <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
+                <span className="text-xl text-white">🔒</span>
+              </div>
+            )}
+          </div>
+        )}
+        {imageLoading && retryCount > 0 && (
+          <div className="absolute bottom-1 right-1 text-xs text-white bg-black/60 px-1 rounded">
+            再試行中... {retryCount}/{maxRetries}
+          </div>
+        )}
+      </div>
+    );
+  };
+  
 
   // チャプター情報を取得
   useEffect(() => {
@@ -247,20 +326,12 @@ export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverv
                           <div className="flex items-start space-x-4">
                             {/* サムネイル */}
                             <div className="w-24 h-16 bg-gray-600 rounded flex items-center justify-center flex-shrink-0">
-  {chapter.thumbnailUrl ? (
-    <img
-      src={chapter.thumbnailUrl}
-      alt={chapter.title}
-      referrerPolicy="no-referrer"
-      className="w-full h-full object-cover rounded"
-    />
-  ) : (
-    <span className="text-2xl">
-      {chapter.isLocked ? '🔒' : '📝'}
-    </span>
-  )}
+  <ThumbnailImage 
+    url={chapter.thumbnailUrl} 
+    title={chapter.title} 
+    isLocked={chapter.isLocked}
+  />
 </div>
-
                             <div className="flex-1">
                               <div className="flex justify-between items-start">
                                 <div>

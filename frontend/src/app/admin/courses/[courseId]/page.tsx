@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { Course, Chapter } from '@/types/course';
+import { Course } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { CourseForm } from '../components/CourseForm';
-import { ChapterForm } from './chapters/components/ChapterForm';
-import { ChapterList } from './chapters/components/ChapterList';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -20,11 +18,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
   const { theme } = useTheme();
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddingChapter, setIsAddingChapter] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'chapters'>('basic');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [editingChapterId, setEditingChapterId] = useState<string | null>(null); // 追加
-
 
   useEffect(() => {
     fetchCourse();
@@ -40,92 +34,6 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       toast.error('コースの取得に失敗しました');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAddChapterSuccess = async () => {
-    await fetchCourse();
-    setIsAddingChapter(false);
-    toast.success('チャプターを追加しました');
-  };
-
-  const handleEditChapter = (chapterId: string) => {
-    const chapterToEdit = course?.chapters?.find(chapter => chapter.id === chapterId);
-    if (chapterToEdit) {
-      setEditingChapterId(chapterId);
-      setIsAddingChapter(true);
-    }
-  };
-  
-  const handleEditSuccess = async () => {
-    await fetchCourse();
-    setIsAddingChapter(false);
-    setEditingChapterId(null);
-    toast.success('チャプターを更新しました');
-  };
-  
-  const handleChapterDelete = async (chapterId: string) => {
-    if (!confirm('このチャプターを削除してもよろしいですか？')) return;
-
-    try {
-      setIsProcessing(true);
-      await courseApi.deleteChapter(params.courseId, chapterId);
-      toast.success('チャプターを削除しました');
-      await fetchCourse();
-    } catch (error) {
-      console.error('Failed to delete chapter:', error);
-      toast.error('チャプターの削除に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  const handleToggleVisibility = async (chapterId: string, isVisible: boolean) => {
-    try {
-      setIsProcessing(true);
-      await courseApi.updateChapter(params.courseId, chapterId, { isVisible });
-      await fetchCourse();
-      toast.success(isVisible ? 'チャプターを表示に設定しました' : 'チャプターを非表示に設定しました');
-    } catch (error) {
-      console.error('Failed to toggle chapter visibility:', error);
-      toast.error('設定の更新に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleTogglePerfectOnly = async (chapterId: string, isPerfectOnly: boolean) => {
-    try {
-      setIsProcessing(true);
-      await courseApi.updateChapter(params.courseId, chapterId, { isPerfectOnly });
-      await fetchCourse();
-      toast.success(isPerfectOnly ? 'Perfectユーザー専用に設定しました' : 'Perfect専用設定を解除しました');
-    } catch (error) {
-      console.error('Failed to toggle perfect only:', error);
-      toast.error('設定の更新に失敗しました');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-
-
-  const handleChapterOrderUpdate = async (updatedChapters: Chapter[]) => {
-    try {
-      setIsProcessing(true);
-      await courseApi.updateChaptersOrder(
-        params.courseId,
-        updatedChapters.map((chapter, index) => ({
-          id: chapter.id,
-          orderIndex: index
-        }))
-      );
-      await fetchCourse();
-      toast.success('チャプターの順序を更新しました');
-    } catch (error) {
-      console.error('Failed to update chapter order:', error);
-      toast.error('チャプターの順序更新に失敗しました');
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -198,12 +106,29 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
 
       <div className="mb-8">
         <div className="flex justify-between items-start mb-4">
-          <h1 className={`text-2xl font-bold ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            {course.title}
-          </h1>
+          <div>
+            <h1 className={`text-2xl font-bold ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              {course.title} - 基本情報編集
+            </h1>
+            <p className={`mt-2 ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              コースの基本情報を編集できます
+            </p>
+          </div>
           <div className="flex items-center space-x-4">
+            <Link
+              href={`/admin/courses/${params.courseId}/chapters`}
+              className={`px-4 py-2 rounded-lg ${
+                theme === 'dark'
+                  ? 'bg-gray-700 hover:bg-gray-600'
+                  : 'bg-gray-100 hover:bg-gray-200'
+              } transition-colors`}
+            >
+              チャプター管理へ
+            </Link>
             <span className={`px-3 py-1 rounded-full text-sm ${
               course.isPublished
                 ? 'bg-green-100 text-green-800'
@@ -227,105 +152,15 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
             </button>
           </div>
         </div>
-
-        <div className="mt-4 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('basic')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'basic'
-                  ? theme === 'dark'
-                    ? 'border-blue-500 text-blue-400'
-                    : 'border-blue-500 text-blue-600'
-                  : theme === 'dark'
-                  ? 'border-transparent text-gray-400 hover:text-gray-300'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              基本情報
-            </button>
-            <button
-              onClick={() => setActiveTab('chapters')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'chapters'
-                  ? theme === 'dark'
-                    ? 'border-blue-500 text-blue-400'
-                    : 'border-blue-500 text-blue-600'
-                  : theme === 'dark'
-                  ? 'border-transparent text-gray-400 hover:text-gray-300'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              チャプター管理
-            </button>
-          </nav>
-        </div>
       </div>
 
       <div className={`p-6 rounded-lg ${
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
       } shadow-sm`}>
-        {activeTab === 'basic' ? (
-          <CourseForm
-            initialData={course}
-            isEdit
-          />
-        ) : (
-          <div className="space-y-6">
-            {!isAddingChapter ? (
-              <>
-                <div className="flex justify-between items-center">
-                  <h2 className={`text-xl font-bold ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    チャプター一覧
-                  </h2>
-                  <button
-                    onClick={() => setIsAddingChapter(true)}
-                    className={`px-4 py-2 rounded-lg ${
-                      theme === 'dark'
-                        ? 'bg-blue-600 hover:bg-blue-700'
-                        : 'bg-blue-500 hover:bg-blue-600'
-                    } text-white transition-colors`}
-                  >
-                    チャプター追加
-                  </button>
-                </div>
-                {course.chapters && (
-                <ChapterList
-                chapters={course.chapters}
-                onDelete={handleChapterDelete}
-                onEdit={handleEditChapter}
-                onOrderUpdate={handleChapterOrderUpdate}
-                onToggleVisibility={handleToggleVisibility}
-                onTogglePerfectOnly={handleTogglePerfectOnly}
-                courseId={params.courseId} // 追加
-              />
-                )}
-              </>
-            ) : (
-              <div>
-                <h2 className={`text-xl font-bold mb-6 ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>
-                  新規チャプター作成
-                  </h2>
-    <ChapterForm
-      courseId={course.id}
-      initialData={editingChapterId 
-        ? course.chapters?.find(chapter => chapter.id === editingChapterId)
-        : undefined}
-      onCancel={() => {
-        setIsAddingChapter(false);
-        setEditingChapterId(null); // 追加
-      }}
-      onSuccess={editingChapterId ? handleEditSuccess : handleAddChapterSuccess}
-    />
-  </div>
-
-            )}
-          </div>
-        )}
+        <CourseForm
+          initialData={course}
+          isEdit
+        />
       </div>
     </div>
   );

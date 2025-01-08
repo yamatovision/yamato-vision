@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
-import { Chapter } from '@/types/course';
+import { Chapter, UserChapterProgress } from '@/types/course';
 import { courseApi } from '@/lib/api/courses';
 import { toast } from 'react-hot-toast';
 import { VideoPlayer } from '@/app/user/courses/components/VideoPlayer';
 import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
 import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
-import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';  // 追加
+import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';
 import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
+import { SubmissionState } from '@/types/submission';
 
 
 interface ChapterPageProps {
@@ -20,116 +22,116 @@ interface ChapterPageProps {
   };
 }
 
-interface ChapterContent {
-  type: 'video' | 'audio';
-  videoId: string;
-  url?: string;
-  transcription?: string;
-}
-
-interface ChapterProgress {
-  status: string;
-  startedAt: string | null;
-  completedAt?: string | null;
-  timeOutAt?: string | null;
-}
-
-interface LoadingState {
-  chapter: boolean;
-  media: boolean;
-  task: boolean;
-}
-
 export default function ChapterPage({ params }: ChapterPageProps) {
+  const router = useRouter();
   const { theme } = useTheme();
   const [chapter, setChapter] = useState<Chapter | null>(null);
-  const [parsedContent, setParsedContent] = useState<ChapterContent | null>(null);
-  const [progress, setProgress] = useState<ChapterProgress | null>(null);
-  const [loading, setLoading] = useState<LoadingState>({
-    chapter: true,
-    media: false,
-    task: false
+  const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState<UserChapterProgress | null>(null);
+  const [submissionState, setSubmissionState] = useState<SubmissionState>({
+    hasSubmitted: false,
+    peerSubmissions: [],
+    timeoutStatus: {  // 必ず timeoutStatus オブジェクトを持つように
+      isTimedOut: false
+    }
   });
-  const extractContent = (systemMessage: string, tag: string): string => {
-    if (!systemMessage) return '';
-    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
-    const match = systemMessage.match(regex);
-    return match ? match[1].trim() : '';
-  };
-  
 
-  const parseContent = (contentString: string): ChapterContent => {
+  // ベストスコアコンポーネント
+  const BestScoreDisplay = () => {
+    if (!submissionState.bestScore) return null;
+
+    return (
+      <button
+        onClick={() => router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}/evaluation`)}
+        className={`absolute top-4 right-4 px-4 py-2 rounded-lg ${
+          theme === 'dark'
+            ? 'bg-gray-700 hover:bg-gray-600'
+            : 'bg-gray-100 hover:bg-gray-200'
+        }`}
+      >
+        <span className={`font-bold text-xl ${
+          theme === 'dark' ? 'text-white' : 'text-gray-900'
+        }`}>
+          {submissionState.bestScore}
+        </span>
+        <span className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+        }`}>
+          点
+        </span>
+      </button>
+    );
+  };
+
+  // ピア提出の更新
+  const handleRefreshPeerSubmissions = async () => {
     try {
-      const parsed = typeof contentString === 'string' ? JSON.parse(contentString) : contentString;
-      return {
-        type: parsed.type || 'video',
-        videoId: parsed.videoId || '',
-        url: parsed.url || '',
-        transcription: parsed.transcription || ''
-      };
+      const response = await courseApi.getChapterPeerSubmissions(
+        params.courseId,
+        params.chapterId
+      );
+      if (response.success) {
+        setSubmissionState(prev => ({
+          ...prev,
+          peerSubmissions: response.data.submissions,
+          timeoutStatus: response.data.timeoutStatus
+        }));
+      }
     } catch (error) {
-      console.error('コンテンツ解析エラー:', error);
-      return {
-        type: 'video',
-        videoId: '',
-        url: '',
-        transcription: ''
-      };
+      console.error('Failed to refresh peer submissions:', error);
     }
   };
 
+  // 初期データの取得
   useEffect(() => {
+    // chapters/[chapterId]/page.tsx の initializeChapter 関数を修正
     const initializeChapter = async () => {
       try {
-        console.log('チャプター初期化開始:', {
-          courseId: params.courseId,
-          chapterId: params.chapterId
-        });
-
         const chapterResponse = await courseApi.getChapter(
           params.courseId,
           params.chapterId
         );
-
-        if (!chapterResponse.success) {
-          throw new Error('チャプターの取得に失敗しました');
+    
+        if (chapterResponse.success && chapterResponse.data) {
+          setChapter(chapterResponse.data);
+          // progress の設定
+          if (chapterResponse.data.userProgress?.[0]) {
+            setProgress(chapterResponse.data.userProgress[0]);
+          }
+    
+          try {
+            const submissionResponse = await courseApi.getLatestSubmission(
+              params.courseId,
+              params.chapterId
+            );
+    
+            if (submissionResponse.success && submissionResponse.data) {
+              setSubmissionState(prev => ({
+                ...prev,
+                hasSubmitted: true,
+                bestScore: submissionResponse.data.points
+              }));
+              await handleRefreshPeerSubmissions();
+            }
+          } catch (error) {
+            console.error('Error fetching submission:', error);
+          }
+        } else {
+          toast.error('チャプターの読み込みに失敗しました');
         }
-
-        const chapterData = chapterResponse.data;
-        console.log('チャプターデータ:', {
-          title: chapterData.title,
-          hasProgress: !!chapterData.userProgress?.length,
-          startTime: chapterData.userProgress?.[0]?.startedAt
-        });
-
-        setChapter(chapterData);
-        
-        if (chapterData.content) {
-          setParsedContent(parseContent(chapterData.content));
-        }
-
-        // 進捗情報の設定
-        if (chapterData.userProgress?.[0]) {
-          setProgress({
-            status: chapterData.userProgress[0].status,
-            startedAt: chapterData.userProgress[0].startedAt,
-            completedAt: chapterData.userProgress[0].completedAt,
-            timeOutAt: chapterData.userProgress[0].timeOutAt
-          });
-        }
-
-        setLoading(prev => ({ ...prev, chapter: false }));
-
       } catch (error) {
         console.error('Error initializing chapter:', error);
         toast.error('チャプターの読み込みに失敗しました');
+      } finally {
+        setLoading(false);
       }
     };
+    
 
     initializeChapter();
   }, [params.courseId, params.chapterId]);
 
-  if (loading.chapter) {
+  if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-4">
         <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -158,7 +160,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   return (
     <div className="max-w-4xl mx-auto p-4 pb-20">
       {/* ヘッダー部分 */}
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg mb-6`}>
+      <div className={`relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg mb-6`}>
         <div className="p-6">
           <h1 className={`text-2xl font-bold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
@@ -175,88 +177,78 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         </div>
 
         <div className="px-6 pb-4 flex justify-between items-center">
-          {progress?.startedAt && chapter.timeLimit && (
-            <TimeRemaining
-              startTime={new Date(progress.startedAt)}
-              timeLimit={chapter.timeLimit}
-              type="chapter"
-              onTimeout={() => {
-                toast.error('制限時間を超過しました');
-              }}
-            />
-          )}
+  {progress?.startedAt && chapter.timeLimit && (
+    <TimeRemaining
+      startTime={new Date(progress.startedAt)}
+      timeLimit={chapter.timeLimit}
+      type="chapter"
+      onTimeout={() => {
+        toast.error('制限時間を超過しました');
+      }}
+    />
+  )}
   <ActiveUsers courseId={params.courseId} />
-  </div>
+</div>
+
+        {submissionState.bestScore && <BestScoreDisplay />}
       </div>
 
       {/* メディアコンテンツ */}
-      {loading.media ? (
-        <div className="flex justify-center items-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
-      ) : parsedContent?.type === 'video' && parsedContent.videoId ? (
+      {chapter.content?.type === 'video' && chapter.content.videoId && (
         <VideoPlayer
-          videoId={parsedContent.videoId}
+          videoId={chapter.content.videoId}
           courseId={params.courseId}
           chapterId={params.chapterId}
-          transcription={parsedContent.transcription}
+          transcription={chapter.content.transcription}
         />
-      ) : parsedContent?.type === 'audio' && parsedContent.url ? (
-        <AudioPlayer
-          url={parsedContent.url}
-          courseId={params.courseId}
-          chapterId={params.chapterId}
-          transcription={parsedContent.transcription}
-        />
-      ) : null}
- {(chapter?.taskContent || chapter?.task) && (
-  <div className={`mt-8 ${
-    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-  } rounded-lg shadow-lg p-6`}>
-    <h2 className={`text-xl font-bold mb-4 ${
-      theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-    }`}>
-      課題
-    </h2>
+      )}
 
-          {/* リッチテキストによる課題説明 */}
+      {chapter.content?.type === 'audio' && chapter.content.url && (
+        <AudioPlayer
+          url={chapter.content.url}
+          courseId={params.courseId}
+          chapterId={params.chapterId}
+          transcription={chapter.content.transcription}
+        />
+      )}
+
+      {/* 課題セクション */}
+      {(chapter.taskContent || chapter.task) && (
+        <div className={`mt-8 ${
+          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+        } rounded-lg shadow-lg p-6`}>
+          <h2 className={`text-xl font-bold mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+          }`}>
+            課題
+          </h2>
+
+          {/* 課題説明 */}
           {chapter.taskContent?.description && (
             <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
               <div dangerouslySetInnerHTML={{ __html: chapter.taskContent.description }} />
             </div>
           )}
 
-          {/* 従来の課題説明（taskContent がない場合のフォールバック） */}
-          {!chapter.taskContent?.description && chapter.task?.description && (
-            <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
-              <div dangerouslySetInnerHTML={{ __html: chapter.task.description }} />
+{(!submissionState?.timeoutStatus?.isTimedOut) && chapter.task && (
+  <TaskSubmission
+    task={chapter.task}
+    courseId={params.courseId}
+    chapterId={params.chapterId}
+  />
+)}
+
+          {submissionState.hasSubmitted && (
+            <div className="mt-8">
+              <PeerSubmissions
+                submissions={submissionState.peerSubmissions}
+                timeoutStatus={submissionState.timeoutStatus}
+                onRefresh={handleRefreshPeerSubmissions}
+              />
             </div>
           )}
-
-           {/* 他の受講生の提出を表示 - ここに追加 */}
-    {chapter.task && (
-      <div className="mb-8">
-        <PeerSubmissions
-          courseId={params.courseId}
-          chapterId={params.chapterId}
-        />
-      </div>
-    )}
-
-  {chapter.task && (
-      <TaskSubmission
-        task={{
-          ...chapter.task,
-          materials: extractContent(chapter.task.systemMessage, 'materials'),
-          task: extractContent(chapter.task.systemMessage, 'task'),
-          evaluationCriteria: extractContent(chapter.task.systemMessage, 'evaluation_criteria')
-        }}
-        courseId={params.courseId}
-        chapterId={params.chapterId}
-      />
-    )}
-  </div>
-)}
+        </div>
+      )}
     </div>
   );
 }

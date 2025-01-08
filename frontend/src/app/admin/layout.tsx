@@ -44,9 +44,12 @@ export default function AdminLayout({
     return null;
   }
 
+
+const courseId = pathname?.split('/courses/')?.[1]?.split('/')?.[0];
+const isChaptersPage = pathname?.includes('/chapters');
   // アクティブなリンクのスタイル
   const isActive = (path: string) => {
-    return pathname === path ? 'bg-[#F0F4F8]' : '';
+    return pathname === path ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' : '';
   };
 
   return (
@@ -78,41 +81,42 @@ export default function AdminLayout({
               </span>
             </button>
             
-            {isCoursesExpanded && (
-              <div className="ml-4 space-y-1">
-                <Link
-                  href="/admin/courses"
-                  className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-                    isActive('/admin/courses') ? 'bg-[#F0F4F8] font-medium' : ''
-                  }`}
-                >
-                  <span>📋</span>
-                  <span>コース一覧</span>
-                </Link>
-                {pathname?.includes('/admin/courses') && !pathname?.includes('/admin/courses/new') && pathname !== '/admin/courses' && (
-                  <>
-                    <Link
-                      href={pathname}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-                        isActive(pathname) ? 'bg-[#F0F4F8] font-medium' : ''
-                      }`}
-                    >
-                      <span>📖</span>
-                      <span>コース詳細</span>
-                    </Link>
-                    <Link
-                      href={`${pathname}/chapters`}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-                        isActive(`${pathname}/chapters`) ? 'bg-[#F0F4F8] font-medium' : ''
-                      }`}
-                    >
-                      <span>📑</span>
-                      <span>チャプター管理</span>
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
+
+{isCoursesExpanded && (
+  <div className="ml-4 space-y-1">
+    <Link
+      href="/admin/courses"
+      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
+        pathname === '/admin/courses' ? 'bg-[#F0F4F8] font-medium' : ''
+      }`}
+    >
+      <span>📋</span>
+      <span>コース一覧</span>
+    </Link>
+    {courseId && courseId !== 'new' && (
+      <>
+        <Link
+          href={`/admin/courses/${courseId}`}
+          className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
+            pathname === `/admin/courses/${courseId}` ? 'bg-[#F0F4F8] font-medium' : ''
+          }`}
+        >
+          <span>📖</span>
+          <span>基本情報</span>
+        </Link>
+        <Link
+          href={`/admin/courses/${courseId}/chapters`}
+          className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
+            isChaptersPage ? 'bg-[#F0F4F8] font-medium' : ''
+          }`}
+        >
+          <span>📑</span>
+          <span>チャプター管理</span>
+        </Link>
+      </>
+    )}
+  </div>
+)}
           </div>
 
           <Link 

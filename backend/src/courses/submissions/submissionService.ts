@@ -13,7 +13,7 @@ import {
 } from './submissionTypes';
 import { timeoutService } from '../timeouts/timeoutService';
 import { evaluationService } from './evaluationService';
-import { SubmissionVisibilityState } from '../chapters/chapterTypes';
+import { SubmissionVisibilityState } from '../types/progress';
 
 const prisma = new PrismaClient();
 

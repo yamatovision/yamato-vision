@@ -115,6 +115,7 @@ model Task {
   updatedAt     DateTime     @updatedAt
   referenceText String?
   systemMessage String
+  evaluationCriteria String?  // nullable（オプション）として追加
   chapter       Chapter?     @relation("ChapterTask")
   submissions   Submission[]
   course        Course       @relation(fields: [courseId], references: [id])

@@ -1,3 +1,5 @@
+// backend/src/server.ts
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -6,22 +8,22 @@ import authRoutes from './auth/authRoutes';
 import userRoutes from './users/userRoutes';
 import badgeRoutes from './badges/badgeRoutes';
 import levelMessageRoutes from './levelMessages/levelMessageRoutes';
-import { courseRoutes } from './courses/courseRoutes';
-import { userCourseRoutes } from './courses/user/userCourseRoutes';
+import experienceRoutes from './experience/experienceRoutes';     
+import notificationRoutes from './notification/notificationRoutes'; 
+import { adminRoutes } from './courses/admin/adminRoutes';
+import { userRoutes as courseUserRoutes } from './courses/user/userRoutes';
+import { mediaRoutes } from './courses/media/mediaRoutes';
 import { PrismaClient } from '@prisma/client';
 import { timeoutChecker } from './utils/timeoutChecker';
 import { TokenSyncService } from './sync/token/tokenSyncService';
 import { UserSyncService } from './sync/user/userSyncService';
-import experienceRoutes from './experience/experienceRoutes';     
-import notificationRoutes from './notification/notificationRoutes'; 
-import { mediaRoutes } from './courses/media/mediaRoutes';
-import { submissionRoutes } from './courses/submissions/submissionRoutes';
 
 dotenv.config();
 export const prisma = new PrismaClient();
 
 const tokenSyncService = new TokenSyncService();
-const userSyncService = new UserSyncService();const app = express();
+const userSyncService = new UserSyncService();
+const app = express();
 const port = process.env.PORT || 3001;
 
 // 同期サービスの初期化
@@ -56,7 +58,7 @@ const initializeCronJobs = () => {
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // PATCHを追加
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -64,30 +66,24 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// API ルート
+// 基本的なAPIルート
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
-app.use('/api/admin/courses', courseRoutes);
-app.use('/api/courses/user', userCourseRoutes);
-app.use('/api/courses', courseRoutes);
-app.use('/api/experience', experienceRoutes);       // 追加
-app.use('/api/notifications', notificationRoutes);  // 追加
-app.use('/api/media', mediaRoutes);
-app.use('/api', submissionRoutes);
+app.use('/api/experience', experienceRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-
-
+// コース関連のルート
+app.use('/api/admin', adminRoutes);          // 管理者用エンドポイント
+app.use('/api/courses/user', courseUserRoutes);      // ユーザー用エンドポイント
+app.use('/api/media', mediaRoutes);        
 
 // デバッグ用エンドポイント
 app.get('/api/debug/status', async (_req, res) => {
   try {
-    // データベース接続テスト
     await prisma.$queryRaw`SELECT 1 as test`;
     
-    // 同期サービスのステータスを取得
-  
     const tokenSyncStatus = await tokenSyncService.getConnectionStatus();
     const userSyncStatus = await userSyncService.getConnectionStatus();
     
@@ -147,6 +143,7 @@ app.get('/api/debug/database', async (_req, res) => {
   }
 });
 
+// ヘルスチェックエンドポイント
 app.get('/health', async (_req, res) => {
   const tokenStatus = await tokenSyncService.getConnectionStatus();
   const userStatus = await userSyncService.getConnectionStatus();
@@ -220,11 +217,7 @@ app.listen(port, async () => {
   console.log('Database URL is', process.env.DATABASE_URL ? 'configured' : 'not configured');
   console.log('MongoDB URI is', process.env.MONGODB_URI ? 'configured' : 'not configured');
   
-  // 同期サービスの初期化
-  await initializeSyncServices();  // 新しい関数名に変更
-
-  
-  // Cronジョブの初期化
+  await initializeSyncServices();
   initializeCronJobs();
   console.log('All services initialized');
 });
