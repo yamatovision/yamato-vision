@@ -317,7 +317,7 @@ export class UserChapterService extends EventEmitter {
       // AI採点の実行
       const evaluationResult = await evaluationService.evaluateSubmission({
         materials: chapter.task.systemMessage,
-        task: chapter.task.description,
+        task: chapter.task?.task ?? '',
         evaluationCriteria: chapter.task.evaluationCriteria ?? '', // nullish coalescing operatorを使用
         submission: submission.content
       });

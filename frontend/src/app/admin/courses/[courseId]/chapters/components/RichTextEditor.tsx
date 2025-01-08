@@ -1,11 +1,48 @@
-// frontend/src/app/admin/courses/[courseId]/chapters/components/RichTextEditor.tsx
-
 'use client';
 
-import { useTheme } from '@/contexts/theme';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/lib/api/cloudinaryUpload';
+
+interface ToolbarItem {
+  command: string;
+  text: string;
+  tooltip: string;
+}
+
+interface ToolbarGroup {
+  group: string;
+  items: ToolbarItem[];
+}
+
+const toolbarFeatures: ToolbarGroup[] = [
+  {
+    group: 'テキスト装飾',
+    items: [
+      { command: 'bold', text: '太字', tooltip: '太字' },
+      { command: 'italic', text: '斜体', tooltip: '斜体' },
+      { command: 'underline', text: '_あ_', tooltip: '下線' },
+      { command: 'strikethrough', text: '取消', tooltip: '取り消し線' }
+    ]
+  },
+  {
+    group: '段落スタイル',
+    items: [
+      { command: 'h2', text: 'H2', tooltip: '見出し2' },
+      { command: 'h3', text: 'H3', tooltip: '見出し3' },
+      { command: 'bulletList', text: '・', tooltip: '箇条書き' },
+      { command: 'orderedList', text: '1.', tooltip: '番号付きリスト' }
+    ]
+  },
+  {
+    group: 'メディア',
+    items: [
+      { command: 'image', text: '🖼', tooltip: '画像を挿入' },
+      { command: 'link', text: '🔗', tooltip: 'リンクを挿入' },
+      { command: 'code', text: '</>', tooltip: 'コードブロック' }
+    ]
+  }
+];
 
 interface RichTextEditorProps {
   value: string;
@@ -20,39 +57,9 @@ export function RichTextEditor({
   label,
   placeholder
 }: RichTextEditorProps) {
-  const { theme } = useTheme();
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const toolbarFeatures = [
-    {
-      group: 'text',
-      items: [
-        { command: 'bold', icon: 'format_bold', tooltip: '太字' },
-        { command: 'italic', icon: 'format_italic', tooltip: '斜体' },
-        { command: 'underline', icon: 'format_underline', tooltip: '下線' },
-        { command: 'strikethrough', icon: 'strikethrough_s', tooltip: '取り消し線' }
-      ]
-    },
-    {
-      group: 'paragraph',
-      items: [
-        { command: 'h2', text: 'H2', tooltip: '見出し2' },
-        { command: 'h3', text: 'H3', tooltip: '見出し3' },
-        { command: 'bulletList', icon: 'format_list_bulleted', tooltip: '箇条書き' },
-        { command: 'orderedList', icon: 'format_list_numbered', tooltip: '番号付きリスト' }
-      ]
-    },
-    {
-      group: 'media',
-      items: [
-        { command: 'image', icon: 'image', tooltip: '画像を挿入' },
-        { command: 'link', icon: 'link', tooltip: 'リンクを挿入' },
-        { command: 'code', icon: 'code', tooltip: 'コードブロック' }
-      ]
-    }
-  ];
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -121,7 +128,6 @@ export function RichTextEditor({
       
       toast.success('画像をアップロードしました', { id: 'imageUpload' });
       
-      // ファイル入力をリセット
       if (event.target) {
         event.target.value = '';
       }
@@ -133,35 +139,25 @@ export function RichTextEditor({
 
   return (
     <div className="space-y-2">
-      <label className={`block text-sm font-medium ${
-        theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-      }`}>
+      <label className="block text-sm font-medium text-gray-200">
         {label}
       </label>
 
-      <div className={`border rounded-lg overflow-hidden ${
-        theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
-      } ${isFocused ? 'ring-2 ring-blue-500' : ''}`}>
-        <div className={`flex flex-wrap items-center p-2 gap-1 border-b ${
-          theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-gray-50 border-gray-200'
-        }`}>
+      <div className={`border rounded-lg overflow-hidden border-secondary-700 
+        ${isFocused ? 'ring-2 ring-primary-500' : ''}`}>
+        <div className="flex flex-wrap items-center p-2 gap-1 border-b bg-secondary-900 border-secondary-700">
           {toolbarFeatures.map((group, index) => (
-            <div key={index} className="flex items-center gap-1">
+            <div key={index} className="flex items-center gap-1 px-2 border-r border-secondary-700 last:border-r-0">
               {group.items.map((item, itemIndex) => (
                 <button
                   key={itemIndex}
                   onClick={() => execCommand(item.command)}
-                  className={`p-2 rounded hover:bg-opacity-80 ${
-                    theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-                  }`}
+                  className="p-2 rounded text-secondary-200 hover:bg-secondary-700 
+                    hover:text-primary-400 transition-colors duration-200"
                   title={item.tooltip}
                   type="button"
                 >
-                  {item.icon ? (
-                    <span className="material-icons text-xl">{item.icon}</span>
-                  ) : (
-                    item.text
-                  )}
+                  {item.text}
                 </button>
               ))}
             </div>
@@ -174,11 +170,7 @@ export function RichTextEditor({
           onInput={handleInput}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className={`min-h-[300px] p-4 ${
-            theme === 'dark'
-              ? 'bg-gray-700 text-white'
-              : 'bg-white text-gray-900'
-          } focus:outline-none`}
+          className="min-h-[300px] p-4 bg-secondary-800 text-secondary-100 focus:outline-none"
           placeholder={placeholder}
         />
       </div>

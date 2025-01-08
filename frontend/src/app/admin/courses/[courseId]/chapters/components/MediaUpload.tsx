@@ -53,59 +53,29 @@ export function MediaUpload({
     }
   };
 
-  const getPreviewUrl = (videoId: string) => 
-    `https://iframe.mediadelivery.net/play/${process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID}/${videoId}`;
-
   return (
     <div className="space-y-6">
-      {/* プレビュー表示 */}
-      {showPreview && videoId && type === 'video' && (
-        <div className={`p-4 rounded-lg border ${
-          theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <span className={`text-sm font-medium ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-            }`}>
-              設定済みメディア
-            </span>
-          </div>
+     {showPreview && videoId && type === 'video' && (
+  <div className="rounded-lg overflow-hidden bg-gray-800 shadow-lg">
+    <div className="relative">
+      <iframe
+        src={`https://iframe.mediadelivery.net/play/${process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID}/${videoId}`}
+        className="w-full"
+        style={{ height: '600px' }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
+  </div>
+)}
 
-          <div className="max-w-3xl mx-auto">
-            <div className="relative w-full pt-[56.25%] bg-black">
-              <iframe
-                src={getPreviewUrl(videoId)}
-                className="absolute top-0 left-0 w-full h-full"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <p className="text-sm text-gray-500">Video ID:</p>
-            <code className={`text-xs px-2 py-1 rounded block mt-1 overflow-x-auto ${
-              theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-            }`}>
-              {videoId}
-            </code>
-          </div>
-        </div>
-      )}
-
-      {/* Video ID入力フォーム */}
       <div className="space-y-4">
         <input
           type="text"
           value={videoId}
           onChange={(e) => setVideoId(e.target.value)}
           placeholder="4c517f36-cd53-4c3f-8519-08fbdb047c50"
-          className={`w-full rounded-lg p-3 ${
-            theme === 'dark'
-              ? 'bg-gray-700 text-white border-gray-600'
-              : 'bg-white text-gray-900 border-gray-200'
-          } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+          className="w-full rounded-lg p-3 bg-gray-700 text-white border-gray-600 border focus:ring-2 focus:ring-blue-500 focus:outline-none"
         />
         <button
           onClick={handleSubmit}
@@ -116,21 +86,11 @@ export function MediaUpload({
         </button>
       </div>
 
-      {/* ローディング表示 */}
       {isUploading && (
         <div className="mt-4">
           <div className="animate-pulse flex justify-center items-center py-2">
             <span className="text-blue-500">設定中...</span>
           </div>
-        </div>
-      )}
-
-      {/* デバッグ情報 */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs space-y-1">
-          <p>isUploading: {isUploading.toString()}</p>
-          <p>videoId: {videoId}</p>
-          <p>showPreview: {showPreview.toString()}</p>
         </div>
       )}
     </div>

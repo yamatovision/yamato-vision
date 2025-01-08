@@ -5,17 +5,35 @@ export interface ChapterContent {
   url?: string;  // 追加
   id?: string;   // 追加
   transcription?: string;
+  isFinalExam: boolean;     // 追加必要
+  taskId?: string;          // 追加必要
+  releaseTime?: number;     // 追加必要
+  isPerfectOnly: boolean;   // 追加必要
+  content: ChapterContent;  // optional (?)を削除
 }
 // タスクの定義
 export interface Task {
   id?: string;
-  description: string;
-  materials: string;        // required に変更
-  task: string;            // required に変更
-  evaluationCriteria: string;  // required に変更
-  maxPoints: number;
+  materials?: string;
+  task?: string;
+  evaluationCriteria?: string;
   systemMessage: string;
-  referenceText: string;
+  maxPoints?: number;
+}
+
+export interface ReferenceFile {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+}
+
+
+// TaskContentの型定義を追加
+export interface TaskContent {
+  description: string;  // リッチテキスト形式の課題説明
 }
 
 // チャプターの定義
@@ -34,23 +52,12 @@ export interface Chapter {
     transcription?: string;
     id?: string;
   };
-  task?: {
-    description: string;
-    systemMessage: string;
-    referenceText: string;
-    maxPoints: number;
-  };
+  taskContent?: TaskContent;  // 追加
+  referenceFiles?: ReferenceFile[];  // 追加
+  experienceWeight: number;
+  task?: Task;
 }
 
-
-// 添付ファイルの定義
-export interface AttachmentFile {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  size: number;
-}
 
 // コースのステータス定義
 export type CourseStatus = 
@@ -128,20 +135,34 @@ export interface ChapterProgressInfo {
 
 
 // チャプター作成用DTO
-export interface CreateChapterDTO {
-  title: string;
-  subtitle?: string;
-  content?: string;
-  orderIndex: number;
-  timeLimit: number;
-  isVisible: boolean;
-}
-
+  export interface CreateChapterDTO {
+    title: string;
+    subtitle?: string;
+    content?: ChapterContent;
+    taskContent?: TaskContent;  // 追加
+    referenceFiles?: ReferenceFile[];  // 追加
+    orderIndex: number;
+    timeLimit: number;
+    isVisible: boolean;
+    experienceWeight?: number;
+    releaseTime?: number;     // 追加必要
+    isPerfectOnly?: boolean;  // 追加必要
+    isFinalExam?: boolean;    // 追加必要
+    task?: {
+      title: string;
+      materials?: string;
+      task?: string;
+      evaluationCriteria?: string;
+      maxPoints: number;
+    };
+  }
 // チャプター更新用DTO
 export interface UpdateChapterDTO {
   title?: string;
   subtitle?: string;
   content?: ChapterContent;
+  taskContent?: TaskContent;  // 追加
+  referenceFiles?: ReferenceFile[];  // 追加
   orderIndex?: number;
   timeLimit?: number;
   waitTime?: number;
@@ -150,8 +171,15 @@ export interface UpdateChapterDTO {
   isVisible?: boolean;
   isFinalExam?: boolean;
   isPerfectOnly?: boolean;
-  task?: Omit<Task, 'id'>;
+  task?: {
+    title: string;
+    materials?: string;
+    task?: string;
+    evaluationCriteria?: string;
+    maxPoints: number;
+  };
 }
+
 
 // API レスポンス用の型定義
 export interface CourseResponse {
@@ -207,7 +235,6 @@ export interface CourseData {
     title: string;
     description: string;
     level: number;
-    gemCost: number;
     rankRequired: string;
     levelRequired: number;
     timeRemaining?: TimeRemaining;
@@ -220,6 +247,9 @@ export interface CourseData {
       orderIndex: number;
       timeLimit: number;
       isVisible: boolean;
+      isPerfectOnly?: boolean;  // 追加必要
+      isFinalExam?: boolean;    // 追加必要
+      releaseTime?: number;     // 追加必要
     }>;
   };
 }
@@ -228,7 +258,6 @@ export interface CourseData {
 export interface TaskDescriptionProps {
   description: string;
   systemMessage: string;
-  referenceText: string;
   maxPoints: number;
 }
 

@@ -5,7 +5,9 @@ import {
   UpdateChapterDTO, 
   ChapterOrderItem,
   ChapterWithTask,
-  ChapterContent
+  ChapterContent,
+  TaskContent,
+  ReferenceFile
 } from '../types/chapter';
 
 export class AdminChapterService {
@@ -17,6 +19,7 @@ export class AdminChapterService {
     this.progressManager = new CourseProgressManager();
   }
 
+  
   private formatChapterContent(content: ChapterContent | undefined): Prisma.InputJsonValue {
     if (!content) return {};
     return {
@@ -24,6 +27,108 @@ export class AdminChapterService {
       videoId: content.videoId,
       transcription: content.transcription || ''
     };
+  }
+  
+  private formatTaskContent(content: TaskContent | undefined): Prisma.InputJsonValue {
+    if (!content) return {};
+    return {
+      description: content.description || ''
+    };
+  }
+  
+  private formatReferenceFiles(files: ReferenceFile[] | undefined): Prisma.InputJsonValue {
+    if (!files) return [];
+    return files.map(file => ({
+      id: file.id,
+      name: file.name,
+      url: file.url,
+      type: file.type,
+      size: file.size,
+      uploadedAt: file.uploadedAt
+    }));
+  }
+  async updateChapter(chapterId: string, data: UpdateChapterDTO): Promise<ChapterWithTask> {
+    const chapter = await this.prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: { 
+        task: {
+          select: {
+            id: true,
+            materials: true,
+            task: true,
+            evaluationCriteria: true,
+            maxPoints: true,
+            systemMessage: true,
+          }
+        }
+      }
+    });
+
+    if (!chapter) {
+      throw new Error('Chapter not found');
+    }
+
+    const updatedChapter = await this.prisma.$transaction(async (tx) => {
+      const updateResult = await tx.chapter.update({
+        where: { id: chapterId },
+        data: {
+          title: data.title || chapter.title,
+          subtitle: data.subtitle || chapter.subtitle,
+          content: data.content 
+            ? this.formatChapterContent(data.content) 
+            : (chapter.content || Prisma.JsonNull),
+          taskContent: data.taskContent 
+            ? this.formatTaskContent(data.taskContent) 
+            : (chapter.taskContent || Prisma.JsonNull),
+          referenceFiles: data.referenceFiles 
+            ? this.formatReferenceFiles(data.referenceFiles) 
+            : (chapter.referenceFiles || Prisma.JsonNull),
+          timeLimit: data.timeLimit ?? chapter.timeLimit,
+          releaseTime: data.releaseTime ?? chapter.releaseTime,
+          isVisible: data.isVisible ?? chapter.isVisible,
+          isPerfectOnly: data.isPerfectOnly ?? chapter.isPerfectOnly,
+        },
+        include: {
+          task: {
+            select: {
+              id: true,
+              materials: true,
+              task: true,
+              evaluationCriteria: true,
+              maxPoints: true,
+              systemMessage: true,
+            }
+          }
+        }
+      });
+      if (data.task && chapter.taskId) {
+        const systemMessage = `<materials>
+${data.task.materials || ''}
+</materials>
+<task>
+${data.task.task || ''}
+</task>
+<evaluation_criteria>
+${data.task.evaluationCriteria || ''}
+</evaluation_criteria>`;
+
+        await tx.task.update({
+          where: { id: chapter.taskId },
+          data: {
+            title: chapter.title, // チャプタータイトルを使用
+            materials: data.task.materials || null,
+            task: data.task.task || null,
+            evaluationCriteria: data.task.evaluationCriteria || null,
+            maxPoints: 100, // 固定値として設定
+            systemMessage: systemMessage
+          }
+        });
+      }
+
+      return updateResult;
+    });
+
+    return updatedChapter as ChapterWithTask;
   }
 
   async createChapter(courseId: string, data: CreateChapterDTO): Promise<ChapterWithTask> {
@@ -35,31 +140,55 @@ export class AdminChapterService {
       });
 
       const newOrderIndex = (maxOrderIndex?.orderIndex ?? -1) + 1;
-      const contentValue = this.formatChapterContent(data.content);
 
       const chapter = await tx.chapter.create({
         data: {
           courseId,
           title: data.title,
           subtitle: data.subtitle || '',
-          content: contentValue,
+          content: this.formatChapterContent(data.content),
+          taskContent: this.formatTaskContent(data.taskContent),
+          referenceFiles: this.formatReferenceFiles(data.referenceFiles),
           timeLimit: data.timeLimit || 0,
           releaseTime: data.releaseTime || 0,
           orderIndex: newOrderIndex,
-          isVisible: true
+          isVisible: true,
+          experienceWeight: data.experienceWeight || 100
+        },
+        include: {
+          task: {
+            select: {
+              id: true,
+              materials: true,
+              task: true,
+              evaluationCriteria: true,
+              maxPoints: true,
+              systemMessage: true,
+            }
+          }
         }
       });
 
       if (data.task) {
+        const systemMessage = `<materials>
+${data.task.materials || ''}
+</materials>
+<task>
+${data.task.task || ''}
+</task>
+<evaluation_criteria>
+${data.task.evaluationCriteria || ''}
+</evaluation_criteria>`;
+
         const task = await tx.task.create({
           data: {
             courseId,
-            title: data.title,
-            description: data.task.description || '',
-            systemMessage: data.task.systemMessage || '',
-            referenceText: data.task.referenceText || '',
+            title: chapter.title,  // チャプタータイトルを使用
+            materials: data.task.materials || null,
+            task: data.task.task || null,
+            evaluationCriteria: data.task.evaluationCriteria || null,
             maxPoints: data.task.maxPoints || 100,
-            evaluationCriteria: null,
+            systemMessage: systemMessage,
             chapter: {
               connect: { id: chapter.id }
             }
@@ -74,7 +203,18 @@ export class AdminChapterService {
 
       const finalChapter = await tx.chapter.findUnique({
         where: { id: chapter.id },
-        include: { task: true }
+        include: {
+          task: {
+            select: {
+              id: true,
+              materials: true,
+              task: true,
+              evaluationCriteria: true,
+              maxPoints: true,
+              systemMessage: true,
+            }
+          }
+        }
       });
 
       if (!finalChapter) {
@@ -87,43 +227,6 @@ export class AdminChapterService {
     return result as ChapterWithTask;
   }
 
-  async updateChapter(chapterId: string, data: UpdateChapterDTO): Promise<ChapterWithTask> {
-    const chapter = await this.prisma.chapter.findUnique({
-      where: { id: chapterId },
-      include: { task: true }
-    });
-
-    if (!chapter) {
-      throw new Error('Chapter not found');
-    }
-
-    const contentValue: Prisma.InputJsonValue = data.content 
-      ? this.formatChapterContent(data.content)
-      : (chapter.content as Prisma.InputJsonValue);
-
-    const updatedChapter = await this.prisma.chapter.update({
-      where: { id: chapterId },
-      data: {
-        title: data.title || chapter.title,
-        subtitle: data.subtitle || chapter.subtitle,
-        content: contentValue,
-        timeLimit: data.timeLimit ?? chapter.timeLimit,
-        releaseTime: data.releaseTime ?? chapter.releaseTime,
-        isVisible: data.isVisible ?? chapter.isVisible,
-        isPerfectOnly: data.isPerfectOnly ?? chapter.isPerfectOnly
-      },
-      include: { task: true }
-    });
-
-    return updatedChapter as ChapterWithTask;
-  }
-
-
-
-
-
-
-
   async getChapter(chapterId: string): Promise<ChapterWithTask> {
     const chapter = await this.prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -131,15 +234,11 @@ export class AdminChapterService {
         task: {
           select: {
             id: true,
-            courseId: true,
-            title: true,
-            description: true,
-            systemMessage: true,
-            referenceText: true,
+            materials: true,
+            task: true,
+            evaluationCriteria: true,
             maxPoints: true,
-            createdAt: true,
-            updatedAt: true,
-            evaluationCriteria: true
+            systemMessage: true,
           }
         }
       }
@@ -149,39 +248,55 @@ export class AdminChapterService {
       throw new Error('Chapter not found');
     }
   
-    // データの変換処理を追加
-    const formattedChapter = {
+    return {
       ...chapter,
       content: typeof chapter.content === 'string'
-        ? JSON.parse(chapter.content)
+        ? JSON.parse(chapter.content as string)
         : chapter.content,
       taskContent: typeof chapter.taskContent === 'string'
-        ? JSON.parse(chapter.taskContent)
-        : chapter.taskContent || { description: '' },
+        ? JSON.parse(chapter.taskContent as string)
+        : chapter.taskContent || null,
+      referenceFiles: typeof chapter.referenceFiles === 'string'
+        ? JSON.parse(chapter.referenceFiles as string)
+        : chapter.referenceFiles || null,
       task: chapter.task ? {
         ...chapter.task,
-        description: chapter.task.description || '',
-        systemMessage: chapter.task.systemMessage || '',
-        referenceText: chapter.task.referenceText || ''
-      } : null,
-      experienceWeight: chapter.experienceWeight || 100
-    };
-  
-    return formattedChapter as ChapterWithTask;
+      } : null
+    } as ChapterWithTask;
   }
 
   async getChapters(courseId: string): Promise<ChapterWithTask[]> {
     const chapters = await this.prisma.chapter.findMany({
       where: { courseId },
       include: {
-        task: true
+        task: {
+          select: {
+            id: true,
+            materials: true,
+            task: true,
+            evaluationCriteria: true,
+            maxPoints: true,
+            systemMessage: true,
+          }
+        }
       },
       orderBy: {
         orderIndex: 'asc'
       }
     });
 
-    return chapters as unknown as ChapterWithTask[];
+    return chapters.map(chapter => ({
+      ...chapter,
+      content: typeof chapter.content === 'string'
+        ? JSON.parse(chapter.content as string)
+        : chapter.content,
+      taskContent: typeof chapter.taskContent === 'string'
+        ? JSON.parse(chapter.taskContent as string)
+        : chapter.taskContent || null,
+      referenceFiles: typeof chapter.referenceFiles === 'string'
+        ? JSON.parse(chapter.referenceFiles as string)
+        : chapter.referenceFiles || null,
+    })) as ChapterWithTask[];
   }
 
   async deleteChapter(chapterId: string): Promise<void> {
@@ -195,19 +310,16 @@ export class AdminChapterService {
         throw new Error('Chapter not found');
       }
 
-      // 関連する進捗データを削除
       await tx.userChapterProgress.deleteMany({
         where: { chapterId }
       });
 
-      // タスクが存在する場合は削除
       if (chapter.taskId) {
         await tx.task.delete({
           where: { id: chapter.taskId }
         });
       }
 
-      // チャプターを削除
       await tx.chapter.delete({
         where: { id: chapterId }
       });
@@ -224,5 +336,4 @@ export class AdminChapterService {
       )
     );
   }
-
 }

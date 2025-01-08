@@ -6,10 +6,9 @@ import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaUpload } from './MediaUpload';
-import { ChapterTimeSettings } from './ChapterTimeSettings';  // 変更点
-import { TaskForm } from './TaskForm';  // この行を追加
-import { Chapter, Task, CreateChapterDTO } from '@/types/course';  // CreateChapterDTOを追加
-
+import { ChapterTimeSettings } from './ChapterTimeSettings';
+import { TaskForm } from './TaskForm';
+import { Chapter, Task, CreateChapterDTO, TaskContent, ReferenceFile } from '@/types/course';
 
 interface ChapterFormData {
   title: string;
@@ -19,21 +18,19 @@ interface ChapterFormData {
     videoId: string;
     transcription: string;
   };
+  taskContent: {
+    description: string;
+  };
+  referenceFiles: ReferenceFile[];
   timeLimit: number;
   releaseTime: number;
   orderIndex: number;
-  experienceWeight: number;
-  task: {
-    description: string;
-    materials: string;
-    task: string;
-    evaluationCriteria: string;
+  task?: {
+    title: string;
+    materials?: string;
+    task?: string;
+    evaluationCriteria?: string;
     maxPoints: number;
-    systemMessage: string;
-    referenceText: string;
-  };
-  taskContent: {
-    description: string;
   };
 }
 
@@ -44,10 +41,6 @@ interface ChapterFormProps {
   onSuccess: () => void;
 }
 
-
-
-
-
 export function ChapterForm({
   initialData,
   courseId,
@@ -56,7 +49,8 @@ export function ChapterForm({
 }: ChapterFormProps) {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  
+  const [formData, setFormData] = useState<ChapterFormData>({
     title: initialData?.title || '',
     subtitle: initialData?.subtitle || '',
     content: {
@@ -64,26 +58,21 @@ export function ChapterForm({
       videoId: initialData?.content?.videoId || '',
       transcription: initialData?.content?.transcription || ''
     },
+    taskContent: {
+      description: initialData?.taskContent?.description || ''
+    },
+    referenceFiles: initialData?.referenceFiles || [],
     timeLimit: initialData?.timeLimit || 0,
     releaseTime: initialData?.releaseTime || 0,
     orderIndex: initialData?.orderIndex || 0,
-    experienceWeight: initialData?.experienceWeight || 100,
-    task: {
-      description: initialData?.task?.description || '',
-      materials: initialData?.task?.materials || '',
-      task: initialData?.task?.task || '',
-      evaluationCriteria: initialData?.task?.evaluationCriteria || '',
-      maxPoints: initialData?.task?.maxPoints || 100,
-      systemMessage: initialData?.task?.systemMessage || '',
-      referenceText: initialData?.task?.referenceText || '', // 追加
-    },
-    taskContent: {
-      description: initialData?.taskContent?.description || ''
-    }
-   
+    task: initialData?.task ? {
+      title: initialData.task.title,
+      materials: initialData.task.materials,
+      task: initialData.task.task,
+      evaluationCriteria: initialData.task.evaluationCriteria,
+      maxPoints: initialData.task.maxPoints
+    } : undefined
   });
-
-
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -93,58 +82,6 @@ export function ChapterForm({
     return true;
   };
 
-
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    
-    setIsSubmitting(true);
-  
-
-  try {
-    const submitData: CreateChapterDTO = {
-      title: formData.title,
-      subtitle: formData.subtitle,
-      content: {
-        type: formData.content.type,
-        videoId: formData.content.videoId,
-        transcription: formData.content.transcription
-      },
-      timeLimit: formData.timeLimit,
-      releaseTime: formData.releaseTime,
-      orderIndex: formData.orderIndex,
-      experienceWeight: formData.experienceWeight,
-      task: {
-        description: formData.task.description,
-        materials: formData.task.materials,
-        task: formData.task.task,
-        evaluationCriteria: formData.task.evaluationCriteria,
-        maxPoints: formData.task.maxPoints,
-        systemMessage: formData.task.systemMessage,
-        referenceText: formData.task.referenceText,
-      },
-      taskContent: {
-        description: formData.taskContent.description
-      }
-      
-    };
-
-    if (initialData) {
-      await courseApi.updateChapter(courseId, initialData.id, submitData);
-      toast.success('チャプターを更新しました');
-    } else {
-      await courseApi.createChapter(courseId, submitData);
-      toast.success('チャプターを作成しました');
-    }
-    onSuccess();
-  } catch (error) {
-    console.error('Error saving chapter:', error);
-    toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
       ...prev,
@@ -153,7 +90,46 @@ export function ChapterForm({
     }));
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
 
+    try {
+      const submitData: CreateChapterDTO = {
+        title: formData.title,
+        subtitle: formData.subtitle,
+        content: {
+          type: formData.content.type,
+          videoId: formData.content.videoId,
+          transcription: formData.content.transcription
+        },
+        taskContent: {
+          description: formData.taskContent.description
+        },
+        referenceFiles: formData.referenceFiles,
+        timeLimit: formData.timeLimit,
+        releaseTime: formData.releaseTime,
+        orderIndex: formData.orderIndex,
+        task: formData.task
+      };
+
+      if (initialData) {
+        await courseApi.updateChapter(courseId, initialData.id, submitData);
+        toast.success('チャプターを更新しました');
+      } else {
+        await courseApi.createChapter(courseId, submitData);
+        toast.success('チャプターを作成しました');
+      }
+      onSuccess();
+    } catch (error) {
+      console.error('Error saving chapter:', error);
+      toast.error(initialData ? 'チャプターの更新に失敗しました' : 'チャプターの作成に失敗しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -207,7 +183,7 @@ export function ChapterForm({
           </div>
 
           <div className="mt-6">
-          <ChapterTimeSettings  // ここを変更
+            <ChapterTimeSettings
               timeLimit={formData.timeLimit}
               releaseTime={formData.releaseTime}
               onUpdate={handleTimeSettingsUpdate}
@@ -239,7 +215,7 @@ export function ChapterForm({
                     ...prev,
                     content: {
                       type: e.target.value as 'video' | 'audio',
-                      videoId: '',          // urlをvideoIdに変更
+                      videoId: '',
                       transcription: ''
                     }
                   }));
@@ -256,23 +232,23 @@ export function ChapterForm({
             </div>
 
             <MediaUpload
-  type={formData.content.type}
-  currentVideoId={formData.content.videoId}
-  onUpload={({ videoId }) => setFormData(prev => ({
-    ...prev,
-    content: {
-      ...prev.content,
-      videoId
-    }
-  }))}
-  courseId={courseId}
-  chapterId={initialData?.id || ''}
-/>
+              type={formData.content.type}
+              currentVideoId={formData.content.videoId}
+              onUpload={({ videoId }) => setFormData(prev => ({
+                ...prev,
+                content: {
+                  ...prev.content,
+                  videoId
+                }
+              }))}
+              courseId={courseId}
+              chapterId={initialData?.id || ''}
+            />
           </div>
         </section>
 
-       {/* 課題セクション - 更新 */}
-       <section className={`p-6 rounded-lg ${
+        {/* 課題セクション */}
+        <section className={`p-6 rounded-lg ${
           theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
         }`}>
           <h3 className={`text-lg font-medium mb-6 ${
@@ -290,7 +266,6 @@ export function ChapterForm({
                 setFormData(prev => ({
                   ...prev,
                   taskContent: {
-                    ...prev.taskContent,
                     description: value
                   }
                 }));
@@ -300,61 +275,22 @@ export function ChapterForm({
           </div>
 
           <TaskForm
-  initialData={initialData?.task}
-  onSubmit={(taskData) => {
-    setFormData(prev => ({
-      ...prev,
-      task: {
-        description: taskData.description,
-        materials: taskData.materials || '',
-        task: taskData.task || '',
-        evaluationCriteria: taskData.evaluationCriteria || '',
-        maxPoints: taskData.maxPoints,
-        systemMessage: taskData.systemMessage,
-        referenceText: taskData.referenceText, // 追加
-      }
-    }));
-  }}
-  disabled={isSubmitting}
-/>
+            initialData={initialData?.task}
+            onSubmit={(taskData) => {
+              setFormData(prev => ({
+                ...prev,
+                task: {
+                  title: taskData.title,
+                  materials: taskData.materials,
+                  task: taskData.task,
+                  evaluationCriteria: taskData.evaluationCriteria,
+                  maxPoints: taskData.maxPoints
+                }
+              }));
+            }}
+            disabled={isSubmitting}
+          />
         </section>
-        <div>
-  <label className={`block text-sm font-medium mb-2 ${
-    theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-  }`}>
-    経験値の重み付け
-  </label>
-  <div className="relative">
-    <input
-      type="number"
-      value={formData.experienceWeight}
-      onChange={(e) => {
-        const value = Math.max(1, Math.min(1000, parseInt(e.target.value) || 100));
-        setFormData(prev => ({
-          ...prev,
-          experienceWeight: value
-        }));
-      }}
-      min="1"
-      max="1000"
-      className={`w-full rounded-lg pl-3 pr-12 py-2 ${
-        theme === 'dark'
-          ? 'bg-gray-700 text-white border-gray-600'
-          : 'bg-white text-gray-900 border-gray-200'
-      } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-    />
-    <div className={`absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none ${
-      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-    }`}>
-      %
-    </div>
-  </div>
-  <p className={`mt-1 text-sm ${
-    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-  }`}>
-    経験値の獲得量を調整します（1-1000%）
-  </p>
-</div>
 
         {/* 操作ボタン */}
         <div className="flex justify-end space-x-4">
@@ -392,4 +328,3 @@ export function ChapterForm({
     </div>
   );
 }
-

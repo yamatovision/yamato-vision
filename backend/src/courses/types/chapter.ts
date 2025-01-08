@@ -9,11 +9,26 @@ type PrismaJsonValue = string | number | boolean | null | { [key: string]: Prism
 
 export type ChapterWithTask = Omit<PrismaChapter, 'content'> & {
   content: PrismaJsonValue;
-  task: (Omit<PrismaTask, 'evaluationCriteria'> & {
+  task: (Omit<PrismaTask, 'evaluationCriteria' | 'task'> & {
     evaluationCriteria: string | null;
+    task: string | null;  // このフィールドを明示的に追加
   }) | null;
   userProgress?: UserChapterProgress[];
 };
+
+export interface ReferenceFile {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+}
+
+// TaskContent型の定義を追加
+export interface TaskContent {
+  description: string;  // リッチテキスト形式の課題説明
+}
 // JsonValue 型の定義も追加
 type JsonValue =
   | string
@@ -39,40 +54,39 @@ export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
   content?: ChapterContent;
-  taskContent?: {
-    description: string;
-  };
+  taskContent?: TaskContent;  // 変更
+  referenceFiles?: ReferenceFile[];  // 追加
   timeLimit?: number;
   releaseTime?: number;
   orderIndex?: number;
+  experienceWeight?: number;
   task?: {
-    description?: string;
-    systemMessage?: string;
-    referenceText?: string;
-    maxPoints?: number;
+    title: string;
+    materials?: string;
+    task?: string;
+    evaluationCriteria?: string;
+    maxPoints: number;
   };
 }
-
 export interface UpdateChapterDTO {
   title?: string;
   subtitle?: string;
   content?: ChapterContent;
-  taskContent?: {
-    description: string;
-  };
+  taskContent?: TaskContent;  // 変更
+  referenceFiles?: ReferenceFile[];  // 追加
   timeLimit?: number;
   releaseTime?: number;
   isVisible?: boolean;
   isFinalExam?: boolean;
   isPerfectOnly?: boolean;
   task?: {
-    description?: string;
-    systemMessage?: string;
-    referenceText?: string;
-    maxPoints?: number;
+    title: string;
+    materials?: string;
+    task?: string;
+    evaluationCriteria?: string;
+    maxPoints: number;
   };
 }
-
 export interface ChapterOrderItem {
   id: string;
   orderIndex: number;

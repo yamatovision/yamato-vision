@@ -655,6 +655,111 @@ updateMaterialProgress: async (
     }
   },
 
+  toggleChapterVisibility: async (
+    courseId: string,
+    chapterId: string,
+    isVisible: boolean
+  ): Promise<APIResponse<Chapter>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}/visibility`,
+        {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ isVisible })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update chapter visibility');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // パーフェクトモードの切り替え
+  toggleChapterPerfectMode: async (
+    courseId: string,
+    chapterId: string,
+    isPerfectOnly: boolean
+  ): Promise<APIResponse<Chapter>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}/perfect-mode`,
+        {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ isPerfectOnly })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update perfect mode setting');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // チャプターのステータス情報を取得
+  getChapterStatus: async (
+    courseId: string,
+    chapterId: string
+  ): Promise<APIResponse<{
+    isVisible: boolean;
+    isPerfectOnly: boolean;
+    accessInfo: {
+      canAccess: boolean;
+      mode: 'normal' | 'perfect';
+      message?: string;
+    };
+  }>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}/status`,
+        {
+          headers: getAuthHeaders()
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch chapter status');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
 
   getActiveCourseUsers: async (courseId: string): Promise<APIResponse<{
   users: Array<{

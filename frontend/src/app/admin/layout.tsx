@@ -55,14 +55,16 @@ const isChaptersPage = pathname?.includes('/chapters');
   return (
     <div className="grid h-screen" style={{ gridTemplateColumns: '280px 1fr' }}>
       {/* サイドバー */}
-      <aside className="bg-white border-r overflow-y-auto">
+      <aside className="bg-white border-r border-gray-200 overflow-y-auto">
         <div className="p-6">
-          <h1 className="text-xl font-semibold text-[#2C3E50]">管理者ダッシュボード</h1>
+          <h1 className="text-xl font-semibold text-gray-800">管理者ダッシュボード</h1>
         </div>
         <nav className="px-4">
           <Link 
             href="/admin" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin')}`}
+            className={`flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-md ${
+              isActive('/admin') ? 'bg-gray-50 font-medium' : ''
+            }`}
           >
             <span>📊</span>
             <span>ダッシュボード</span>
@@ -72,7 +74,7 @@ const isChaptersPage = pathname?.includes('/chapters');
           <div className="mb-2">
             <button
               onClick={() => setIsCoursesExpanded(!isCoursesExpanded)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-[#1A365D] hover:bg-[#F0F4F8] rounded-md font-medium"
+              className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-md font-medium"
             >
               <span>📚</span>
               <span>コース管理</span>
@@ -81,104 +83,69 @@ const isChaptersPage = pathname?.includes('/chapters');
               </span>
             </button>
             
-
-{isCoursesExpanded && (
-  <div className="ml-4 space-y-1">
-    <Link
-      href="/admin/courses"
-      className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-        pathname === '/admin/courses' ? 'bg-[#F0F4F8] font-medium' : ''
-      }`}
-    >
-      <span>📋</span>
-      <span>コース一覧</span>
-    </Link>
-    {courseId && courseId !== 'new' && (
-      <>
-        <Link
-          href={`/admin/courses/${courseId}`}
-          className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-            pathname === `/admin/courses/${courseId}` ? 'bg-[#F0F4F8] font-medium' : ''
-          }`}
-        >
-          <span>📖</span>
-          <span>基本情報</span>
-        </Link>
-        <Link
-          href={`/admin/courses/${courseId}/chapters`}
-          className={`flex items-center gap-2 px-4 py-2 text-sm text-[#1A365D] hover:bg-[#F0F4F8] rounded-md ${
-            isChaptersPage ? 'bg-[#F0F4F8] font-medium' : ''
-          }`}
-        >
-          <span>📑</span>
-          <span>チャプター管理</span>
-        </Link>
-      </>
-    )}
-  </div>
-)}
+            {isCoursesExpanded && (
+              <div className="ml-4 space-y-1">
+                <Link
+                  href="/admin/courses"
+                  className={`flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md ${
+                    isActive('/admin/courses') ? 'bg-gray-50 font-medium text-gray-900' : ''
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>コース一覧</span>
+                </Link>
+                {pathname?.includes('/admin/courses') && !pathname?.includes('/admin/courses/new') && pathname !== '/admin/courses' && (
+                  <>
+                    <Link
+                      href={pathname}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md ${
+                        isActive(pathname) ? 'bg-gray-50 font-medium text-gray-900' : ''
+                      }`}
+                    >
+                      <span>📖</span>
+                      <span>基本情報</span>
+                    </Link>
+                    <Link
+                      href={`${pathname}/chapters`}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md ${
+                        isActive(`${pathname}/chapters`) ? 'bg-gray-50 font-medium text-gray-900' : ''
+                      }`}
+                    >
+                      <span>📑</span>
+                      <span>チャプター管理</span>
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
-          <Link 
-            href="/admin/level-messages" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/level-messages')}`}
-          >
-            <span>⚡</span>
-            <span>レベルメッセージ管理</span>
-          </Link>    
-          
-          <Link 
-            href="/admin/notices" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/notices')}`}
-          >
-            <span>📢</span>
-            <span>お知らせ管理</span>
-          </Link>
-          
-          <Link 
-            href="/admin/users" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/users')}`}
-          >
-            <span>👥</span>
-            <span>ユーザー管理</span>
-          </Link>
-          
-          <Link 
-            href="/admin/badges" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/badges')}`}
-          >
-            <span>🏆</span>
-            <span>バッジ管理</span>
-          </Link>
-          
-          <Link 
-            href="/admin/events" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/events')}`}
-          >
-            <span>🎮</span>
-            <span>イベント管理</span>
-          </Link>
-          
-          <Link 
-            href="/admin/forum" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/forum')}`}
-          >
-            <span>💬</span>
-            <span>フォーラム管理</span>
-          </Link>
-          
-          <Link 
-            href="/admin/shop" 
-            className={`flex items-center gap-3 px-4 py-3 text-[#2C3E50] hover:bg-[#F0F4F8] rounded-md ${isActive('/admin/shop')}`}
-          >
-            <span>🛍</span>
-            <span>ショップ管理</span>
-          </Link>
+          {/* その他のナビゲーションリンク */}
+          {[
+            { href: '/admin/level-messages', icon: '⚡', label: 'レベルメッセージ管理' },
+            { href: '/admin/notices', icon: '📢', label: 'お知らせ管理' },
+            { href: '/admin/users', icon: '👥', label: 'ユーザー管理' },
+            { href: '/admin/badges', icon: '🏆', label: 'バッジ管理' },
+            { href: '/admin/events', icon: '🎮', label: 'イベント管理' },
+            { href: '/admin/forum', icon: '💬', label: 'フォーラム管理' },
+            { href: '/admin/shop', icon: '🛍', label: 'ショップ管理' },
+          ].map(({ href, icon, label }) => (
+            <Link 
+              key={href}
+              href={href} 
+              className={`flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-md ${
+                isActive(href) ? 'bg-gray-50 font-medium' : ''
+              }`}
+            >
+              <span>{icon}</span>
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
       </aside>
 
       {/* メインコンテンツ */}
-      <main className="bg-[#F5F7FB] overflow-auto">
+      <main className="bg-gray-50 overflow-auto">
         <div className="p-6">
           {children}
         </div>

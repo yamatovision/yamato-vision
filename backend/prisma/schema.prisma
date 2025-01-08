@@ -52,7 +52,8 @@ model Chapter {
   taskId           String?                    @unique
   releaseTime      Int?
   content          Json
-  taskContent   Json?    // 追加
+  taskContent      Json?     // 公開用の説明（リッチテキスト）
+  referenceFiles   Json?     // 配列形式で複数の参考資料を管理
   isPerfectOnly    Boolean                    @default(false)
   experienceWeight Int                        @default(100)
   course           Course                     @relation(fields: [courseId], references: [id])
@@ -106,19 +107,19 @@ model UserCourse {
 }
 
 model Task {
-  id            String       @id @default(cuid())
-  courseId      String
-  title         String
-  description   String
-  maxPoints     Int          @default(100)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  referenceText String?
-  systemMessage String
-  evaluationCriteria String?  // nullable（オプション）として追加
-  chapter       Chapter?     @relation("ChapterTask")
-  submissions   Submission[]
-  course        Course       @relation(fields: [courseId], references: [id])
+  id                String       @id @default(cuid())
+  courseId          String
+  title             String
+  maxPoints         Int          @default(100)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  materials         String?      // optional
+  task              String?       // これは必須（課題内容）
+  evaluationCriteria String?     // optional
+  systemMessage     String       // XMLフォーマット済みの評価用データ
+  chapter           Chapter?     @relation("ChapterTask")
+  submissions       Submission[]
+  course            Course       @relation(fields: [courseId], references: [id])
 }
 
 model Submission {

@@ -61,33 +61,24 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       setIsProcessing(false);
     }
   };
-
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="max-w-7xl mx-auto p-4">
-        <div className={`p-6 rounded-lg ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        } shadow-sm text-center`}>
-          <p className={`text-lg ${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>
+      <div className="max-w-7xl mx-auto p-4 bg-gray-50">
+        <div className="p-6 rounded-lg bg-white shadow-sm text-center">
+          <p className="text-lg text-gray-600">
             コースが見つかりませんでした
           </p>
           <Link
             href="/admin/courses"
-            className={`mt-4 inline-block px-4 py-2 rounded-lg ${
-              theme === 'dark' 
-                ? 'bg-blue-600 hover:bg-blue-700' 
-                : 'bg-blue-500 hover:bg-blue-600'
-            } text-white transition-colors`}
+            className="mt-4 inline-block px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
           >
             コース一覧に戻る
           </Link>
@@ -97,7 +88,7 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
+    <div className="max-w-7xl mx-auto p-4 bg-gray-50 min-h-screen">
       {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
@@ -107,60 +98,50 @@ export default function CourseEditPage({ params }: CourseEditPageProps) {
       <div className="mb-8">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className={`text-2xl font-bold ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>
+            <h1 className="text-2xl font-bold text-gray-900">
               {course.title} - 基本情報編集
             </h1>
-            <p className={`mt-2 ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
+            <p className="mt-2 text-gray-600">
               コースの基本情報を編集できます
             </p>
           </div>
           <div className="flex items-center space-x-4">
             <Link
               href={`/admin/courses/${params.courseId}/chapters`}
-              className={`px-4 py-2 rounded-lg ${
-                theme === 'dark'
-                  ? 'bg-gray-700 hover:bg-gray-600'
-                  : 'bg-gray-100 hover:bg-gray-200'
-              } transition-colors`}
+              className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors shadow-sm"
             >
               チャプター管理へ
             </Link>
-            <span className={`px-3 py-1 rounded-full text-sm ${
-              course.isPublished
-                ? 'bg-green-100 text-green-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {course.isPublished ? '公開中' : '下書き'}
-            </span>
-            <button
-              onClick={handlePublishToggle}
-              className={`px-4 py-2 rounded-lg ${
+            <div className="flex items-center space-x-3">
+              <span className={`px-3 py-1 rounded-full text-sm ${
                 course.isPublished
-                  ? theme === 'dark'
-                    ? 'bg-yellow-600 hover:bg-yellow-700'
-                    : 'bg-yellow-500 hover:bg-yellow-600'
-                  : theme === 'dark'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-green-500 hover:bg-green-600'
-              } text-white transition-colors`}
-            >
-              {course.isPublished ? '非公開にする' : '公開する'}
-            </button>
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {course.isPublished ? '公開中' : '下書き'}
+              </span>
+              <button
+                onClick={handlePublishToggle}
+                className={`px-4 py-2 rounded-lg shadow-sm ${
+                  course.isPublished
+                    ? 'bg-yellow-500 hover:bg-yellow-600'
+                    : 'bg-green-600 hover:bg-green-700'
+                } text-white transition-colors`}
+              >
+                {course.isPublished ? '非公開にする' : '公開する'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className={`p-6 rounded-lg ${
-        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-      } shadow-sm`}>
-        <CourseForm
-          initialData={course}
-          isEdit
-        />
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6">
+          <CourseForm
+            initialData={course}
+            isEdit
+          />
+        </div>
       </div>
     </div>
   );
