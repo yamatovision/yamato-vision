@@ -174,6 +174,84 @@ export class UserCourseService {
       }))
     };
   }
+// userCourseService.ts の restartCourse メソッドを以下のように修正
+
+async restartCourse(userId: string, courseId: string) {
+  try {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. 現在のコース状態チェック
+      const currentCourse = await tx.userCourse.findUnique({
+        where: {
+          userId_courseId: { userId, courseId }
+        }
+      });
+
+      if (!currentCourse) {
+        throw new Error('Course not found');
+      }
+
+      // 2. 再スタート可能状態チェック
+      const RESTARTABLE_STATUS = ['available', 'completed', 'certified', 'failed'] as const;
+      if (!RESTARTABLE_STATUS.includes(currentCourse.status as any)) {
+        throw new Error(`Course with status ${currentCourse.status} cannot be restarted`);
+      }
+
+      // 3. 既存のアクティブコースを非アクティブ化
+      await tx.userCourse.updateMany({
+        where: {
+          userId,
+          isActive: true,
+          NOT: {
+            courseId
+          }
+        },
+        data: {
+          isActive: false,
+          status: 'completed',
+          completedAt: new Date()
+        }
+      });
+
+      // 4. 進捗データのクリーンアップ
+      await tx.userChapterProgress.deleteMany({
+        where: {
+          userId,
+          courseId
+        }
+      });
+
+      // 5. コース状態の初期化
+      const updatedCourse = await tx.userCourse.update({
+        where: {
+          userId_courseId: { userId, courseId }
+        },
+        data: {
+          status: 'active',
+          isActive: true,
+          startedAt: new Date(),
+          completedAt: null,
+          isTimedOut: false,
+          timeOutAt: null
+        }
+      });
+
+      // 6. イベント通知はProgressManagerに委譲
+      await this.progressManager.handleCourseStateChange({
+        courseId,
+        changes: {
+          isPublished: true
+        },
+        affectedUserIds: [userId]
+      });
+
+      return updatedCourse;
+    });
+
+  } catch (error) {
+    console.error('Error in restartCourse:', error);
+    throw error;
+  }
+}
 
   async checkCourseAccess(userId: string, courseId: string): Promise<boolean> {
     const userCourse = await this.prisma.userCourse.findUnique({

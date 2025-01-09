@@ -160,9 +160,25 @@ export class CourseProgressManager {
     }
   ): Promise<UserChapterProgress> {
     try {
+      console.log('【進捗更新処理開始】', {
+        処理: 'updateChapterProgress',
+        ユーザーID: userId,
+        コースID: courseId,
+        チャプターID: chapterId,
+        データ: {
+          視聴率: progressData.lessonWatchRate,
+          提出スコア: progressData.submissionPoints
+        },
+        タイムスタンプ: new Date().toISOString()
+      });
+  
       return await this.prisma.$transaction(async (tx) => {
         const accessStatus = await this.checkAccessibility(userId, courseId, chapterId);
         if (!accessStatus.canAccess) {
+          console.error('【アクセス拒否】', {
+            理由: accessStatus.message,
+            ステータス: accessStatus
+          });
           throw new Error(accessStatus.message || 'Access denied');
         }
   
@@ -176,6 +192,13 @@ export class CourseProgressManager {
           }
         });
   
+        console.log('【現在の進捗状態】', {
+          現在のステータス: currentProgress?.status || 'なし',
+          視聴率: currentProgress?.lessonWatchRate || 0,
+          スコア: currentProgress?.score,
+          開始日時: currentProgress?.startedAt
+        });
+  
         let newStatus = currentProgress?.status || 'NOT_STARTED';
         const updateData: Prisma.UserChapterProgressUpdateInput = {
           updatedAt: new Date()
@@ -183,6 +206,10 @@ export class CourseProgressManager {
   
         const timeoutStatus = await this.checkTimeoutStatus(tx, userId, courseId, chapterId);
         if (timeoutStatus.isTimedOut) {
+          console.log('【タイムアウト検知】', {
+            タイムアウト日時: timeoutStatus.timeOutAt
+          });
+  
           updateData.isTimedOut = true;
           updateData.timeOutAt = new Date();
           updateData.score = 0;
@@ -200,6 +227,11 @@ export class CourseProgressManager {
             data: updateData
           });
   
+          console.log('【タイムアウトによる強制完了】', {
+            新ステータス: updatedProgress.status,
+            スコア: updatedProgress.score,
+            完了日時: updatedProgress.completedAt
+          });
 
 
 // StatusChangedイベントの発行部分
@@ -526,8 +558,123 @@ async isChapterAvailable(
     throw error;
   }
 }
+async handleSubmissionComplete(
+  tx: Prisma.TransactionClient,
+  params: {
+    userId: string;
+    courseId: string;
+    chapterId: string;
+    submissionId: string;
+    score: number;
+  }
+) {
+  try {
+    console.log('【提出完了処理開始】', {
+      userId: params.userId,
+      courseId: params.courseId,
+      chapterId: params.chapterId,
+      score: params.score
+    });
 
+    // 1. 進捗状態の更新
+    const updatedProgress = await tx.userChapterProgress.update({
+      where: {
+        userId_courseId_chapterId: {
+          userId: params.userId,
+          courseId: params.courseId,
+          chapterId: params.chapterId
+        }
+      },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        score: params.score,
+        bestSubmissionId: params.submissionId
+      }
+    });
 
+    // 2. 次のチャプターを取得
+    const currentChapter = await tx.chapter.findUnique({
+      where: { id: params.chapterId },
+      include: {
+        course: {
+          include: {
+            chapters: {
+              orderBy: {
+                orderIndex: 'asc'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!currentChapter) {
+      throw new Error('Chapter not found');
+    }
+
+    // 3. 次のチャプターの解放処理
+    const nextChapter = currentChapter.course.chapters.find(
+      ch => ch.orderIndex > currentChapter.orderIndex
+    );
+
+    if (nextChapter) {
+      // 次のチャプターの進捗レコードを作成
+      await tx.userChapterProgress.upsert({
+        where: {
+          userId_courseId_chapterId: {
+            userId: params.userId,
+            courseId: params.courseId,
+            chapterId: nextChapter.id
+          }
+        },
+        create: {
+          userId: params.userId,
+          courseId: params.courseId,
+          chapterId: nextChapter.id,
+          status: 'NOT_STARTED',
+          startedAt: new Date()
+        },
+        update: {} // 既に存在する場合は更新しない
+      });
+    } else {
+      // コースの完了処理
+      await this.handleCourseCompletion(tx, params.userId, params.courseId);
+    }
+
+    // イベントの発行
+    this.emit({
+      type: 'CHAPTER_COMPLETED',
+      userId: params.userId,
+      courseId: params.courseId,
+      chapterId: params.chapterId,
+      data: {
+        score: params.score,
+      }
+    });
+
+    this.emit({
+      type: 'STATUS_CHANGED',
+      userId: params.userId,
+      courseId: params.courseId,
+      chapterId: params.chapterId,
+      data: {
+        oldStatus: 'TASK_IN_PROGRESS',
+        newStatus: 'COMPLETED',
+        score: params.score
+      }
+    });
+
+    return {
+      progress: updatedProgress,
+      nextChapter: nextChapter || null
+    };
+
+  } catch (error) {
+    console.error('Error in handleSubmissionComplete:', error);
+    throw error;
+  }
+}
 
 
 async restartCourse(userId: string, courseId: string) {
@@ -551,7 +698,23 @@ async restartCourse(userId: string, courseId: string) {
         throw new Error(`Course with status ${currentCourse.status} cannot be restarted`);
       }
 
-      // 3. 進捗データのクリーンアップ
+      // 3. 既存のアクティブコースを非アクティブ化
+      await tx.userCourse.updateMany({
+        where: {
+          userId,
+          isActive: true,
+          NOT: {
+            courseId
+          }
+        },
+        data: {
+          isActive: false,
+          status: 'completed',
+          completedAt: new Date()
+        }
+      });
+
+      // 4. 全ての進捗データを削除
       await tx.userChapterProgress.deleteMany({
         where: {
           userId,
@@ -559,7 +722,7 @@ async restartCourse(userId: string, courseId: string) {
         }
       });
 
-      // 4. コース状態の初期化
+      // 5. コース状態の初期化
       const updatedCourse = await tx.userCourse.update({
         where: {
           userId_courseId: { userId, courseId }
@@ -574,27 +737,13 @@ async restartCourse(userId: string, courseId: string) {
         }
       });
 
-      // 5. 状態変更イベントの発行
-      this.emit({
-        type: 'STATUS_CHANGED',
-        userId,
-        courseId,
-        data: {
-          oldStatus: currentCourse.status,
-          newStatus: 'active',
-          type: 'course_restart'
-        }
-      });
-
       return updatedCourse;
     });
-
   } catch (error) {
     console.error('Error in restartCourse:', error);
     throw error;
   }
 }
-
 
 
 

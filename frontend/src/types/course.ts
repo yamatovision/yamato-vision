@@ -71,7 +71,7 @@ export type CourseStatus =
   | 'active'       // 受講中
   | 'completed'    // 通常クリア
   | 'certified'    // 認証バッジ獲得
-  | 'perfect'      // パーフェクト達成
+  | 'archived'      // パーフェクト達成
   | 'failed';      // 失敗
 
 

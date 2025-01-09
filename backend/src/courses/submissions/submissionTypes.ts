@@ -32,6 +32,7 @@ export interface SubmissionDisplayControl {
 }
 
 // 提出結果
+// submissionTypes.ts
 export interface SubmissionResult {
   submission: {
     id: string;
@@ -40,7 +41,11 @@ export interface SubmissionResult {
     feedback: string;
     nextStep: string | null;
   };
-  visibility: SubmissionVisibilityState;
+  visibility: {
+    canViewContent: boolean;
+    canViewPoints: boolean;
+    canViewAiFeedback: boolean;
+  };
   finalScore: number;
   originalScore: number;
   feedback: string;

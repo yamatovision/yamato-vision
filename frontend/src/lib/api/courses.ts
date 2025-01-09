@@ -96,6 +96,115 @@ export const courseApi = {
   // コース一覧取得
 
 
+  saveMediaProgress: async (data: {
+    videoId: string;
+    courseId: string;
+    chapterId: string;
+    position: number;
+    watchRate: number;
+  }): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/media/progress`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify(data)
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to save media progress');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      console.error('Error saving media progress:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // メディア進捗の取得
+  getMediaProgress: async (chapterId: string): Promise<APIResponse<{
+    position: number;
+    watchRate: number;
+  }>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/media/progress/${chapterId}`,
+        {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to get media progress');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      console.error('Error getting media progress:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // チャプター進捗の更新（95%以上視聴時）
+  updateChapterProgress: async (
+    courseId: string,
+    chapterId: string,
+    data: {
+      lessonWatchRate: number;
+    }
+  ): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/progress`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify(data)
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update chapter progress');
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data
+      };
+    } catch (error) {
+      console.error('Error updating chapter progress:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+
 
 
   getCourses: async (): Promise<APIResponse<Course[]>> => {
@@ -154,13 +263,28 @@ export const courseApi = {
       }
   
       const data = await response.json();
-      return data; // レスポンスをそのまま返せる
+      console.log('【APIレスポンス】getChapterPeerSubmissions', {
+        ステータスコード: response.status,
+        レスポンスデータ: data,
+        提出数: data?.submissions?.length || 0
+      });
+  
+      return {
+        success: true,
+        data: {
+          submissions: data.submissions || [],
+          timeoutStatus: data.timeoutStatus
+        }
+      };
     } catch (error) {
-      console.error('Error in getCourse:', error);
-      return { 
-        success: false, 
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error'
+      console.error('【エラー】getChapterPeerSubmissions:', error);
+      return {
+        success: false,
+        data: {
+          submissions: [],
+          timeoutStatus: { isTimedOut: false }
+        },
+        error: error instanceof Error ? error.message : 'Failed to fetch peer submissions'
       };
     }
   },
@@ -326,33 +450,38 @@ updateCourse: async (courseId: string, data: UpdateCourseDTO) => {
   return result;
 },
 getChapterPeerSubmissions: async (
-  courseId: string,
+  courseId: string, 
   chapterId: string,
-  page: number = 1,
-  perPage: number = 10
-): Promise<APIResponse<PeerSubmissionResponse>> => {
+  isEvaluationPage: boolean = false  // 新しいパラメータを追加
+) => {
   try {
     const response = await fetch(
-      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/peer-submissions?page=${page}&perPage=${perPage}`,
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/peer-submissions?isEvaluationPage=${isEvaluationPage}`,
       {
-        headers: getAuthHeaders(),
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        credentials: 'include'
       }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Failed to fetch peer submissions');
+      throw new Error(data.message || 'Failed to fetch peer submissions');
     }
 
-    const result = await response.json();
     return {
       success: true,
-      data: result.data
+      data: data
     };
   } catch (error) {
+    console.error('Error fetching peer submissions:', error);
     return {
       success: false,
-      data: null,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Failed to fetch peer submissions'
     };
   }
 },
@@ -406,7 +535,7 @@ getLatestSubmission: async (courseId: string, chapterId: string): Promise<APIRes
 }>> => {
   try {
     const response = await fetch(
-      `${FRONTEND_API_BASE}/users/courses/${courseId}/chapters/${chapterId}/submission`,
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/submission`,
       {
         headers: getAuthHeaders(),
       }
@@ -932,7 +1061,7 @@ updateMaterialProgress: async (
   }>> => {
     try {
       const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/submit`,
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/submission`,
         {
           method: 'POST',
           headers: getAuthHeaders(),

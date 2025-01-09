@@ -5,20 +5,36 @@ import { useTheme } from '@/contexts/theme';
 import { PeerSubmission, PeerSubmissionsProps } from '@/types/submission';
 
 export function PeerSubmissions({ 
-  submissions, 
+  submissions = [],
+  paginationInfo = { total: 0, page: 1, perPage: 10 },  // 追加
   timeoutStatus = { isTimedOut: false },
   onRefresh 
 }: PeerSubmissionsProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  // 日付文字列をDateオブジェクトに変換する関数
+  console.log('【PeerSubmissions】マウント時のprops:', {
+    submissionsの型: typeof submissions,
+    submissions実体: submissions,
+    isArray: Array.isArray(submissions),
+    length: submissions?.length,
+    ページ情報: paginationInfo  // 追加
+  });
+
   const getSubmittedAtTime = (date: string | Date): number => {
     return new Date(date).getTime();
   };
 
-  // ソートされた提出物を取得
   const getSortedSubmissions = (): PeerSubmission[] => {
+    if (!Array.isArray(submissions)) {
+      console.log('【警告】submissions が配列ではありません', submissions);
+      return [];
+    }
+
+    console.log('【getSortedSubmissions】ソート前', {
+      提出数: submissions.length
+    });
+
     const filtered = timeoutStatus?.isTimedOut
       ? submissions.filter(sub => (sub.points || 0) >= 80)
       : submissions;
@@ -29,14 +45,17 @@ export function PeerSubmissions({
         return pointsDiff !== 0 
           ? pointsDiff 
           : getSubmittedAtTime(b.submittedAt) - getSubmittedAtTime(a.submittedAt);
-      } else {
-        return getSubmittedAtTime(b.submittedAt) - getSubmittedAtTime(a.submittedAt);
       }
+      return getSubmittedAtTime(b.submittedAt) - getSubmittedAtTime(a.submittedAt);
     });
   };
 
-
   const sortedSubmissions = getSortedSubmissions();
+
+  console.log('【PeerSubmissions】表示直前の状態', {
+    ソート後の提出数: sortedSubmissions.length,
+    表示データ: sortedSubmissions
+  });
 
   return (
     <div className="space-y-6">
@@ -45,11 +64,14 @@ export function PeerSubmissions({
         <h2 className={`text-lg font-semibold ${
           isDark ? 'text-white' : 'text-gray-900'
         }`}>
-          他の受講生の提出 ({sortedSubmissions.length}件)
+          他の受講生の提出 ({paginationInfo.total}件) {/* 修正 */}
         </h2>
         {onRefresh && (
           <button
-            onClick={onRefresh}
+            onClick={() => {
+              console.log('【更新ボタン】クリックされました');
+              onRefresh();
+            }}
             className={`px-4 py-2 rounded-lg text-sm ${
               isDark
                 ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
@@ -148,8 +170,7 @@ export function PeerSubmissions({
         <div className={`p-8 text-center rounded-lg ${
           isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'
         }`}>
-            null
-
+          提出はまだありません
         </div>
       )}
     </div>

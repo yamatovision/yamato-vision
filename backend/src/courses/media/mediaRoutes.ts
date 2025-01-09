@@ -1,13 +1,15 @@
-// backend/src/courses/media/mediaRoutes.ts
 import express from 'express';
 import { mediaController } from './mediaController';
 import { authMiddleware } from '../../auth/authMiddleware';
 
 const router = express.Router();
 
-// backend/src/courses/media/mediaRoutes.ts
-router.post('/upload-url', mediaController.getUploadUrl);
-router.get('/status/:videoId', mediaController.getVideoStatus);
+// Mux関連のエンドポイント
+router.get('/admin/assets', mediaController.listMuxAssets);
+router.patch('/admin/assets/:assetId/title', mediaController.updateAssetTitle); // 新規追加
 
+// 進捗管理関連のエンドポイント
+router.post('/progress', authMiddleware, mediaController.updateProgress);
+router.get('/progress/:chapterId', authMiddleware, mediaController.getProgress);
 
 export { router as mediaRoutes };

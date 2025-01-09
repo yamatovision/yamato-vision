@@ -132,6 +132,7 @@ model Submission {
   nextStep    String?   // nullable（?）にする
   submittedAt DateTime  @default(now())
   evaluatedAt DateTime  @default(now())
+  bestForProgress UserChapterProgress[] @relation("BestSubmission")
   task        Task      @relation(fields: [taskId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 }
@@ -332,6 +333,8 @@ model UserChapterProgress {
   startedAt       DateTime?
   completedAt     DateTime?
   score           Int?
+　 bestSubmissionId String?  
+  bestSubmission   Submission? @relation("BestSubmission", fields: [bestSubmissionId], references: [id])  // ここを修正
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   isTimedOut      Boolean   @default(false)

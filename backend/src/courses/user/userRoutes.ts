@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { UserCourseController } from './userCourseController';
 import { UserChapterController } from './userChapterController';
 import { authMiddleware } from '../../auth/authMiddleware';
+import { submissionController } from '../submissions/submissionController';  // 追加
 
 const router = Router();
 const userCourseController = new UserCourseController();
@@ -27,6 +28,7 @@ router.get('/:courseId/chapters/:chapterId/access', userChapterController.checkA
 router.patch('/:courseId/chapters/:chapterId/watch-progress', userChapterController.updateWatchProgress);
 router.post('/:courseId/chapters/:chapterId/submission', userChapterController.recordSubmission);
 router.get('/:courseId/chapters/:chapterId/peer-submissions', userChapterController.getChapterPeerSubmissions);
+router.get('/:courseId/chapters/:chapterId/submission',authMiddleware,submissionController.getHighestScoreSubmission.bind(submissionController));
 router.get('/submissions/:submissionId', userChapterController.getPeerSubmissionDetails);
 router.post(
     '/:courseId/chapters/:chapterId/first-access',

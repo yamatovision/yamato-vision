@@ -585,142 +585,159 @@ export class UserChapterService extends EventEmitter {
       };
     });
   }
-
-
-  // Peer Learning Features
   async getChapterPeerSubmissions(
     courseId: string,
     chapterId: string,
     currentUserId: string,
     page: number = 1,
-    perPage: number = 10
+    perPage: number = 10,
+    isEvaluationPage: boolean = false
   ) {
-    // アクセス権のチェック
-    const userProgress = await this.prisma.userChapterProgress.findUnique({
-      where: {
-        userId_courseId_chapterId: {
-          userId: currentUserId,
-          courseId,
-          chapterId
-        }
-      }
-    });
-
-    if (!userProgress || userProgress.status !== 'COMPLETED') {
-      throw new Error('Must complete the chapter to view peer submissions');
-    }
-
-    const chapter = await this.prisma.chapter.findUnique({
-      where: { id: chapterId },
-      include: { task: true }
-    });
-
-    if (!chapter?.taskId) {
-      throw new Error('Chapter task not found');
-    }
-
-    // 提出物の取得 (status による検索を削除)
-    const submissions = await this.prisma.submission.findMany({
-      where: {
-        taskId: chapter.taskId,
-        userId: { not: currentUserId }
-      },
-      include: {
-        task: {
-          include: {
-            chapter: true
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-            rank: true
-          }
-        }
-      },
-      skip: (page - 1) * perPage,
-      take: perPage
-    });
-
-    const total = await this.prisma.submission.count({
-      where: {
-        taskId: chapter.taskId,
-        userId: { not: currentUserId }
-      }
-    });
-
-    // 可視性の制御
-    const visibleSubmissions = submissions.map(submission => {
-      const visibilityState = this.determineSubmissionVisibility(
-        submission,
-        userProgress
+    try {
+      console.log('【ピア提出取得開始】', { courseId, chapterId, currentUserId });
+  
+      // タイムアウト状態の取得
+      const timeoutStatus = await this.progressManager.checkTimeoutStatus(
+        this.prisma,
+        currentUserId,
+        courseId,
+        chapterId
       );
-
-      return {
-        id: submission.id,
-        user: {
-          id: submission.user.id,
-          name: submission.user.name,
-          avatarUrl: submission.user.avatarUrl,
-          rank: submission.user.rank
+  
+      // 提出データの取得（user情報を含む）
+      const peerProgresses = await this.prisma.userChapterProgress.findMany({
+        where: {
+          courseId,
+          chapterId,
+          bestSubmissionId: { not: null }  // 自分の提出も含めるように修正
         },
-        content: visibilityState.canViewContent ? submission.content : null,
-        points: visibilityState.canViewPoints ? submission.points : null,
-        feedback: visibilityState.canViewAiFeedback ? submission.feedback : null,
-        submittedAt: submission.submittedAt,
-        visibilityState
-      };
-    });
+        include: {
+          bestSubmission: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatarUrl: true,
+                  rank: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          score: 'desc'
+        },
+        skip: (page - 1) * perPage,
+        take: perPage
+      });
+  
+      console.log('【DB取得結果】', {
+        rawData: peerProgresses,
+        条件: {
+          courseId,
+          chapterId,
+        }
+      });
+      console.log('【bestSubmission詳細】', {
+        bestSubmission: peerProgresses[0]?.bestSubmission,
+        user: peerProgresses[0]?.bestSubmission?.user
+      });
+      // userChapterService.ts の getChapterPeerSubmissions メソッド内
 
-    return {
-      submissions: visibleSubmissions,
-      total,
-      page,
-      perPage,
-      totalPages: Math.ceil(total / perPage)
+
+const visibleSubmissions = peerProgresses
+  .filter((progress): progress is (typeof progress & { bestSubmission: NonNullable<typeof progress.bestSubmission> }) => {
+    
+    return progress.bestSubmission !== null;
+  })
+  .map(progress => {
+   
+
+    // この時点でbestSubmissionはnullではないことが保証されている
+    const submission = {
+      id: progress.bestSubmission.id,
+      user: {
+        id: progress.bestSubmission.user.id,
+        name: progress.bestSubmission.user.name,
+        avatarUrl: progress.bestSubmission.user.avatarUrl,
+        rank: progress.bestSubmission.user.rank,
+        isCurrentUser: progress.bestSubmission.user.id === currentUserId
+      },
+      content: progress.bestSubmission.content,
+      points: progress.bestSubmission.user.id === currentUserId || timeoutStatus.isTimedOut 
+        ? progress.score 
+        : null,
+      feedback: progress.bestSubmission.user.id === currentUserId || timeoutStatus.isTimedOut 
+        ? progress.bestSubmission.feedback 
+        : null,
+      submittedAt: progress.bestSubmission.submittedAt
     };
+
+    console.log('【変換後のデータ】', submission);
+    return submission;
+  });
+
+console.log('【最終データ】', {
+変換後の提出数: visibleSubmissions.length,
+データ: visibleSubmissions
+});
+
+return {
+submissions: visibleSubmissions,
+total: visibleSubmissions.length,
+page,
+perPage,
+timeoutStatus: {
+  isTimedOut: timeoutStatus.isTimedOut,
+  timeOutAt: timeoutStatus.timeOutAt
+}
+};
+  
+    } catch (error) {
+      console.error('【エラー】getChapterPeerSubmissions:', error);
+      throw error;
+    }
   }
 
-
-
-  
   async getPeerSubmissionDetails(
     submissionId: string,
     userId: string
   ) {
-    const submission = await this.prisma.submission.findUnique({
-      where: { id: submissionId },
+    const userProgress = await this.prisma.userChapterProgress.findFirst({
+      where: {
+        bestSubmissionId: submissionId
+      },
       include: {
-        task: {
+        bestSubmission: {
           include: {
-            chapter: true
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-            rank: true
+            task: {
+              include: {
+                chapter: true
+              }
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatarUrl: true,
+                rank: true
+              }
+            }
           }
         }
       }
     });
   
-    if (!submission) {
-      throw new Error('Submission not found');
+    if (!userProgress?.bestSubmission?.task?.chapter) {
+      throw new Error('Submission or related data not found');
     }
   
-    if (!submission.task?.chapter) {
-      throw new Error('Invalid submission: Chapter information not found');
-    }
+    const submission = userProgress.bestSubmission;
+    const chapter = userProgress.bestSubmission.task.chapter;
   
-    const { chapter } = submission.task;
-    
     // アクセス権のチェック
-    const userProgress = await this.prisma.userChapterProgress.findUnique({
+    const viewerProgress = await this.prisma.userChapterProgress.findUnique({
       where: {
         userId_courseId_chapterId: {
           userId,
@@ -730,27 +747,35 @@ export class UserChapterService extends EventEmitter {
       }
     });
   
-    if (!userProgress || userProgress.status !== 'COMPLETED') {
+    if (!viewerProgress || viewerProgress.status !== 'COMPLETED') {
       throw new Error('Must complete the chapter to view submission details');
     }
   
-
-    // 可視性の制御
-    const visibilityState = this.determineSubmissionVisibility(
-      submission,
-      userProgress
+  
+    // タイムアウト状態の取得
+    const timeoutStatus = await this.progressManager.checkTimeoutStatus(
+      this.prisma,
+      userId,
+      chapter.courseId,
+      chapter.id
     );
-
+  
     return {
       id: submission.id,
       user: submission.user,
-      content: visibilityState.canViewContent ? submission.content : null,
-      points: visibilityState.canViewPoints ? submission.points : null,
-      feedback: visibilityState.canViewAiFeedback ? submission.feedback : null,
+      content: submission.content,
+      points: timeoutStatus.isTimedOut ? userProgress.score : null,
+      feedback: timeoutStatus.isTimedOut ? submission.feedback : null,
       submittedAt: submission.submittedAt,
-      visibilityState
+      visibilityState: {
+        canViewContent: true,
+        canViewPoints: timeoutStatus.isTimedOut,
+        canViewAiFeedback: timeoutStatus.isTimedOut
+      }
     };
   }
+
+
 
 
 

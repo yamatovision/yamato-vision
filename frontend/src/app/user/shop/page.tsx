@@ -39,6 +39,26 @@ export default function ShopPage() {
   const [activatingCourse, setActivatingCourse] = useState<string | null>(null);
   const [showActivationModal, setShowActivationModal] = useState(false);
 
+  // page.tsx
+const handleCourseAction = async (courseId: string, status: CourseStatus) => {
+  const course = courses.find(c => c.id === courseId);
+  if (!course) return;
+
+  // archivedステータスはチャプター一覧モーダル表示
+ // if (status === 'archived') {
+ //   setSelectedCourseData({
+ //     courseId,
+//      course
+//    });
+//    setShowCourseOverviewModal(true);
+ //   return;
+ // }
+
+  // その他のステータスは全てスタートモーダル表示
+  setActivatingCourse(courseId);
+  setShowActivationModal(true);
+};
+
   // ユーザー詳細情報の取得
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -105,7 +125,9 @@ export default function ShopPage() {
 
   // コース操作のハンドラー
   const handleUnlock = async (courseId: string) => {
+    console.log('handleUnlock called with courseId:', courseId);
     const course = courses.find(c => c.id === courseId);
+    console.log('Found course:', course);
     if (!course) return;
   
     switch (course.status) {
@@ -238,49 +260,49 @@ export default function ShopPage() {
 
       {/* コース一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            {...course}
-            gradient={course.gradient || 'default-gradient'}
-            status={course.status}
-            onUnlock={() => handleUnlock(course.id)}
-          />
-        ))}
+      {filteredCourses.map((course) => (
+  <CourseCard
+    key={course.id}
+    {...course}
+    gradient={course.gradient || 'default-gradient'}
+    status={course.status}
+    onAction={() => handleCourseAction(course.id, course.status)}  // アロー関数として定義
+  />
+))}
       </div>
 
       {/* アクティベーションモーダル */}
       <ActivationModal
-        isOpen={showActivationModal}
-        onClose={() => {
-          setShowActivationModal(false);
-          setActivatingCourse(null);
-        }}
-        onConfirm={async () => {
-          if (!activatingCourse) return;
-          try {
-            const result = await courseApi.startCourse(activatingCourse);
-            if (result.success) {
-              toast.success('コースを開始しました！');
-              await refreshCourses();
-              
-              const currentChapterResponse = await courseApi.getCurrentChapter(activatingCourse);
-              if (currentChapterResponse.success && currentChapterResponse.data) {
-                router.push(`/user/courses/${activatingCourse}/chapters/${currentChapterResponse.data.chapterId}`);
-              } else {
-                throw new Error('Failed to get current chapter');
-              }
-            }
-          } catch (error: any) {
-            console.error('Error starting course:', error);
-            toast.error(error.message || 'コースの開始に失敗しました');
-          } finally {
-            setShowActivationModal(false);
-            setActivatingCourse(null);
-          }
-        }}
-        hasCurrentCourse={courses.some(c => c.status === 'active')}
-      />
+  isOpen={showActivationModal}
+  onClose={() => {
+    setShowActivationModal(false);
+    setActivatingCourse(null);
+  }}
+  onConfirm={async () => {
+    if (!activatingCourse) return;
+    try {
+      // courseApi.startCourse を呼び出し
+      const result = await courseApi.startCourse(activatingCourse);
+      if (result.success) {
+        toast.success('コースを開始しました！');
+        await refreshCourses();
+        
+        // 最初のチャプターへ遷移
+        const currentChapterResponse = await courseApi.getCurrentChapter(activatingCourse);
+        if (currentChapterResponse.success && currentChapterResponse.data) {
+          router.push(`/user/courses/${activatingCourse}/chapters/${currentChapterResponse.data.chapterId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error starting course:', error);
+      toast.error('コースの開始に失敗しました');
+    } finally {
+      setShowActivationModal(false);
+      setActivatingCourse(null);
+    }
+  }}
+  hasCurrentCourse={courses.some(c => c.status === 'active')}
+/>
     </div>
   );
 }

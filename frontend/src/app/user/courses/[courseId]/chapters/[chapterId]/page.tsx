@@ -30,7 +30,7 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   const [progress, setProgress] = useState<UserChapterProgress | null>(null);
   const [submissionState, setSubmissionState] = useState<SubmissionState>({
     hasSubmitted: false,
-    peerSubmissions: [],
+    peerSubmissions: [], // 必ず配列として初期化
     timeoutStatus: {
       isTimedOut: false
     }
@@ -61,25 +61,40 @@ export default function ChapterPage({ params }: ChapterPageProps) {
       </button>
     );
   };
-
   const handleRefreshPeerSubmissions = async () => {
     try {
       const response = await courseApi.getChapterPeerSubmissions(
         params.courseId,
-        params.chapterId
+        params.chapterId,
+        false
       );
-      if (response.success) {
+      
+      // デバッグログを追加して、具体的なレスポンス構造を確認
+      console.log('🔍 APIレスポンスの完全な構造:', {
+        responseの型: typeof response,
+        response全体: response,
+        dataの型: typeof response.data,
+        data全体: response.data,
+        submissions存在確認: 'submissions' in (response.data || {}),
+      });
+  
+      if (response.success && response.data?.data) {  // data.data を確認
         setSubmissionState(prev => ({
           ...prev,
-          peerSubmissions: response.data.submissions,
-          timeoutStatus: response.data.timeoutStatus
+          peerSubmissions: response.data.data.submissions,  // data.data.submissions を参照
+          paginationInfo: {
+            total: response.data.data.total || 0,
+            page: response.data.data.page || 1,
+            perPage: response.data.data.perPage || 10
+          },
+          timeoutStatus: response.data.data.timeoutStatus || { isTimedOut: false }
         }));
       }
     } catch (error) {
-      console.error('Failed to refresh peer submissions:', error);
+      console.error('【ChapterPage】更新エラー:', error);
     }
   };
-
+  
   useEffect(() => {
     const initializeChapter = async () => {
       try {
@@ -248,15 +263,117 @@ export default function ChapterPage({ params }: ChapterPageProps) {
               />
             )}
 
-            {submissionState.hasSubmitted && (
-              <div className="mt-8">
-                <PeerSubmissions
-                  submissions={submissionState.peerSubmissions}
-                  timeoutStatus={submissionState.timeoutStatus}
-                  onRefresh={handleRefreshPeerSubmissions}
-                />
+{submissionState.hasSubmitted && (
+  <div className="mt-8">
+    {/* PeerSubmissionsコンポーネントの代わりに直接実装 */}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+      <h2 className={`text-lg font-semibold ${
+  theme === 'dark' ? 'text-white' : 'text-gray-900'
+}`}>
+  他の受講生の提出 ({submissionState.peerSubmissions?.length || 0}件)
+</h2>
+
+        <button
+          onClick={handleRefreshPeerSubmissions}
+          className={`px-4 py-2 rounded-lg text-sm ${
+            theme === 'dark'
+              ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          更新
+        </button>
+      </div>
+
+      {(submissionState.peerSubmissions?.length || 0) > 0 ? (
+  <div className="space-y-4">
+    {submissionState.peerSubmissions?.map((submission) => (
+            <div
+              key={submission.id}
+              className={`${
+                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } rounded-lg shadow-sm p-4`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center space-x-3">
+                  <img
+                    src={submission.user.avatarUrl || '/default-avatar.png'}
+                    alt={submission.user.name}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div>
+                    <div className={`font-medium ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {submission.user.name}
+                      {submission.user.isCurrentUser && ' (あなた)'}
+                    </div>
+                    <div className={`text-sm ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      {submission.user.rank}
+                    </div>
+                  </div>
+                </div>
+                {(submissionState.timeoutStatus.isTimedOut || submission.user.isCurrentUser) && submission.points && (
+                  <div className={`text-lg font-bold ${
+                    submission.points >= 95
+                      ? 'text-yellow-500'
+                      : submission.points >= 80
+                        ? theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                        : theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {submission.points}点
+                  </div>
+                )}
               </div>
-            )}
+
+              <div className={`p-4 rounded-lg ${
+                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+              }`}>
+                <pre className={`whitespace-pre-wrap text-sm ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {submission.content}
+                </pre>
+              </div>
+
+              {(submissionState.timeoutStatus.isTimedOut || submission.user.isCurrentUser) && submission.feedback && (
+                <div className={`mt-4 p-4 rounded-lg ${
+                  theme === 'dark' ? 'bg-gray-700/50' : 'bg-blue-50'
+                }`}>
+                  <h3 className={`text-sm font-medium mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    フィードバック
+                  </h3>
+                  <p className={`text-sm ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {submission.feedback}
+                  </p>
+                </div>
+              )}
+
+              <div className={`mt-4 text-right text-sm ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                {new Date(submission.submittedAt).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={`p-8 text-center rounded-lg ${
+          theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'
+        }`}>
+          提出はまだありません
+        </div>
+      )}
+    </div>
+  </div>
+)}
           </div>
         )}
       </div>

@@ -7,6 +7,20 @@ export interface SubmissionState {
     timeOutAt?: Date;
   };
 }
+
+
+// これを追加
+export interface PeerSubmissionsResponse {
+  submissions: PeerSubmission[];
+  total: number;
+  page: number;
+  perPage: number;
+  timeoutStatus: {
+    isTimedOut: boolean;
+    timeOutAt?: Date | null;
+  };
+}
+
 // types/submission.ts
 export interface PeerSubmission {
   id: string;

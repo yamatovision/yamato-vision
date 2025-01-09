@@ -17,6 +17,7 @@ import { PrismaClient } from '@prisma/client';
 import { timeoutChecker } from './utils/timeoutChecker';
 import { TokenSyncService } from './sync/token/tokenSyncService';
 import { UserSyncService } from './sync/user/userSyncService';
+import { submissionRoutes } from './courses/submissions/submissionRoutes';
 
 dotenv.config();
 export const prisma = new PrismaClient();
@@ -78,6 +79,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);          // 管理者用エンドポイント
 app.use('/api/courses/user', courseUserRoutes);      // ユーザー用エンドポイント
 app.use('/api/media', mediaRoutes);        
+app.use('/api', submissionRoutes);  // または app.use('/api/courses', submissionRoutes);
+
 
 // デバッグ用エンドポイント
 app.get('/api/debug/status', async (_req, res) => {

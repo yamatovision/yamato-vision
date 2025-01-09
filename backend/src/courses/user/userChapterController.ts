@@ -134,30 +134,36 @@ export class UserChapterController {
       res.status(500).json({ success: false, message: 'Failed to record submission' });
     }
   };
-
   getChapterPeerSubmissions = async (req: Request, res: Response) => {
     try {
       const { courseId, chapterId } = req.params;
       const { page, perPage } = req.query;
+      const isEvaluationPage = req.query.isEvaluationPage === 'true';  // 追加
       const userId = req.user?.id;
-
+  
       if (!userId) {
         res.status(401).json({ success: false, message: 'Unauthorized' });
         return;
       }
-
+  
       const submissions = await this.chapterService.getChapterPeerSubmissions(
         courseId,
         chapterId,
         userId,
         Number(page) || 1,
-        Number(perPage) || 10
+        Number(perPage) || 10,
+        isEvaluationPage  // 追加
       );
-
+  
       res.json({ success: true, data: submissions });
     } catch (error) {
       console.error('Error getting peer submissions:', error);
-      res.status(500).json({ success: false, message: 'Failed to get peer submissions' });
+      // エラーメッセージに応じてステータスコードを変更
+      const status = error instanceof Error && error.message.includes('Must complete') ? 403 : 500;
+      res.status(status).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to get peer submissions'
+      });
     }
   };
 

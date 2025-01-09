@@ -60,21 +60,25 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
   };
 
   // ピア提出の取得
-  const fetchPeerSubmissions = async () => {
-    try {
-      const response = await courseApi.getChapterPeerSubmissions(
-        params.courseId,
-        params.chapterId
-      );
+  // app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.tsx
 
-      if (response.success && response.data) {
-        setPeerSubmissions(response.data.submissions);
-        setTimeoutStatus(response.data.timeoutStatus);
-      }
-    } catch (error) {
-      console.error('Error fetching peer submissions:', error);
+const fetchPeerSubmissions = async () => {
+  try {
+    const response = await courseApi.getChapterPeerSubmissions(
+      params.courseId,
+      params.chapterId,
+      true  // isEvaluationPage = true
+    );
+
+    if (response.success && response.data) {
+      setPeerSubmissions(response.data.submissions || []); // nullish対応
+      setTimeoutStatus(response.data.timeoutStatus);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching peer submissions:', error);
+    toast.error('他の受講生の提出状況の取得に失敗しました');
+  }
+};
 
   // 初期データ取得
   useEffect(() => {
