@@ -28,5 +28,10 @@ router.patch('/:courseId/chapters/:chapterId/watch-progress', userChapterControl
 router.post('/:courseId/chapters/:chapterId/submission', userChapterController.recordSubmission);
 router.get('/:courseId/chapters/:chapterId/peer-submissions', userChapterController.getChapterPeerSubmissions);
 router.get('/submissions/:submissionId', userChapterController.getPeerSubmissionDetails);
+router.post(
+    '/:courseId/chapters/:chapterId/first-access',
+    authMiddleware,
+    userChapterController.handleFirstAccess
+  );
 
 export { router as userRoutes };

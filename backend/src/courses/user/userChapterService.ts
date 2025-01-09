@@ -50,6 +50,7 @@ function isChapterContent(content: unknown): content is ChapterContent {
       id: string;
       title: string;
       content: any;
+      timeLimit: number;  // ここにtimeLimitを追加
       task?: any;
     };
     nextChapter?: {
@@ -266,6 +267,7 @@ export class UserChapterService extends EventEmitter {
         title: chapter.title,
         subtitle: chapter.subtitle ?? undefined,
         orderIndex: chapter.orderIndex,
+        content: chapter.content, // contentプロパティを追加
         status: (progress?.status as ChapterProgressStatus) || 'NOT_STARTED',
         evaluationStatus: this.determineEvaluationStatus(progress?.score ?? undefined),
         score: progress?.score ?? undefined,

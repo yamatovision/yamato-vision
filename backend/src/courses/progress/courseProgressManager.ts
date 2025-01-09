@@ -74,13 +74,20 @@ export class CourseProgressManager {
     this.prisma = new PrismaClient();
     this.eventEmitter = new EventEmitter();
   }
-
   async handleFirstAccess(
     tx: Prisma.TransactionClient,
     userId: string,
     courseId: string,
     chapterId: string
   ) {
+    console.log('【初回アクセス処理開始】', {
+      処理: 'handleFirstAccess',
+      ユーザーID: userId,
+      コースID: courseId,
+      チャプターID: chapterId,
+      タイムスタンプ: new Date().toISOString()
+    });
+  
     const progress = await tx.userChapterProgress.findUnique({
       where: {
         userId_courseId_chapterId: {
@@ -93,14 +100,23 @@ export class CourseProgressManager {
         chapter: true
       }
     });
-
-    if (progress?.status === 'NOT_STARTED' && !progress.startedAt) {
+  
+    console.log('【進捗状態確認】', {
+      現在の状態: progress?.status || 'なし',
+      開始日時: progress?.startedAt || 'なし',
+      条件確認: {
+        'NOT_STARTED状態か': progress?.status === 'NOT_STARTED'
+      }
+    });
+  
+    // 条件を開始日時のチェックなしに修正
+    if (progress?.status === 'NOT_STARTED') {
       const now = new Date();
       const timeOutAt = progress.chapter.timeLimit 
         ? new Date(now.getTime() + progress.chapter.timeLimit * 24 * 60 * 60 * 1000)
         : null;
-
-      return await tx.userChapterProgress.update({
+  
+      const updatedProgress = await tx.userChapterProgress.update({
         where: {
           userId_courseId_chapterId: {
             userId,
@@ -110,16 +126,28 @@ export class CourseProgressManager {
         },
         data: {
           status: 'LESSON_IN_PROGRESS',
-          startedAt: now,
           timeOutAt,
           updatedAt: now
         }
       });
+  
+      console.log('【ステータス更新完了】', {
+        更新前の状態: progress.status,
+        更新後の状態: updatedProgress.status,
+        タイムアウト日時: updatedProgress.timeOutAt,
+        更新日時: updatedProgress.updatedAt
+      });
+  
+      return updatedProgress;
     }
-
+  
+    console.log('【初回アクセス処理終了】', {
+      結果: '条件を満たさないため更新なし',
+      現在の状態: progress?.status
+    });
+  
     return progress;
   }
-
 
 
   async updateChapterProgress(

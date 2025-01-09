@@ -22,98 +22,68 @@ interface ThumbnailImageProps {
   isLocked: boolean;
 }
 
+const getThumbnailUrl = (videoId: string) => {
+  if (!videoId) return null;
+  // Muxの場合は静止画サムネイルを使用
+  return `https://image.mux.com/${videoId}/thumbnail.png`;
+};
+
 export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverviewModalProps) {
   const { theme } = useTheme();
   const router = useRouter();
   const [chapters, setChapters] = useState<ChapterPreviewData[]>([]);
   const [loading, setLoading] = useState(true);
-  // ... 前回のコードに続いて
 
-const ThumbnailImage = ({ url, title, isLocked }: ThumbnailImageProps) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
 
-  const loadImage = useCallback((retryAttempt: number) => {
-    if (!url || retryAttempt >= maxRetries) return;
+  const ThumbnailImage = ({ url, title, isLocked }: ThumbnailImageProps) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+  
+    // チャプターデータをコンソールで確認
+    console.log('Thumbnail Data:', { url, title, isLocked });
+  
+    return (
+      <div className="relative w-full h-full">
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gray-700 animate-pulse rounded" />
+        )}
+        <img
+          src={`https://image.mux.com/${url}/thumbnail.png`}
+          alt={title}
+          className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
+            imageLoading ? 'opacity-0' : 'opacity-100'
+          }`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            setImageError(true);
+            setImageLoading(false);
+          }}
+        />
+        {isLocked && (
+          <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
+            <span className="text-xl text-white">🔒</span>
+          </div>
+        )}
+        {imageError && (
+          <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
+            <span className="text-2xl">📝</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
-    const img = new Image();
-    img.src = `${url}?timestamp=${Date.now()}`; // キャッシュバスティング
-    img.referrerPolicy = "no-referrer";
-
-    img.onload = () => {
-      setImageLoading(false);
-      setImageError(false);
-    };
-
-    img.onerror = () => {
-      console.error(`Failed to load thumbnail (attempt ${retryAttempt + 1}/${maxRetries})`);
-      if (retryAttempt < maxRetries - 1) {
-        setTimeout(() => {
-          setRetryCount(retryAttempt + 1);
-          loadImage(retryAttempt + 1);
-        }, 1000 * (retryAttempt + 1)); // 再試行間隔を徐々に増やす
-      } else {
-        setImageError(true);
-        setImageLoading(false);
-      }
-    };
-  }, [url]);
-
-  useEffect(() => {
-    setImageLoading(true);
-    setImageError(false);
-    setRetryCount(0);
-    loadImage(0);
-  }, [url, loadImage]);
-
-  return (
-    <div className="relative w-full h-full">
-      {imageLoading && (
-        <div className="absolute inset-0 bg-gray-700 animate-pulse rounded" />
-      )}
-      {!imageError ? (
-        <>
-          <img
-            src={`${url}?timestamp=${Date.now()}`}
-            alt={title}
-            referrerPolicy="no-referrer"
-            className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
-              imageLoading ? 'opacity-0' : 'opacity-100'
-            }`}
-          />
-          {isLocked && (
-            <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
-              <span className="text-xl text-white">🔒</span>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
-          <span className="text-2xl">📝</span>
-          {isLocked && (
-            <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
-              <span className="text-xl text-white">🔒</span>
-            </div>
-          )}
-        </div>
-      )}
-      {imageLoading && retryCount > 0 && (
-        <div className="absolute bottom-1 right-1 text-xs text-white bg-black/60 px-1 rounded">
-          再試行中... {retryCount}/{maxRetries}
-        </div>
-      )}
-    </div>
-  );
-};
 
 useEffect(() => {
   const fetchChaptersProgress = async () => {
     try {
       setLoading(true);
       const response = await courseApi.getChaptersProgress(courseData.courseId);
-      
+      console.log('完全なデータ構造:', {
+        fullResponse: response,
+        firstChapterComplete: response.data?.[0],
+        properties: response.data?.[0] ? Object.keys(response.data[0]) : []
+      });
       if (response.success && response.data) {
         setChapters(response.data);
       } else {
@@ -300,12 +270,12 @@ return (
                         <div className="flex items-start space-x-4">
                           {/* サムネイル */}
                           <div className="w-24 h-16 bg-gray-600 rounded flex items-center justify-center flex-shrink-0">
-                            <ThumbnailImage 
-                              url={chapter.thumbnailUrl} 
-                              title={chapter.title} 
-                              isLocked={chapter.isLocked}
-                            />
-                          </div>
+                          <ThumbnailImage 
+  url={chapter.content?.videoId || ''}  // ChapterPreviewと同じ参照方法に修正
+  title={chapter.title}
+  isLocked={chapter.isLocked}
+/>
+      </div>
                           <div className="flex-1">
                             <div className="flex justify-between items-start">
                               <div>

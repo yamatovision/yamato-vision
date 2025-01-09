@@ -65,9 +65,6 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
   // チャプターのコンテンツをパース
   // useCurrentCourse.tsxの修正
 const parseChapterContent = (chapter: any) => {
-  if (!chapter) return null;
-
-  // タイムアウト状態を適切に処理
   const isTimedOut = chapter.status === 'FAILED';
   
   return {
@@ -89,9 +86,9 @@ const parseChapterContent = (chapter: any) => {
     lessonWatchRate: chapter.lessonWatchRate || 0,
     progress: {
       status: chapter.status || 'NOT_STARTED',
-      startedAt: chapter.startedAt || null,
-      timeOutAt: isTimedOut ? chapter.timeOutAt : null,
-      isTimedOut
+      startedAt: chapter.startedAt || null,  // ここを修正：直接chapterからstartedAtを参照
+      timeOutAt: chapter.timeOutAt || null,   // 同様にtimeOutAtも直接参照
+      isTimedOut: chapter.isTimedOut || false // 同様にisTimedOutも直接参照
     },
     submission: chapter.submission ? {
       score: chapter.submission.score,
@@ -100,78 +97,87 @@ const parseChapterContent = (chapter: any) => {
   };
 };
 
-  const loadCurrentCourse = async () => {
-    try {
-      console.log('【Step 1】loadCurrentCourse開始');
-      setLoading(true);
-  
-      // コースデータ取得
-      const response = await courseApi.getCurrentUserCourse();
-      console.log('【Step 2】getCurrentUserCourse結果:', response);
-  
-      if (!response.success || !response.data) {
-        throw new Error('コースデータの取得に失敗しました');
-      }
-  
-      // コースデータのフォーマット
-      const formattedData: CourseData = {
-        id: response.data.id,
-        userId: response.data.userId || '',
-        courseId: response.data.id,
-        isActive: response.data.status === 'active',
-        status: response.data.status,
-        startedAt: response.data.timeInfo.startedAt,
-        completedAt: response.data.timeInfo.completedAt || null,
-        progress: response.data.progress || 0,
-        course: {
-          id: response.data.id,
-          title: response.data.title,
-          description: response.data.description,
-          level: response.data.levelRequired,
-          rankRequired: response.data.rankRequired,
-          levelRequired: response.data.levelRequired,
-          timeLimit: response.data.timeLimit,
-          timeRemaining: response.data.timeRemaining,
-          chapters: response.data.chapters || []
-        }
-      };
-  
-      // 現在のチャプターを取得
-      console.log('【Step 3】getCurrentChapter呼び出し開始', {
-        courseId: formattedData.courseId
-      });
-  
-      const chapterResponse = await courseApi.getCurrentChapter(formattedData.courseId);
-      console.log('【Step 4】getCurrentChapter結果:', chapterResponse);
-  
-      if (chapterResponse.success && chapterResponse.data) {
-        // 現在のチャプターIDに基づいて、既存のchaptersから該当チャプターのみを抽出
-        const currentChapter = formattedData.course.chapters.find(
-          chapter => chapter.id === chapterResponse.data.chapterId
-        );
-  
-        if (currentChapter) {
-          // 現在のチャプターのみを設定
-          formattedData.course.chapters = [currentChapter];
-        }
-      }
-  
-      setCourseData(formattedData);
-      console.log('【Step 5】コースデータ更新完了');
-  
-      // タイムアウトチェックは最後に
-      if (checkTimeRemaining(formattedData.course.timeRemaining)) {
-        console.log('【タイムアウト検知】データ更新必要');
-        setTimeout(loadCurrentCourse, 1000);
-      }
-  
-    } catch (error) {
-      console.error('【エラー】loadCurrentCourse失敗:', error);
-      toast.error('コース情報の取得に失敗しました');
-    } finally {
-      setLoading(false);
+const loadCurrentCourse = async () => {
+  try {
+    console.log('【Step 1】loadCurrentCourse開始');
+    setLoading(true);
+
+    // コースデータ取得
+    const response = await courseApi.getCurrentUserCourse();
+    console.log('【Step 2】getCurrentUserCourse結果:', response);
+
+    if (!response.success || !response.data) {
+      throw new Error('コースデータの取得に失敗しました');
     }
-  };
+
+    // コースデータのフォーマット
+    const formattedData: CourseData = {
+      id: response.data.id,
+      userId: response.data.userId || '',
+      courseId: response.data.id,
+      isActive: response.data.status === 'active',
+      status: response.data.status,
+      startedAt: response.data.timeInfo.startedAt,
+      completedAt: response.data.timeInfo.completedAt || null,
+      progress: response.data.progress || 0,
+      course: {
+        id: response.data.id,
+        title: response.data.title,
+        description: response.data.description,
+        level: response.data.levelRequired,
+        rankRequired: response.data.rankRequired,
+        levelRequired: response.data.levelRequired,
+        timeLimit: response.data.timeLimit,
+        timeRemaining: response.data.timeRemaining,
+        chapters: response.data.chapters || []
+      }
+    };
+
+    // 現在のチャプターを取得
+    console.log('【Step 3】getCurrentChapter呼び出し開始', {
+      courseId: formattedData.courseId
+    });
+
+    const chapterResponse = await courseApi.getCurrentChapter(formattedData.courseId);
+    console.log('【Step 4】getCurrentChapter結果:', chapterResponse);
+
+    if (chapterResponse.success && chapterResponse.data) {
+      // 現在のチャプターを取得と統合
+      const currentChapter = formattedData.course.chapters.find(
+        chapter => chapter.id === chapterResponse.data.chapterId
+      );
+
+      if (currentChapter) {
+        // chapterResponse.dataの情報を現在のチャプターにマージ
+        const mergedChapter = {
+          ...currentChapter,
+          startedAt: chapterResponse.data.startedAt,
+          status: chapterResponse.data.status,
+          isTimedOut: chapterResponse.data.isTimedOut,
+          lessonWatchRate: chapterResponse.data.lessonWatchRate
+        };
+
+        // マージしたチャプターで更新
+        formattedData.course.chapters = [mergedChapter];
+      }
+    }
+
+    setCourseData(formattedData);
+    console.log('【Step 5】コースデータ更新完了');
+
+    // タイムアウトチェックは最後に
+    if (checkTimeRemaining(formattedData.course.timeRemaining)) {
+      console.log('【タイムアウト検知】データ更新必要');
+      setTimeout(loadCurrentCourse, 1000);
+    }
+
+  } catch (error) {
+    console.error('【エラー】loadCurrentCourse失敗:', error);
+    toast.error('コース情報の取得に失敗しました');
+  } finally {
+    setLoading(false);
+  }
+};
 
 
 

@@ -38,7 +38,7 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
           ? 'text-blue-400' 
           : 'text-blue-600',
         animation: true,
-        label: 'レッスン視聴中'
+        label: 'レッスンを視聴しよう'
       };
     }
     return {

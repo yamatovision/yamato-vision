@@ -1,12 +1,54 @@
 import { Request, Response } from 'express';
 import { UserChapterService } from './userChapterService';
+import { CourseProgressManager } from '../progress/courseProgressManager';
+import { PrismaClient } from '@prisma/client';
+
 
 export class UserChapterController {
   private chapterService: UserChapterService;
+  private progressManager: CourseProgressManager;
+
 
   constructor() {
     this.chapterService = new UserChapterService();
+    this.progressManager = new CourseProgressManager();
   }
+  handleFirstAccess = async (req: Request, res: Response) => {
+    try {
+      const { courseId, chapterId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized' 
+        });
+      }
+
+      const prisma = new PrismaClient();
+      const result = await prisma.$transaction(async (tx) => {
+        return await this.progressManager.handleFirstAccess(
+          tx,
+          userId,
+          courseId,
+          chapterId
+        );
+      });
+
+      return res.json({
+        success: true,
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Error in handleFirstAccess:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to handle first access'
+      });
+    }
+  };
+
 
   getCurrentChapter = async (req: Request, res: Response) => {
     try {

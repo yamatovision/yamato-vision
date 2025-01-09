@@ -259,7 +259,35 @@ export const courseApi = {
       };
     }
   },
-
+  handleFirstAccess: async (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/first-access`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to handle first access');
+      }
+  
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Error in handleFirstAccess:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
 
   
 

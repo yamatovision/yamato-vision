@@ -161,6 +161,17 @@ model Comment {
   user      User      @relation(fields: [userId], references: [id])
 }
 
+model ChapterStateHistory {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  chapterId   String
+  status      String    // ChapterProgressStatus
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, courseId, chapterId])
+}
+
 model DailyMission {
   id          String   @id @default(cuid())
   title       String

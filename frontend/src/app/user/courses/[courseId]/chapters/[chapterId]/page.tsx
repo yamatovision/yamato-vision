@@ -13,7 +13,7 @@ import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 import { TaskSubmission } from '@/app/user/courses/components/TaskSubmission/TaskSubmission';
 import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
 import { SubmissionState } from '@/types/submission';
-
+import Script from 'next/script';
 
 interface ChapterPageProps {
   params: { 
@@ -31,12 +31,11 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   const [submissionState, setSubmissionState] = useState<SubmissionState>({
     hasSubmitted: false,
     peerSubmissions: [],
-    timeoutStatus: {  // 必ず timeoutStatus オブジェクトを持つように
+    timeoutStatus: {
       isTimedOut: false
     }
   });
 
-  // ベストスコアコンポーネント
   const BestScoreDisplay = () => {
     if (!submissionState.bestScore) return null;
 
@@ -63,7 +62,6 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     );
   };
 
-  // ピア提出の更新
   const handleRefreshPeerSubmissions = async () => {
     try {
       const response = await courseApi.getChapterPeerSubmissions(
@@ -82,29 +80,37 @@ export default function ChapterPage({ params }: ChapterPageProps) {
     }
   };
 
-  // 初期データの取得
   useEffect(() => {
-    // chapters/[chapterId]/page.tsx の initializeChapter 関数を修正
     const initializeChapter = async () => {
       try {
+        setLoading(true);
+
+        try {
+          await courseApi.handleFirstAccess(
+            params.courseId,
+            params.chapterId
+          );
+        } catch (error) {
+          console.error('First access handling error:', error);
+        }
+
         const chapterResponse = await courseApi.getChapter(
           params.courseId,
           params.chapterId
         );
-    
+
         if (chapterResponse.success && chapterResponse.data) {
           setChapter(chapterResponse.data);
-          // progress の設定
           if (chapterResponse.data.userProgress?.[0]) {
             setProgress(chapterResponse.data.userProgress[0]);
           }
-    
+
           try {
             const submissionResponse = await courseApi.getLatestSubmission(
               params.courseId,
               params.chapterId
             );
-    
+
             if (submissionResponse.success && submissionResponse.data) {
               setSubmissionState(prev => ({
                 ...prev,
@@ -126,7 +132,6 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         setLoading(false);
       }
     };
-    
 
     initializeChapter();
   }, [params.courseId, params.chapterId]);
@@ -158,97 +163,103 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 pb-20">
-      {/* ヘッダー部分 */}
-      <div className={`relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg mb-6`}>
-        <div className="p-6">
-          <h1 className={`text-2xl font-bold mb-2 ${
-            theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-          }`}>
-            Chapter {chapter.orderIndex + 1}: {chapter.title}
-          </h1>
-          {chapter.subtitle && (
-            <p className={`text-sm ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              {chapter.subtitle}
-            </p>
-          )}
-        </div>
-
-        <div className="px-6 pb-4 flex justify-between items-center">
-  {progress?.startedAt && chapter.timeLimit && (
-    <TimeRemaining
-      startTime={new Date(progress.startedAt)}
-      timeLimit={chapter.timeLimit}
-      type="chapter"
-      onTimeout={() => {
-        toast.error('制限時間を超過しました');
+    <>
+  <Script 
+      src="https://cdn.jsdelivr.net/npm/@mux/mux-player" 
+      strategy="afterInteractive"
+      onLoad={() => {
+        console.log('Muxスクリプトが読み込まれました');
       }}
     />
-  )}
-  <ActiveUsers courseId={params.courseId} />
-</div>
+      
+      <div className="max-w-4xl mx-auto p-4 pb-20">
+        <div className={`relative ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg mb-6`}>
+          <div className="p-6">
+            <h1 className={`text-2xl font-bold mb-2 ${
+              theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+            }`}>
+              Chapter {chapter.orderIndex + 1}: {chapter.title}
+            </h1>
+            {chapter.subtitle && (
+              <p className={`text-sm ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {chapter.subtitle}
+              </p>
+            )}
+          </div>
 
-        {submissionState.bestScore && <BestScoreDisplay />}
-      </div>
-
-      {/* メディアコンテンツ */}
-      {chapter.content?.type === 'video' && chapter.content.videoId && (
-        <VideoPlayer
-          videoId={chapter.content.videoId}
-          courseId={params.courseId}
-          chapterId={params.chapterId}
-          transcription={chapter.content.transcription}
-        />
-      )}
-
-      {chapter.content?.type === 'audio' && chapter.content.url && (
-        <AudioPlayer
-          url={chapter.content.url}
-          courseId={params.courseId}
-          chapterId={params.chapterId}
-          transcription={chapter.content.transcription}
-        />
-      )}
-
-      {/* 課題セクション */}
-      {(chapter.taskContent || chapter.task) && (
-        <div className={`mt-8 ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        } rounded-lg shadow-lg p-6`}>
-          <h2 className={`text-xl font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
-          }`}>
-            課題
-          </h2>
-
-          {/* 課題説明 */}
-          {chapter.taskContent?.description && (
-            <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
-              <div dangerouslySetInnerHTML={{ __html: chapter.taskContent.description }} />
-            </div>
-          )}
-
-{(!submissionState?.timeoutStatus?.isTimedOut) && chapter.task && (
-  <TaskSubmission
-    task={chapter.task}
-    courseId={params.courseId}
-    chapterId={params.chapterId}
-  />
-)}
-
-          {submissionState.hasSubmitted && (
-            <div className="mt-8">
-              <PeerSubmissions
-                submissions={submissionState.peerSubmissions}
-                timeoutStatus={submissionState.timeoutStatus}
-                onRefresh={handleRefreshPeerSubmissions}
+          <div className="px-6 pb-4 flex justify-between items-center">
+            {progress?.startedAt && chapter.timeLimit && (
+              <TimeRemaining
+                startTime={new Date(progress.startedAt)}
+                timeLimit={chapter.timeLimit}
+                type="chapter"
+                onTimeout={() => {
+                  toast.error('制限時間を超過しました');
+                }}
               />
-            </div>
-          )}
+            )}
+            <ActiveUsers courseId={params.courseId} />
+          </div>
+
+          {submissionState.bestScore && <BestScoreDisplay />}
         </div>
-      )}
-    </div>
+
+        {chapter.content?.type === 'video' && chapter.content.videoId && (
+          <VideoPlayer
+            videoId={chapter.content.videoId}
+            courseId={params.courseId}
+            chapterId={params.chapterId}
+            transcription={chapter.content.transcription}
+          />
+        )}
+
+        {chapter.content?.type === 'audio' && chapter.content.url && (
+          <AudioPlayer
+            url={chapter.content.url}
+            courseId={params.courseId}
+            chapterId={params.chapterId}
+            transcription={chapter.content.transcription}
+          />
+        )}
+
+        {(chapter.taskContent || chapter.task) && (
+          <div className={`mt-8 ${
+            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+          } rounded-lg shadow-lg p-6`}>
+            <h2 className={`text-xl font-bold mb-4 ${
+              theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+            }`}>
+              課題
+            </h2>
+
+            {chapter.taskContent?.description && (
+              <div className={`prose ${theme === 'dark' ? 'prose-invert' : ''} max-w-none mb-6`}>
+                <div dangerouslySetInnerHTML={{ __html: chapter.taskContent.description }} />
+              </div>
+            )}
+
+            {(!submissionState?.timeoutStatus?.isTimedOut) && chapter.task && (
+              <TaskSubmission
+                task={chapter.task}
+                courseId={params.courseId}
+                chapterId={params.chapterId}
+              />
+            )}
+
+            {submissionState.hasSubmitted && (
+              <div className="mt-8">
+                <PeerSubmissions
+                  submissions={submissionState.peerSubmissions}
+                  timeoutStatus={submissionState.timeoutStatus}
+                  onRefresh={handleRefreshPeerSubmissions}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

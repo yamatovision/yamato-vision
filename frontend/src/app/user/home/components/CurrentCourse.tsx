@@ -77,15 +77,19 @@ export function CurrentCourse() {
 
       {/* チャプタープレビュー */}
       {currentChapter && parsedChapter && (
-        <ChapterPreview
-          chapter={parsedChapter}
-          progress={{
-            status: determineChapterProgress(currentChapter),
-            startedAt: courseData.startedAt,
-            completedAt: courseData.completedAt,
-            timeOutAt: courseData.course.timeRemaining?.timeOutAt
-          }}
-        />
+       <ChapterPreview
+       chapter={{
+         ...parsedChapter,
+         timeLimit: parsedChapter.timeLimit // チャプターの制限時間
+       }}
+       progress={{
+         status: determineChapterProgress(currentChapter),
+         startedAt: currentChapter.startedAt || null,  // ここを修正
+         completedAt: parsedChapter.progress?.completedAt || null,
+         // コースレベルのタイムアウトはヘッダーで使用
+         timeOutAt: courseData.course.timeRemaining?.timeOutAt
+       }}
+     />
       )}
 
 
