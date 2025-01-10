@@ -69,14 +69,15 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         false
       );
   
-      console.log('🔍 APIレスポンスの完全な構造:', {
-        responseの型: typeof response,
-        response全体: response,
-        dataの型: typeof response.data,
-        data全体: response.data,
-        'data.dataの中身': response.data?.data,
-        'submissionsの場所': response.data?.data?.submissions,
-        submissions存在確認: Array.isArray(response.data?.data?.submissions)
+      console.log('【DEBUG】APIレスポンス:', {
+        'レスポンス全体': response,
+        'success状態': response.success,
+        'データ構造': {
+          data: response.data,
+          submissions: response.data?.data?.submissions
+        },
+        'submissionsの型': typeof response.data?.data?.submissions,
+        'Array判定': Array.isArray(response.data?.data?.submissions)
       });
   
       const submissions = response.data?.data?.submissions;

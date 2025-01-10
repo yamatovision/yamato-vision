@@ -245,12 +245,17 @@ async submitAndEvaluate(req: AuthRequest, res: Response) {
       const isNewBestScore = !currentProgress?.score || 
                             evaluationResult.evaluation.total_score > currentProgress.score;
 
-      console.log('【スコア判定】', {
-        新記録判定: isNewBestScore,
-        新スコア: evaluationResult.evaluation.total_score,
-        旧スコア: currentProgress?.score
-      });
-
+   
+console.log('【進捗更新前】', {
+  更新予定データ: {
+    userId: req.user.id,
+    courseId,
+    chapterId,
+    提出内容: req.body.submission,
+    スコア: evaluationResult.evaluation.total_score,
+    isNewBestScore
+  }
+});
       // UserChapterProgressの更新
       const progress = await tx.userChapterProgress.upsert({
         where: {
@@ -266,6 +271,7 @@ async submitAndEvaluate(req: AuthRequest, res: Response) {
           chapterId,
           status: 'COMPLETED',
           score: evaluationResult.evaluation.total_score,
+          bestTaskContent: req.body.submission,  // ここを追加
           bestFeedback: evaluationResult.evaluation.feedback || null,
           bestNextStep: evaluationResult.evaluation.next_step || null,
           bestEvaluatedAt: now,
@@ -278,10 +284,20 @@ async submitAndEvaluate(req: AuthRequest, res: Response) {
           ...(isNewBestScore ? {
             score: evaluationResult.evaluation.total_score,
             bestFeedback: evaluationResult.evaluation.feedback || null,
+            bestTaskContent: req.body.submission,  // ここを追加
             bestNextStep: evaluationResult.evaluation.next_step || null,
             bestEvaluatedAt: now,
             bestSubmissionId: submission.id
           } : {})
+        }
+      });
+
+      console.log('【進捗更新後】', {
+        更新結果: {
+          id: progress.id,
+          bestTaskContent: progress.bestTaskContent,  // 実際に保存された内容
+          score: progress.score,
+          提出内容の長さ: progress.bestTaskContent?.length || 0
         }
       });
 
@@ -290,11 +306,6 @@ async submitAndEvaluate(req: AuthRequest, res: Response) {
       timeout: 10000 // トランザクションのタイムアウトを10秒に設定
     });
 
-    console.log('【処理完了】', {
-      提出ID: result.submission.id,
-      最終スコア: result.progress.score,
-      新記録: result.isNewBestScore
-    });
 
     // レスポンスの返却
     return res.status(201).json({

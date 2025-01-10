@@ -110,27 +110,46 @@ export class UserChapterController {
       res.status(500).json({ success: false, message: 'Failed to update watch progress' });
     }
   };
-
   recordSubmission = async (req: Request, res: Response) => {
     try {
       const { courseId, chapterId } = req.params;
       const userId = req.user?.id;
-
+  
+      console.log('【コントローラー】提出リクエスト受信', {
+        userId,
+        courseId,
+        chapterId,
+        bodyの中身: req.body,
+        submissionContent: req.body.submission  // 提出内容
+      });
+  
       if (!userId) {
+        console.log('【エラー】未認証ユーザー');
         res.status(401).json({ success: false, message: 'Unauthorized' });
         return;
       }
-
+  
       const result = await this.chapterService.recordSubmission(
         userId,
         courseId,
         chapterId,
         req.body
       );
-
+  
+      console.log('【コントローラー】提出処理完了', {
+        処理結果: {
+          submissionId: result.submission?.id,
+          score: result.submission?.points,
+          content: result.submission?.content,
+        }
+      });
+  
       res.json({ success: true, data: result });
     } catch (error) {
-      console.error('Error recording submission:', error);
+      console.error('【エラー】提出処理失敗:', {
+        エラー内容: error,
+        スタック: error instanceof Error ? error.stack : undefined
+      });
       res.status(500).json({ success: false, message: 'Failed to record submission' });
     }
   };

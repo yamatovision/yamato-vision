@@ -475,6 +475,9 @@ export class UserChapterService extends EventEmitter {
     );
   }
 
+
+
+
   async recordSubmission(
     userId: string,
     courseId: string,
@@ -491,11 +494,11 @@ export class UserChapterService extends EventEmitter {
           task: true
         }
       });
-
+  
       if (!chapter?.task) {
         throw new Error('Chapter task not found');
       }
-
+  
       // 進捗状態の確認
       const progress = await tx.userChapterProgress.findUnique({
         where: {
@@ -506,7 +509,14 @@ export class UserChapterService extends EventEmitter {
           }
         }
       });
-
+  
+      // ここに最初のデバッグログを追加
+      console.log('【提出処理開始】', {
+        'ユーザーID': userId,
+        '提出内容': submission.content,
+        '現在の進捗状態': progress
+      });
+  
       // 提出データの保存
       const submissionRecord = await tx.submission.create({
         data: {
@@ -519,18 +529,24 @@ export class UserChapterService extends EventEmitter {
           evaluatedAt: new Date()
         }
       });
-
+  
       // AI採点の実行
       const evaluationResult = await evaluationService.evaluateSubmission({
         materials: chapter.task.systemMessage,
         task: chapter.task?.task ?? '',
-        evaluationCriteria: chapter.task.evaluationCriteria ?? '', // nullish coalescing operatorを使用
+        evaluationCriteria: chapter.task.evaluationCriteria ?? '',
         submission: submission.content
       });
-
-
-      
-      
+  
+      // ここに提案したデバッグログを追加
+      console.log('【提出内容保存】', {
+        '受け取ったデータ': submission.content,
+        '保存時のデータ': {
+          bestTaskContent: submission.content,
+          feedback: evaluationResult.evaluation.feedback
+        }
+      });
+  
       // 採点結果の保存
       const updatedSubmission = await tx.submission.update({
         where: { id: submissionRecord.id },
@@ -540,7 +556,17 @@ export class UserChapterService extends EventEmitter {
           nextStep: evaluationResult.evaluation.next_step || null
         }
       });
-
+  
+      // ここに進捗更新前のデバッグログを追加
+      console.log('【進捗更新前】', {
+        '更新データ': {
+          status: 'TASK_IN_PROGRESS',
+          score: evaluationResult.evaluation.total_score,
+          bestTaskContent: submission.content,
+          bestFeedback: evaluationResult.evaluation.feedback
+        }
+      });
+  
       // 進捗状態の更新
       const updatedProgress = await tx.userChapterProgress.update({
         where: {
@@ -553,15 +579,24 @@ export class UserChapterService extends EventEmitter {
         data: {
           status: 'TASK_IN_PROGRESS',
           score: evaluationResult.evaluation.total_score,
-          completedAt: evaluationResult.evaluation.total_score >= 70 ? new Date() : null,
+          completedAt: new Date(),  // 常に現在の日時を設定
           updatedAt: new Date(),
-          bestTaskContent: submission.content,  // ユーザーの提出内容
+          bestTaskContent: submission.content,  // この値が保存されているか確認
           bestFeedback: evaluationResult.evaluation.feedback,
           bestNextStep: evaluationResult.evaluation.next_step || null,
           bestEvaluatedAt: new Date()
         }
       });
-
+  
+      // ここに進捗更新後のデバッグログを追加
+      console.log('【進捗更新後】', {
+        '更新結果': {
+          id: updatedProgress.id,
+          bestTaskContent: updatedProgress.bestTaskContent,
+          score: updatedProgress.score
+        }
+      });
+  
       // 次のチャプターの解放チェック
       const nextChapter = await this.progressManager.unlockNextChapter(
         tx,
@@ -599,6 +634,12 @@ export class UserChapterService extends EventEmitter {
       };
     });
   }
+
+
+
+
+
+
   async getChapterPeerSubmissions(
     courseId: string,
     chapterId: string,
@@ -608,7 +649,7 @@ export class UserChapterService extends EventEmitter {
     isEvaluationPage: boolean = false
   ) {
     try {
-      console.log('【ピア提出取得開始】', { courseId, chapterId, currentUserId });
+      console.log('【提出データ取得開始】', { courseId, chapterId, currentUserId });
   
       // タイムアウト状態の取得
       const timeoutStatus = await this.progressManager.checkTimeoutStatus(
