@@ -1,61 +1,117 @@
 'use client';
 
-import { useState } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { PeerSubmission, PeerSubmissionsProps } from '@/types/submission';
+import { useEffect, useState } from 'react';  // useEffectとuseStateを追加
+import { courseApi } from '@/lib/api/courses';  // courseApiをインポート
+import { toast } from 'react-hot-toast';  // toastをインポート
 
-export function PeerSubmissions({ 
-  submissions = [],
-  paginationInfo = { total: 0, page: 1, perPage: 10 },  // 追加
-  timeoutStatus = { isTimedOut: false },
-  onRefresh 
-}: PeerSubmissionsProps) {
+
+interface PeerSubmission {
+  id: string;
+  content: string;
+  points: number | null;
+  feedback: string | null;
+  nextStep: string | null;
+  submittedAt: Date;
+  user: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    nickname: string | null;
+    rank: string;
+    isCurrentUser: boolean;
+  };
+  visibility: {
+    canViewContent: boolean;
+    canViewScore: boolean;
+    canViewFeedback: boolean;
+    canViewNextStep: boolean;
+  };
+}
+
+interface TimeoutStatus {
+  isTimedOut: boolean;
+  timeOutAt?: Date;
+}
+
+interface PeerSubmissionsProps {
+  courseId: string;
+  chapterId: string;
+  isEvaluationPage: boolean;
+  timeoutStatus: TimeoutStatus;
+  onRefresh: () => void;
+  submissions: PeerSubmission[];  // submissionsを追加
+}
+
+export function PeerSubmissions({
+  courseId,
+  chapterId,
+  isEvaluationPage,
+  timeoutStatus,
+  onRefresh
+}: Omit<PeerSubmissionsProps, 'submissions'>) {  // submissionsをpropsから除外
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-
-  console.log('【PeerSubmissions】マウント時のprops:', {
-    submissionsの型: typeof submissions,
-    submissions実体: submissions,
-    isArray: Array.isArray(submissions),
-    length: submissions?.length,
-    ページ情報: paginationInfo  // 追加
-  });
-
-  const getSubmittedAtTime = (date: string | Date): number => {
-    return new Date(date).getTime();
-  };
-
-  const getSortedSubmissions = (): PeerSubmission[] => {
-    if (!Array.isArray(submissions)) {
-      console.log('【警告】submissions が配列ではありません', submissions);
-      return [];
-    }
-
-    console.log('【getSortedSubmissions】ソート前', {
-      提出数: submissions.length
-    });
-
-    const filtered = timeoutStatus?.isTimedOut
-      ? submissions.filter(sub => (sub.points || 0) >= 80)
-      : submissions;
-
-    return filtered.sort((a, b) => {
-      if (timeoutStatus?.isTimedOut) {
-        const pointsDiff = (b.points || 0) - (a.points || 0);
-        return pointsDiff !== 0 
-          ? pointsDiff 
-          : getSubmittedAtTime(b.submittedAt) - getSubmittedAtTime(a.submittedAt);
+  const [submissions, setSubmissions] = useState<PeerSubmission[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const fetchSubmissions = async () => {
+    try {
+      console.log('【データ取得開始】fetchSubmissions:', {
+        パラメータ: {
+          courseId,
+          chapterId,
+          isEvaluationPage
+        }
+      });
+  
+      setIsLoading(true);
+      const response = await courseApi.getChapterPeerSubmissions(
+        courseId,
+        chapterId,
+        isEvaluationPage
+      );
+  
+      console.log('【API応答】getChapterPeerSubmissions:', {
+        成功状態: response.success,
+        データ構造: {
+          submissions: response.data?.data?.submissions,  // data.dataの参照に修正
+          isArray: Array.isArray(response.data?.data?.submissions),
+          件数: response.data?.data?.submissions?.length
+        },
+        レスポンス全体: response
+      });
+  
+      if (response.success && response.data?.data?.submissions) {  // data.dataの存在確認
+        console.log('【State更新前】submissions:', {
+          現在のデータ: submissions,
+          更新データ: response.data.data.submissions  // data.dataの参照に修正
+        });
+        setSubmissions(response.data.data.submissions);  // data.dataの参照に修正
       }
-      return getSubmittedAtTime(b.submittedAt) - getSubmittedAtTime(a.submittedAt);
-    });
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      toast.error('提出データの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
+  useEffect(() => {
+    // 4. コンポーネントマウント時のログ
+    console.log('【コンポーネントマウント】PeerSubmissions:', {
+      props: {
+        courseId,
+        chapterId,
+        isEvaluationPage,
+        timeoutStatus
+      }
+    });
+    fetchSubmissions();
+  }, [courseId, chapterId, isEvaluationPage]);
 
-  const sortedSubmissions = getSortedSubmissions();
-
-  console.log('【PeerSubmissions】表示直前の状態', {
-    ソート後の提出数: sortedSubmissions.length,
-    表示データ: sortedSubmissions
-  });
+  const handleRefresh = async () => {
+    await fetchSubmissions();
+    onRefresh?.();
+  };
 
   return (
     <div className="space-y-6">
@@ -64,14 +120,21 @@ export function PeerSubmissions({
         <h2 className={`text-lg font-semibold ${
           isDark ? 'text-white' : 'text-gray-900'
         }`}>
-          他の受講生の提出 ({paginationInfo.total}件) {/* 修正 */}
+          提出済みの課題
         </h2>
-        {onRefresh && (
+        <div className="flex items-center space-x-4">
+          {timeoutStatus.timeOutAt && (
+            <span className={`text-sm ${
+              isDark ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              {timeoutStatus.isTimedOut 
+                ? '制限時間が終了しました'
+                : `制限時間: ${new Date(timeoutStatus.timeOutAt).toLocaleString()}`
+              }
+            </span>
+          )}
           <button
-            onClick={() => {
-              console.log('【更新ボタン】クリックされました');
-              onRefresh();
-            }}
+            onClick={handleRefresh}
             className={`px-4 py-2 rounded-lg text-sm ${
               isDark
                 ? 'bg-gray-700 text-gray-200 hover:bg-gray-600'
@@ -80,20 +143,26 @@ export function PeerSubmissions({
           >
             更新
           </button>
-        )}
+        </div>
       </div>
 
       {/* 提出一覧 */}
-      {sortedSubmissions.length > 0 ? (
+      {isLoading ? (
+        <div className={`p-8 text-center rounded-lg ${
+          isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'
+        }`}>
+          データを読み込み中...
+        </div>
+      ) : submissions && submissions.length > 0 ? (
         <div className="space-y-4">
-          {sortedSubmissions.map((submission) => (
+          {submissions.map((submission) => (
             <div
               key={submission.id}
               className={`${
                 isDark ? 'bg-gray-800' : 'bg-white'
               } rounded-lg shadow-sm p-4`}
             >
-              {/* ヘッダー: ユーザー情報と点数 */}
+              {/* ユーザー情報と得点 */}
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center space-x-3">
                   <img
@@ -105,7 +174,7 @@ export function PeerSubmissions({
                     <div className={`font-medium ${
                       isDark ? 'text-white' : 'text-gray-900'
                     }`}>
-                      {submission.user.name}
+                      {submission.user.nickname || submission.user.name}
                       {submission.user.isCurrentUser && ' (あなた)'}
                     </div>
                     <div className={`text-sm ${
@@ -115,7 +184,7 @@ export function PeerSubmissions({
                     </div>
                   </div>
                 </div>
-                {(timeoutStatus.isTimedOut || submission.user.isCurrentUser) && submission.points && (
+                {submission.visibility.canViewScore && submission.points !== null && (
                   <div className={`text-lg font-bold ${
                     submission.points >= 95
                       ? 'text-yellow-500'
@@ -129,18 +198,20 @@ export function PeerSubmissions({
               </div>
 
               {/* 提出内容 */}
-              <div className={`p-4 rounded-lg ${
-                isDark ? 'bg-gray-700' : 'bg-gray-50'
-              }`}>
-                <pre className={`whitespace-pre-wrap text-sm ${
-                  isDark ? 'text-gray-300' : 'text-gray-600'
+              {submission.visibility.canViewContent && (
+                <div className={`p-4 rounded-lg ${
+                  isDark ? 'bg-gray-700' : 'bg-gray-50'
                 }`}>
-                  {submission.content}
-                </pre>
-              </div>
+                  <pre className={`whitespace-pre-wrap text-sm ${
+                    isDark ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {submission.content}
+                  </pre>
+                </div>
+              )}
 
-              {/* フィードバック（タイムアウト後または自分の提出のみ表示） */}
-              {(timeoutStatus.isTimedOut || submission.user.isCurrentUser) && submission.feedback && (
+              {/* フィードバック */}
+              {submission.visibility.canViewFeedback && submission.feedback && (
                 <div className={`mt-4 p-4 rounded-lg ${
                   isDark ? 'bg-gray-700/50' : 'bg-blue-50'
                 }`}>
@@ -153,6 +224,24 @@ export function PeerSubmissions({
                     isDark ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {submission.feedback}
+                  </p>
+                </div>
+              )}
+
+              {/* 次のステップ（自分の提出のみ表示） */}
+              {submission.visibility.canViewNextStep && submission.nextStep && (
+                <div className={`mt-4 p-4 rounded-lg ${
+                  isDark ? 'bg-gray-700/50' : 'bg-green-50'
+                }`}>
+                  <h3 className={`text-sm font-medium mb-2 ${
+                    isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    次のステップ
+                  </h3>
+                  <p className={`text-sm ${
+                    isDark ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {submission.nextStep}
                   </p>
                 </div>
               )}

@@ -69,6 +69,8 @@ export interface Chapter {
   referenceFiles?: ReferenceFile[];
   experienceWeight: number;
   task?: Task;
+  userProgress?: UserChapterProgress[];  // 追加
+
 }
 
 // ChapterContent型も修正
@@ -91,6 +93,14 @@ export type CourseStatus =
   | 'failed';      // 失敗
 
 
+  export interface UserChapterProgress {
+    id: string;
+    status: string;
+    startedAt?: Date;
+    completedAt?: Date;
+    score?: number;
+    lessonWatchRate: number;
+  }
 
 // 基本的なコース情報
 export interface BaseCourse {

@@ -639,7 +639,6 @@ export class UserChapterService extends EventEmitter {
 
 
 
-
   async getChapterPeerSubmissions(
     courseId: string,
     chapterId: string,
@@ -649,8 +648,14 @@ export class UserChapterService extends EventEmitter {
     isEvaluationPage: boolean = false
   ) {
     try {
-      console.log('【提出データ取得開始】', { courseId, chapterId, currentUserId });
-  
+      console.log('【DB取得開始】getChapterPeerSubmissions:', {
+        パラメータ: {
+          courseId,
+          chapterId,
+          isEvaluationPage,
+          ページ情報: { page, perPage }
+        }
+      });  
       // タイムアウト状態の取得
       const timeoutStatus = await this.progressManager.checkTimeoutStatus(
         this.prisma,
@@ -659,18 +664,32 @@ export class UserChapterService extends EventEmitter {
         chapterId
       );
   
+      // 現在のユーザーの進捗状態を取得（チャプターページでの表示制御用）
+      const currentUserProgress = !isEvaluationPage 
+        ? await this.prisma.userChapterProgress.findUnique({
+            where: {
+              userId_courseId_chapterId: {
+                userId: currentUserId,
+                courseId,
+                chapterId
+              }
+            }
+          })
+        : null;
+  
       // 提出データの取得（user情報を含む）
       const peerProgresses = await this.prisma.userChapterProgress.findMany({
+        
         where: {
           courseId,
           chapterId,
-          score: { not: null }
+          bestTaskContent: { not: null }
         },
         select: {
           id: true,
           userId: true,
           score: true,
-          bestTaskContent: true,  // これを追加
+          bestTaskContent: true,
           bestFeedback: true,
           bestNextStep: true,
           bestEvaluatedAt: true,
@@ -678,61 +697,85 @@ export class UserChapterService extends EventEmitter {
             select: {
               id: true,
               name: true,
-              nickname: true,  // nicknameを追加
+              nickname: true,
               avatarUrl: true,
               rank: true
             }
           }
         },
-        orderBy: {
-          score: 'desc'
-        },
+        orderBy: timeoutStatus.isTimedOut
+          ? { score: 'desc' }
+          : { bestEvaluatedAt: 'desc' },
         skip: (page - 1) * perPage,
         take: perPage
       });
   
-      console.log('【DB取得結果】', {
-        rawData: peerProgresses,
-        条件: {
-          courseId,
-          chapterId,
-        }
+      console.log('【DB取得結果】peerProgresses:', {
+        取得件数: peerProgresses.length,
+        データサンプル: peerProgresses[0],
+        変換前の生データ: peerProgresses
       });
-      console.log('【提出詳細】', {
-        firstRecord: peerProgresses[0],
-        user: peerProgresses[0]?.user
-      });
+    
+      const visibleSubmissions = peerProgresses.map(progress => {
+        const isCurrentUser = progress.userId === currentUserId;
+        let visibility = {
+          canViewContent: false,
+          canViewScore: false,
+          canViewFeedback: false,
+          canViewNextStep: false
+        };
   
-      const visibleSubmissions = peerProgresses
-        .filter(progress => progress.score !== null)
-        .map(progress => {
-          const submission = {
-            id: progress.id,
-            user: {
-              id: progress.user.id,
-              name: progress.user.name,
-              avatarUrl: progress.user.avatarUrl,
-              nickname: progress.user.nickname,  // nicknameを追加
-              rank: progress.user.rank,
-              isCurrentUser: progress.user.id === currentUserId
-            },
-            content: progress.bestTaskContent || '',  // ユーザーの提出内容
-            points: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
-              ? progress.score 
-              : null,
-            feedback: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
-              ? progress.bestFeedback 
-              : null,
-            submittedAt: progress.bestEvaluatedAt
+        if (isCurrentUser) {
+          // 自分の提出は常に全て見える
+          visibility = {
+            canViewContent: true,
+            canViewScore: true,
+            canViewFeedback: true,
+            canViewNextStep: true
           };
+        } else if (isEvaluationPage) {
+          // 評価ページでは提出内容は常に表示
+          visibility = {
+            canViewContent: true,
+            canViewScore: timeoutStatus.isTimedOut,
+            canViewFeedback: timeoutStatus.isTimedOut,
+            canViewNextStep: false
+          };
+        } else {
+          // チャプターページでの表示制御
+          if (currentUserProgress?.bestTaskContent) {
+            // 提出済みの場合のみ他者の提出が見える
+            visibility = {
+              canViewContent: true,
+              canViewScore: timeoutStatus.isTimedOut,
+              canViewFeedback: timeoutStatus.isTimedOut,
+              canViewNextStep: false
+            };
+          }
+        }
   
-          console.log('【変換後のデータ】', submission);
-          return submission;
-        });
+        return {
+          id: progress.id,
+          user: {
+            id: progress.user.id,
+            name: progress.user.name,
+            avatarUrl: progress.user.avatarUrl,
+            nickname: progress.user.nickname,
+            rank: progress.user.rank,
+            isCurrentUser
+          },
+          content: visibility.canViewContent ? progress.bestTaskContent : null,
+          points: visibility.canViewScore ? progress.score : null,
+          feedback: visibility.canViewFeedback ? progress.bestFeedback : null,
+          nextStep: visibility.canViewNextStep ? progress.bestNextStep : null,
+          submittedAt: progress.bestEvaluatedAt,
+          visibility  // フロントエンドでの詳細な表示制御用
+        };
+      });
   
-      console.log('【最終データ】', {
-        変換後の提出数: visibleSubmissions.length,
-        データ: visibleSubmissions
+      console.log('【表示データ作成完了】', {
+        表示件数: visibleSubmissions.length,
+        表示制御サンプル: visibleSubmissions[0]?.visibility
       });
   
       return {
@@ -751,6 +794,7 @@ export class UserChapterService extends EventEmitter {
       throw error;
     }
   }
+  
 
 
 

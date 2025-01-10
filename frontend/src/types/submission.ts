@@ -8,6 +8,19 @@ export interface SubmissionState {
   };
 }
 
+export interface SubmissionResponse {
+  success: boolean;
+  data?: {
+    submission: {
+      id: string;
+      points: number;
+      feedback: string;
+      nextStep: string;  // 必須フィールドとして定義
+    };
+  };
+}
+
+
 
 // これを追加
 export interface PeerSubmissionsResponse {
@@ -37,7 +50,13 @@ export interface PeerSubmission {
     isCurrentUser: boolean;
   };
 }
-
+export interface SubmissionResult {
+  submission: {
+    points: number;
+    feedback: string;
+    nextStep?: string;  // optional
+  };
+}
 export interface SubmissionResult {
   score: number;
   feedback: string;

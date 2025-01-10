@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 import { LoadingState } from '@/app/user/courses/components/TaskSubmission/LoadingState';
 import { ResultView } from '@/app/user/courses/components/TaskSubmission/ResultView';
-import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
+import { PeerSubmission } from '@/types/submission';  // 正しいインポートパス
 import { toast } from 'react-hot-toast';
 import { courseApi } from '@/lib/api/courses';
 
@@ -15,22 +15,12 @@ interface EvaluationPageProps {
     chapterId: string;
   };
 }
-
-interface PeerSubmission {
-  id: string;
-  content: string;
-  points: number;
+interface SubmissionResult {
+  score: number;
   feedback: string;
-  nextStep?: string;
-  submittedAt: Date;
-  user: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-    rank: string;
-    isCurrentUser: boolean;
-  };
+  nextStep: string;
 }
+
 
 type EvaluationStatus = 'evaluating' | 'completed' | 'error';
 
@@ -38,7 +28,7 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
   const router = useRouter();
   const { theme } = useTheme();
   const searchParams = useSearchParams();
-  const submission = searchParams.get('submission');
+  const [submissions, setSubmissions] = useState<PeerSubmission[]>([]);
   const [status, setStatus] = useState<EvaluationStatus>('evaluating');
   const [result, setResult] = useState<{
     score: number;
@@ -46,25 +36,29 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
     nextStep: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [peerSubmissions, setPeerSubmissions] = useState<PeerSubmission[]>([]);
   const [timeoutStatus, setTimeoutStatus] = useState({
     isTimedOut: false,
     timeOutAt: undefined as Date | undefined
   });
 
-  const fetchPeerSubmissions = async () => {
+  const handleRefreshPeerSubmissions = async () => {
     try {
       const response = await courseApi.getChapterPeerSubmissions(
         params.courseId,
         params.chapterId,
         true
       );
-
+  
       if (!response.success) {
-        throw new Error('ピア提出の取得に失敗しました');
+        throw new Error('Failed to fetch peer submissions');
       }
-
-      setPeerSubmissions(response.data.submissions);
+  
+      // submissionsの更新を追加
+      if (response.data.submissions) {
+        setSubmissions(response.data.submissions);
+      }
+  
+      // タイムアウト状態の更新
       if (response.data.timeoutStatus) {
         setTimeoutStatus({
           isTimedOut: response.data.timeoutStatus.isTimedOut,
@@ -74,55 +68,56 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
         });
       }
     } catch (error) {
-      console.error('【エラー】ピア提出取得失敗:', error);
-      toast.error('他の受講生の提出を取得できませんでした');
-      setPeerSubmissions([]);
+      console.error('Error refreshing peer submissions:', error);
+      toast.error('他の受講生の提出を更新できませんでした');
+    }
+  };
+// evaluation/page.tsx の修正
+
+// courseApi.submitTask の response.data.submission の型を正しく扱う部分を修正
+useEffect(() => {
+  const submissionKey = `submission_${params.courseId}_${params.chapterId}`;
+  const savedSubmission = sessionStorage.getItem(submissionKey);
+  
+  if (!savedSubmission) {
+    router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}`);
+    return;
+  }
+
+  const evaluateSubmission = async () => {
+    try {
+      const response = await courseApi.submitTask(
+        params.courseId,
+        params.chapterId,
+        { submission: savedSubmission }
+      );
+
+      if (response.success && response.data) {
+        setResult({
+          score: response.data.submission.points,
+          feedback: response.data.submission.feedback || '',
+          nextStep: response.data.submission.nextStep || ''
+        });
+        setStatus('completed');
+        
+        // 評価完了後にピア提出を取得
+        handleRefreshPeerSubmissions();
+      }
+    } catch (error) {
+      setStatus('error');
+      toast.error('評価中にエラーが発生しました');
+    } finally {
+      sessionStorage.removeItem(submissionKey);
     }
   };
 
-  useEffect(() => {
-    const submissionKey = `submission_${params.courseId}_${params.chapterId}`;
-    const savedSubmission = sessionStorage.getItem(submissionKey);
-    
-    if (!savedSubmission) {
-      // 提出データがない場合は課題ページに戻る
-      router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}`);
-      return;
-    }
-  
-    const evaluateSubmission = async () => {
-      try {
-        const response = await courseApi.submitTask(
-          params.courseId,
-          params.chapterId,
-          { submission: savedSubmission }
-        );
-  
-        // 結果の処理
-        if (response.success && response.data) {
-          setResult({
-            score: response.data.submission.points,
-            feedback: response.data.submission.feedback,
-            nextStep: response.data.submission.nextStep
-          });
-          setStatus('completed');
-        }
-      } catch (error) {
-        setStatus('error');
-        toast.error('評価中にエラーが発生しました');
-      } finally {
-        // 必ずセッションストレージをクリア
-        sessionStorage.removeItem(submissionKey);
-      }
-    };
-  
-    evaluateSubmission();
-  
-    // クリーンアップ関数
-    return () => {
-      sessionStorage.removeItem(submissionKey);
-    };
-  }, [params.courseId, params.chapterId, router]);
+  evaluateSubmission();
+
+  return () => {
+    sessionStorage.removeItem(submissionKey);
+  };
+}, [params.courseId, params.chapterId, router]);
+
   const handleBack = () => {
     router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}`);
   };
@@ -181,16 +176,17 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
           <ResultView result={result} />
         )}
 
-        {/* ピア提出一覧 */}
-        {Array.isArray(peerSubmissions) && peerSubmissions.length > 0 && (
-          <div className="mt-8">
-            <PeerSubmissions
-              submissions={peerSubmissions}
-              timeoutStatus={timeoutStatus}
-              onRefresh={fetchPeerSubmissions}
-            />
-          </div>
-        )}
+        {/* ピア提出一覧 - 評価中でも表示 */}
+        <div className="mt-8">
+          <PeerSubmissions
+            courseId={params.courseId}
+            chapterId={params.chapterId}
+            isEvaluationPage={true}
+            timeoutStatus={timeoutStatus}
+            onRefresh={handleRefreshPeerSubmissions}
+            submissions={submissions}  // submissionsを追加
+          />
+        </div>
       </div>
     </div>
   );
