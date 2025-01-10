@@ -14,6 +14,23 @@ export class AdminChapterService {
   private prisma: PrismaClient;
   private progressManager: CourseProgressManager;
 
+  private async reorderChapters(tx: Prisma.TransactionClient, courseId: string): Promise<void> {
+    const chapters = await tx.chapter.findMany({
+      where: { courseId },
+      orderBy: { orderIndex: 'asc' },
+      select: { id: true }
+    });
+
+    await Promise.all(
+      chapters.map((chapter, index) =>
+        tx.chapter.update({
+          where: { id: chapter.id },
+          data: { orderIndex: index }
+        })
+      )
+    );
+  }
+
   constructor() {
     this.prisma = new PrismaClient();
     this.progressManager = new CourseProgressManager();
@@ -133,14 +150,22 @@ ${data.task.evaluationCriteria || ''}
 
   async createChapter(courseId: string, data: CreateChapterDTO): Promise<ChapterWithTask> {
     const result = await this.prisma.$transaction(async (tx) => {
-      const maxOrderIndex = await tx.chapter.findFirst({
+      // 現在のチャプターリストを取得して適切なorderIndexを決定
+      const chapters = await tx.chapter.findMany({
         where: { courseId },
-        orderBy: { orderIndex: 'desc' },
+        orderBy: { orderIndex: 'asc' },
         select: { orderIndex: true }
       });
-
-      const newOrderIndex = (maxOrderIndex?.orderIndex ?? -1) + 1;
-
+  
+      // 最初の欠番を探すか、最後の番号+1を使用
+      let newOrderIndex = 0;
+      for (let i = 0; i <= chapters.length; i++) {
+        if (!chapters.find(c => c.orderIndex === i)) {
+          newOrderIndex = i;
+          break;
+        }
+      }
+  
       const chapter = await tx.chapter.create({
         data: {
           courseId,
@@ -168,18 +193,18 @@ ${data.task.evaluationCriteria || ''}
           }
         }
       });
-
+  
       if (data.task) {
         const systemMessage = `<materials>
-${data.task.materials || ''}
-</materials>
-<task>
-${data.task.task || ''}
-</task>
-<evaluation_criteria>
-${data.task.evaluationCriteria || ''}
-</evaluation_criteria>`;
-
+  ${data.task.materials || ''}
+  </materials>
+  <task>
+  ${data.task.task || ''}
+  </task>
+  <evaluation_criteria>
+  ${data.task.evaluationCriteria || ''}
+  </evaluation_criteria>`;
+  
         const task = await tx.task.create({
           data: {
             courseId,
@@ -194,13 +219,13 @@ ${data.task.evaluationCriteria || ''}
             }
           }
         });
-
+  
         await tx.chapter.update({
           where: { id: chapter.id },
           data: { taskId: task.id }
         });
       }
-
+  
       const finalChapter = await tx.chapter.findUnique({
         where: { id: chapter.id },
         include: {
@@ -216,17 +241,16 @@ ${data.task.evaluationCriteria || ''}
           }
         }
       });
-
+  
       if (!finalChapter) {
         throw new Error('Failed to create chapter');
       }
-
+  
       return finalChapter;
     });
-
+  
     return result as ChapterWithTask;
   }
-
   async getChapter(chapterId: string): Promise<ChapterWithTask> {
     const chapter = await this.prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -263,6 +287,42 @@ ${data.task.evaluationCriteria || ''}
         ...chapter.task,
       } : null
     } as ChapterWithTask;
+  }
+
+  async reorderAllChapters(courseId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const chapters = await tx.chapter.findMany({
+        where: { courseId },
+        orderBy: { orderIndex: 'asc' },
+      });
+  
+      await Promise.all(
+        chapters.map((chapter, index) =>
+          tx.chapter.update({
+            where: { id: chapter.id },
+            data: { orderIndex: index }
+          })
+        )
+      );
+    });
+  }
+  async resetOrderIndices(courseId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const chapters = await tx.chapter.findMany({
+        where: { courseId },
+        orderBy: { orderIndex: 'asc' }
+      });
+  
+      // orderIndexを0から順番に振り直す
+      await Promise.all(
+        chapters.map((chapter, index) =>
+          tx.chapter.update({
+            where: { id: chapter.id },
+            data: { orderIndex: index }
+          })
+        )
+      );
+    });
   }
 
   async getChapters(courseId: string): Promise<ChapterWithTask[]> {
@@ -310,6 +370,9 @@ ${data.task.evaluationCriteria || ''}
         throw new Error('Chapter not found');
       }
 
+      const courseId = chapter.courseId;
+
+      // 既存の削除処理
       await tx.userChapterProgress.deleteMany({
         where: { chapterId }
       });
@@ -323,17 +386,35 @@ ${data.task.evaluationCriteria || ''}
       await tx.chapter.delete({
         where: { id: chapterId }
       });
+
+      // 残りのチャプターを再整列
+      await this.reorderChapters(tx, courseId);
     });
   }
-
   async updateChaptersOrder(orders: ChapterOrderItem[]): Promise<void> {
-    await this.prisma.$transaction(
-      orders.map(({ id, orderIndex }) =>
-        this.prisma.chapter.update({
-          where: { id },
-          data: { orderIndex }
-        })
-      )
-    );
+    if (orders.length === 0) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      // 一時的に順序を更新
+      await Promise.all(
+        orders.map(({ id, orderIndex }) =>
+          tx.chapter.update({
+            where: { id },
+            data: { orderIndex }
+          })
+        )
+      );
+
+      // courseIdを取得（最初のチャプターから）
+      const firstChapter = await tx.chapter.findUnique({
+        where: { id: orders[0].id },
+        select: { courseId: true }
+      });
+
+      if (firstChapter) {
+        // 最終的に0からの連番に整列
+        await this.reorderChapters(tx, firstChapter.courseId);
+      }
+    });
   }
 }

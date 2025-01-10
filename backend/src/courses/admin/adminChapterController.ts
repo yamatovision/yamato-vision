@@ -25,6 +25,25 @@ export class AdminChapterController {
     }
   };
 
+  resetChapterOrder = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      await this.chapterService.resetOrderIndices(courseId);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Chapter order indices reset successfully'
+      });
+    } catch (error) {
+      console.error('Error resetting chapter order:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset chapter order'
+      });
+    }
+  };
+
+
   getChapter = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { chapterId } = req.params;
@@ -143,6 +162,24 @@ export class AdminChapterController {
       });
     }
   };
+  reorderChapters = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      await this.chapterService.reorderAllChapters(courseId);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Chapters reordered successfully'
+      });
+    } catch (error) {
+      console.error('Error reordering chapters:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reorder chapters'
+      });
+    }
+  };
+
 
   updatePerfectOnly = async (req: Request, res: Response): Promise<Response> => {
     try {

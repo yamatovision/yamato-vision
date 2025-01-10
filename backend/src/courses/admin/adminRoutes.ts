@@ -29,5 +29,8 @@ router.delete('/courses/:courseId/chapters/:chapterId', adminChapterController.d
 router.put('/courses/:courseId/chapters', adminChapterController.updateChaptersOrder);
 router.patch('/courses/:courseId/chapters/:chapterId/visibility', adminChapterController.updateVisibility);
 router.patch('/courses/:courseId/chapters/:chapterId/perfect-only', adminChapterController.updatePerfectOnly);
+router.post('/courses/:courseId/chapters/reorder', adminChapterController.reorderChapters);
+router.post('/courses/:courseId/chapters/reset-order', adminChapterController.resetChapterOrder);
+
 
 export { router as adminRoutes };

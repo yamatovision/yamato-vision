@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/user/layout": [
+    "/user/home/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/layout.js"
+      "static/chunks/app/user/home/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,20 +11,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/user/home/page": [
+    "/user/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/home/page.js"
+      "static/chunks/app/user/layout.js"
     ],
     "/user/courses/[courseId]/chapters/[chapterId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/page.js"
-    ],
-    "/admin/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/page.js"
     ],
     "/admin/layout": [
       "static/chunks/webpack.js",
@@ -36,15 +31,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/[courseId]/chapters/[chapterId]/page.js"
     ],
-    "/admin/courses/page": [
+    "/admin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/page.js"
+      "static/chunks/app/admin/page.js"
     ],
     "/admin/courses/[courseId]/chapters/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/[courseId]/chapters/page.js"
+    ],
+    "/admin/courses/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/courses/page.js"
     ],
     "/user/courses/page": [
       "static/chunks/webpack.js",
@@ -56,30 +56,40 @@
       "static/chunks/main-app.js",
       "static/chunks/app/user/shop/page.js"
     ],
-    "/user/forum/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/user/forum/page.js"
-    ],
     "/user/forum/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/forum/layout.js"
+    ],
+    "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
     ],
     "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
+    "/user/forum/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/forum/page.js"
+    ],
     "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/login/page.js"
     ],
-    "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": [
+    "/admin/users/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
+      "static/chunks/app/admin/users/page.js"
+    ],
+    "/admin/level-messages/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/level-messages/page.js"
     ]
   }
 }

@@ -1024,7 +1024,46 @@ updateMaterialProgress: async (
     }
   },
 
+    reorderChapters: async (courseId: string) => {
+    try {
+      const response = await fetch(`/api/admin/courses/${courseId}/chapters/reorder`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error reordering chapters:', error);
+      throw error;
+    }
+  },
+  resetChapterOrder: async (courseId: string): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/reset-order`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        }
+      );
   
+      if (!response.ok) {
+        throw new Error('Failed to reset chapter order');
+      }
+  
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      console.error('Error resetting chapter order:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
 
   // courses.ts の submitTask メソッドを修正
   submitTask: async (
