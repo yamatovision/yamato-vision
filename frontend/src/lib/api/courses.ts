@@ -263,28 +263,14 @@ export const courseApi = {
       }
   
       const data = await response.json();
-      console.log('【APIレスポンス】getChapterPeerSubmissions', {
-        ステータスコード: response.status,
-        レスポンスデータ: data,
-        提出数: data?.submissions?.length || 0
-      });
-  
-      return {
-        success: true,
-        data: {
-          submissions: data.submissions || [],
-          timeoutStatus: data.timeoutStatus
-        }
-      };
+      
+      return data; // レスポンスをそのまま返せる
     } catch (error) {
-      console.error('【エラー】getChapterPeerSubmissions:', error);
-      return {
-        success: false,
-        data: {
-          submissions: [],
-          timeoutStatus: { isTimedOut: false }
-        },
-        error: error instanceof Error ? error.message : 'Failed to fetch peer submissions'
+      console.error('Error in getCourse:', error);
+      return { 
+        success: false, 
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   },
@@ -527,7 +513,7 @@ getChapterPeerSubmissions: async (
   },
 
 // /lib/api/courses.ts に追加
-getLatestSubmission: async (courseId: string, chapterId: string): Promise<APIResponse<{
+getSubmission: async (courseId: string, chapterId: string): Promise<APIResponse<{
   points: number;
   feedback: string;
   nextStep: string;
@@ -542,7 +528,7 @@ getLatestSubmission: async (courseId: string, chapterId: string): Promise<APIRes
     );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch submission');
+      throw new Error('評価結果の取得に失敗しました');
     }
 
     const data = await response.json();
@@ -554,7 +540,7 @@ getLatestSubmission: async (courseId: string, chapterId: string): Promise<APIRes
     return {
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : '評価結果の取得に失敗しました'
     };
   }
 },

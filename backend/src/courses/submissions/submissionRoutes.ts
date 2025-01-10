@@ -28,11 +28,6 @@ router.get(
 );
 
 // 提出状況確認
-router.get(
-  '/tasks/:taskId/users/:userId/status',
-  authMiddleware,
-  submissionController.getUserTaskStatus.bind(submissionController)
-);
 
 // チャプター進捗
 router.get(

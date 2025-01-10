@@ -18,23 +18,15 @@ export function SubmissionForm({ task, courseId, chapterId }: SubmissionFormProp
   const { theme } = useTheme();
   const [submission, setSubmission] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!submission.trim() || isSubmitting) return;
   
     setIsSubmitting(true);
     
-    // 即座に評価ページへ遷移
-    router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation`);
-  
-    // バックグラウンドで提出処理を実行
-    courseApi.submitTask(courseId, chapterId, {
-      submission: submission.trim()
-    }).catch(error => {
-      console.error('Submission error:', error);
-      toast.error('課題の提出中にエラーが発生しました');
-    });
+    // 提出内容をエンコードしてクエリパラメータとして渡す
+    const encodedSubmission = encodeURIComponent(submission.trim());
+    router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation?submission=${encodedSubmission}`);
   };
 
   return (

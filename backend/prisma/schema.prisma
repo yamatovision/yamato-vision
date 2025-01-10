@@ -122,21 +122,22 @@ model Task {
   course            Course       @relation(fields: [courseId], references: [id])
 }
 
-model Submission {
-  id          String    @id @default(cuid())
-  userId      String
-  taskId      String
-  content     String
-  points      Int       
-  feedback    String    
-  nextStep    String?   // nullable（?）にする
-  submittedAt DateTime  @default(now())
-  evaluatedAt DateTime  @default(now())
-  bestForProgress UserChapterProgress[] @relation("BestSubmission")
-  task        Task      @relation(fields: [taskId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
-}
 
+
+model Submission {
+  id              String    @id @default(cuid())
+  userId          String
+  taskId          String
+  content         String
+  points          Int       
+  feedback        String    
+  nextStep        String?   
+  submittedAt     DateTime  @default(now())
+  evaluatedAt     DateTime  @default(now())
+  bestForProgress UserChapterProgress[] @relation("BestSubmission")
+  task            Task      @relation(fields: [taskId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+}
 model ForumPost {
   id        String    @id @default(cuid())
   userId    String
@@ -332,14 +333,21 @@ model UserChapterProgress {
   status          String    @default("NOT_STARTED")
   startedAt       DateTime?
   completedAt     DateTime?
-  score           Int?
-　 bestSubmissionId String?  
-  bestSubmission   Submission? @relation("BestSubmission", fields: [bestSubmissionId], references: [id])  // ここを修正
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  score           Int?      // 既存のscoreカラムを維持
+
+  // ベストスコアデータのみ保持
+  bestFeedback    String?
+  bestNextStep    String?
+  bestEvaluatedAt DateTime?
+  bestSubmissionId String?
+  bestSubmission  Submission? @relation("BestSubmission", fields: [bestSubmissionId], references: [id])
+
   isTimedOut      Boolean   @default(false)
   timeOutAt       DateTime?
   lessonWatchRate Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   chapter         Chapter   @relation(fields: [chapterId], references: [id])
   course          Course    @relation(fields: [courseId], references: [id])
   user            User      @relation(fields: [userId], references: [id])

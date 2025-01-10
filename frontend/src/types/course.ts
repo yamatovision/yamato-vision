@@ -30,6 +30,22 @@ export interface ReferenceFile {
   uploadedAt: string;
 }
 
+export interface SubmissionResponse {
+  submission: {
+    id: string;
+    content: string;
+    points: number;
+    feedback: string;
+    nextStep: string | null;
+    submittedAt: Date;
+  };
+  progress: {
+    score: number;
+    bestFeedback: string | null;
+    bestNextStep: string | null;
+    bestEvaluatedAt: Date | null;
+  };
+}
 
 // TaskContentの型定義を追加
 export interface TaskContent {

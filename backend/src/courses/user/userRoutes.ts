@@ -28,8 +28,9 @@ router.get('/:courseId/chapters/:chapterId/access', userChapterController.checkA
 router.patch('/:courseId/chapters/:chapterId/watch-progress', userChapterController.updateWatchProgress);
 router.post('/:courseId/chapters/:chapterId/submission', userChapterController.recordSubmission);
 router.get('/:courseId/chapters/:chapterId/peer-submissions', userChapterController.getChapterPeerSubmissions);
-router.get('/:courseId/chapters/:chapterId/submission',authMiddleware,submissionController.getHighestScoreSubmission.bind(submissionController));
+router.get('/:courseId/chapters/:chapterId/submission', submissionController.getSubmission); // 修正
 router.get('/submissions/:submissionId', userChapterController.getPeerSubmissionDetails);
+router.get('/:courseId/chapters/:chapterId/submission/latest',authMiddleware,submissionController.getLatestSubmission.bind(submissionController));
 router.post(
     '/:courseId/chapters/:chapterId/first-access',
     authMiddleware,

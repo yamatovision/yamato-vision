@@ -117,8 +117,16 @@ export class SubmissionController {
     this.courseProgressManager = new CourseProgressManager();
   }
 
- // submissionController.ts
- async submitAndEvaluate(req: AuthRequest, res: Response) {
+
+
+
+
+
+
+
+
+
+async submitAndEvaluate(req: AuthRequest, res: Response) {
   try {
     console.log('【課題提出開始】', {
       ユーザーID: req.user?.id,
@@ -127,7 +135,7 @@ export class SubmissionController {
       タイムスタンプ: new Date().toISOString()
     });
 
-    if (!req.user || !req.user.id) {
+    if (!req.user?.id) {
       console.error('【認証エラー】ユーザーIDが見つかりません');
       return res.status(401).json({
         success: false,
@@ -137,7 +145,7 @@ export class SubmissionController {
 
     const { courseId, chapterId } = req.params;
     
-    // 1. タスク情報の取得
+    // 1. タスク情報の取得（トランザクション外で実行）
     console.log('【タスク情報取得】開始');
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -146,43 +154,33 @@ export class SubmissionController {
         courseId: true
       }
     });
-
     if (!chapter?.taskId) {
       console.error('【エラー】チャプターまたはタスクが見つかりません', {
         チャプターID: chapterId,
         検索結果: chapter
       });
-      return res.status(404).json({
-        success: false,
-        message: 'チャプターに対応する課題が見つかりません'
-      });
+      throw new Error('チャプターに対応する課題が見つかりません');
     }
 
+    const taskId = chapter.taskId;  // string型として確定
+
+
+    // タスクの情報を取得
     const task = await prisma.task.findUnique({
       where: { id: chapter.taskId },
       select: {
-        id: true,
-        systemMessage: true,
         materials: true,
         task: true,
-        evaluationCriteria: true
+        evaluationCriteria: true,
+        systemMessage: true
       }
     });
 
     if (!task) {
-      console.error('【エラー】タスクが見つかりません');
-      return res.status(404).json({
-        success: false,
-        message: '課題が見つかりません'
-      });
+      throw new Error('タスクが見つかりません');
     }
 
-    console.log('【タスク情報】取得完了', {
-      タスクID: task.id,
-      システムメッセージ存在: !!task.systemMessage
-    });
-
-    // 2. 評価用データの準備と評価の実行
+    // 2. 評価の実行（トランザクション外で実行）
     console.log('【評価処理】開始');
     const evaluationResult = await evaluationService.evaluateSubmission({
       materials: task.materials || '',
@@ -196,10 +194,11 @@ export class SubmissionController {
       フィードバック長: evaluationResult.evaluation.feedback.length
     });
 
-    // 3. トランザクション処理
-    console.log('【トランザクション】開始');
+    // 3. データベース更新処理をトランザクションで実行
     const result = await prisma.$transaction(async (tx) => {
-      // 現在の進捗状況を取得
+      const now = new Date();
+
+      // 現在のプログレス状態を取得
       const currentProgress = await tx.userChapterProgress.findUnique({
         where: {
           userId_courseId_chapterId: {
@@ -207,38 +206,42 @@ export class SubmissionController {
             courseId,
             chapterId
           }
-        },
-        include: {
-          bestSubmission: true
         }
       });
 
       console.log('【現在の進捗】', {
         現在のスコア: currentProgress?.score,
-        ステータス: currentProgress?.status,
-        ベストスコア提出ID: currentProgress?.bestSubmissionId
+        ステータス: currentProgress?.status
       });
 
-      // 新しい提出を保存
-      const newSubmission = await tx.submission.create({
+      // 古い提出を全て削除
+      await tx.submission.deleteMany({
+        where: {
+          userId: req.user.id,
+      taskId: taskId  // 確定したtaskIdを使用
+        }
+      });
+
+      // 新しい提出の作成
+      const submission = await tx.submission.create({
         data: {
           userId: req.user.id,
-          taskId: task.id,
+          taskId: taskId,  // 確定したtaskIdを使用
           content: req.body.submission,
           points: evaluationResult.evaluation.total_score,
           feedback: evaluationResult.evaluation.feedback,
-          nextStep: evaluationResult.evaluation.next_step || '',
-          evaluatedAt: new Date(),
-          submittedAt: new Date()
+          nextStep: evaluationResult.evaluation.next_step ?? null,
+          evaluatedAt: now,
+          submittedAt: now
         }
       });
 
       console.log('【新規提出】作成完了', {
-        提出ID: newSubmission.id,
-        スコア: newSubmission.points
+        提出ID: submission.id,
+        スコア: submission.points
       });
 
-      // 最高得点の判定
+      // より高いスコアかどうかを判定
       const isNewBestScore = !currentProgress?.score || 
                             evaluationResult.evaluation.total_score > currentProgress.score;
 
@@ -248,33 +251,52 @@ export class SubmissionController {
         旧スコア: currentProgress?.score
       });
 
-      if (isNewBestScore) {
-        console.log('【最高得点更新】処理開始');
-        // インスタンスメソッドとして呼び出し
-        await this.courseProgressManager.handleSubmissionComplete(tx, {
+      // UserChapterProgressの更新
+      const progress = await tx.userChapterProgress.upsert({
+        where: {
+          userId_courseId_chapterId: {
+            userId: req.user.id,
+            courseId,
+            chapterId
+          }
+        },
+        create: {
           userId: req.user.id,
           courseId,
           chapterId,
-          submissionId: newSubmission.id,
-          score: evaluationResult.evaluation.total_score
-        });
-      }
+          status: 'COMPLETED',
+          score: evaluationResult.evaluation.total_score,
+          bestFeedback: evaluationResult.evaluation.feedback || null,
+          bestNextStep: evaluationResult.evaluation.next_step || null,
+          bestEvaluatedAt: now,
+          bestSubmissionId: submission.id,
+          completedAt: now,
+          lessonWatchRate: 0
+        },
+        update: {
+          status: 'COMPLETED',
+          ...(isNewBestScore ? {
+            score: evaluationResult.evaluation.total_score,
+            bestFeedback: evaluationResult.evaluation.feedback || null,
+            bestNextStep: evaluationResult.evaluation.next_step || null,
+            bestEvaluatedAt: now,
+            bestSubmissionId: submission.id
+          } : {})
+        }
+      });
 
-      return {
-        submission: newSubmission,
-        evaluation: evaluationResult.evaluation,
-        isNewBestScore,
-        previousBestScore: currentProgress?.score || 0
-      };
+      return { submission, progress, isNewBestScore };
+    }, {
+      timeout: 10000 // トランザクションのタイムアウトを10秒に設定
     });
 
     console.log('【処理完了】', {
       提出ID: result.submission.id,
-      最終スコア: result.submission.points,
+      最終スコア: result.progress.score,
       新記録: result.isNewBestScore
     });
 
-    // 4. クライアントへのレスポンス
+    // レスポンスの返却
     return res.status(201).json({
       success: true,
       data: {
@@ -285,13 +307,13 @@ export class SubmissionController {
           feedback: result.submission.feedback,
           nextStep: result.submission.nextStep,
           submittedAt: result.submission.submittedAt,
-          isNewBestScore: result.isNewBestScore,
-          previousBestScore: result.previousBestScore
+          isNewBestScore: result.isNewBestScore
         },
-        evaluation: {
-          total_score: result.evaluation.total_score,
-          feedback: result.evaluation.feedback,
-          next_step: result.evaluation.next_step
+        progress: {
+          score: result.progress.score,
+          bestFeedback: result.progress.bestFeedback,
+          bestNextStep: result.progress.bestNextStep,
+          bestEvaluatedAt: result.progress.bestEvaluatedAt
         }
       }
     });
@@ -310,7 +332,91 @@ export class SubmissionController {
 
     return res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : '課題の提出と評価に失敗しました'
+      message: error instanceof Error ? error.message : '評価処理に失敗しました'
+    });
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async getLatestSubmission(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: '認証が必要です'
+      });
+    }
+
+    const { courseId, chapterId } = req.params;
+
+    // チャプターからタスクIDを取得
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      select: { taskId: true }
+    });
+
+    if (!chapter?.taskId) {
+      return res.json({
+        success: true,
+        data: null
+      });
+    }
+
+    // 最新の提出を取得
+    const submission = await prisma.submission.findFirst({
+      where: {
+        userId: req.user.id,
+        taskId: chapter.taskId
+      },
+      orderBy: {
+        submittedAt: 'desc'
+      },
+      select: {
+        id: true,
+        content: true,
+        points: true,
+        feedback: true,
+        nextStep: true,
+        submittedAt: true
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: submission
+    });
+
+  } catch (error) {
+    console.error('Error fetching latest submission:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : '提出結果の取得に失敗しました'
     });
   }
 }
@@ -370,41 +476,49 @@ export class SubmissionController {
       });
     }
   }
-
-  async getSubmission(
-    req: Request<{ submissionId: string }>,
-    res: Response
-  ) {
+  async getSubmission(req: AuthRequest, res: Response) {
     try {
-      const submission = await submissionService.getSubmission(
-        req.params.submissionId
-      );
-
-      if (!submission) {
-        return res.status(404).json({ message: '提出内容が見つかりません' });
+      if (!req.user?.id) {
+        return res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
       }
-
-      return res.json({ data: submission });
+  
+      const { courseId, chapterId } = req.params;
+  
+      const chapter = await prisma.chapter.findUnique({
+        where: { id: chapterId },
+        select: { taskId: true }
+      });
+  
+      if (!chapter?.taskId) {
+        return res.status(404).json({
+          success: false,
+          message: 'チャプターが見つかりません'
+        });
+      }
+  
+      // 既存の提出を削除
+      await prisma.submission.deleteMany({
+        where: {
+          userId: req.user.id,
+          taskId: chapter.taskId
+        }
+      });
+  
+      // 削除後なので必ずnullが返される
+      return res.json({
+        success: true,
+        data: null
+      });
+  
     } catch (error) {
-      console.error('Error fetching submission:', error);
-      return res.status(500).json({ message: '提出内容の取得に失敗しました' });
-    }
-  }
-
-  async getUserTaskStatus(
-    req: Request<{ taskId: string; userId: string }>,
-    res: Response
-  ) {
-    try {
-      const status = await submissionService.getUserTaskStatus(
-        req.params.userId,
-        req.params.taskId
-      );
-
-      return res.json({ data: status });
-    } catch (error) {
-      console.error('Error fetching user task status:', error);
-      return res.status(500).json({ message: '提出状況の確認に失敗しました' });
+      console.error('Error getting submission:', error);
+      return res.status(500).json({
+        success: false,
+        message: '評価結果の取得に失敗しました'
+      });
     }
   }
 
