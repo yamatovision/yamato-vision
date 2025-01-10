@@ -64,9 +64,11 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
 
   // チャプターのコンテンツをパース
   // useCurrentCourse.tsxの修正
+// useCurrentCourse.tsxのparseChapterContent関数を修正
 const parseChapterContent = (chapter: any) => {
-  const isTimedOut = chapter.status === 'FAILED';
-  
+  console.log('【parseChapterContent Input】', chapter); // デバッグ用
+  const currentProgress = chapter.progress || {};  // progressが存在しない場合は空オブジェクトを使用
+
   return {
     id: chapter.id,
     courseId: chapter.courseId,
@@ -86,14 +88,11 @@ const parseChapterContent = (chapter: any) => {
     lessonWatchRate: chapter.lessonWatchRate || 0,
     progress: {
       status: chapter.status || 'NOT_STARTED',
-      startedAt: chapter.startedAt || null,  // ここを修正：直接chapterからstartedAtを参照
-      timeOutAt: chapter.timeOutAt || null,   // 同様にtimeOutAtも直接参照
-      isTimedOut: chapter.isTimedOut || false // 同様にisTimedOutも直接参照
-    },
-    submission: chapter.submission ? {
-      score: chapter.submission.score,
-      status: chapter.submission.status
-    } : undefined
+      startedAt: chapter.startedAt || null,
+      timeOutAt: chapter.timeOutAt || null,
+      isTimedOut: chapter.isTimedOut || false,
+      score: chapter.progress?.score  // ここを修正！ progressオブジェクトから取得
+    }
   };
 };
 
@@ -154,7 +153,8 @@ const loadCurrentCourse = async () => {
           startedAt: chapterResponse.data.startedAt,
           status: chapterResponse.data.status,
           isTimedOut: chapterResponse.data.isTimedOut,
-          lessonWatchRate: chapterResponse.data.lessonWatchRate
+          lessonWatchRate: chapterResponse.data.lessonWatchRate,
+          score: chapterResponse.data.score  // スコアを追加
         };
 
         // マージしたチャプターで更新

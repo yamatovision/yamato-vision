@@ -336,6 +336,7 @@ model UserChapterProgress {
   score           Int?      // 既存のscoreカラムを維持
 
   // ベストスコアデータのみ保持
+  bestTaskContent String?   // これを追加（ユーザーの実際の提出内容）
   bestFeedback    String?
   bestNextStep    String?
   bestEvaluatedAt DateTime?

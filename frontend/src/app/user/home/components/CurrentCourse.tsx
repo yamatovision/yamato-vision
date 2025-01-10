@@ -53,11 +53,16 @@ export function CurrentCourse() {
   const currentChapter = courseData.course.chapters[0];
   const parsedChapter = currentChapter ? parseChapterContent(currentChapter) : null;
   
-  console.log('【ChapterPreview表示チェック】', {
-    currentChapter: currentChapter,
-    parsedChapter: parsedChapter,
-    表示条件: !!(currentChapter && parsedChapter)
+  console.log('【ProgressStages Props Debug】', {
+    lessonWatchRate: parsedChapter?.lessonWatchRate,
+    submission: parsedChapter?.submission,
+    status: currentChapter ? determineChapterProgress(currentChapter) : null,
+    raw: {
+      currentChapter,
+      parsedChapter
+    }
   });
+  
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
       {/* コースヘッダー */}
@@ -67,30 +72,37 @@ export function CurrentCourse() {
       />
 
 {currentChapter && parsedChapter && (
-  <ProgressStages
-    lessonWatchRate={parsedChapter.lessonWatchRate}
-    submission={parsedChapter.submission}
-    status={determineChapterProgress(currentChapter)}
-  />
+  <>
+    {console.log('【ProgressStages Props Debug】', {
+      status: determineChapterProgress(currentChapter),
+      watchRate: parsedChapter.lessonWatchRate,
+      progress: parsedChapter.progress,
+      currentChapterScore: currentChapter.score,  // デバッグ用
+      rawChapter: currentChapter,
+    })}
+    <ProgressStages
+      lessonWatchRate={parsedChapter.lessonWatchRate}
+      status={determineChapterProgress(currentChapter)}
+      score={currentChapter.score} // rawChapterから直接scoreを取得
+    />
+  </>
 )}
 
-
       {/* チャプタープレビュー */}
-      {currentChapter && parsedChapter && (
-       <ChapterPreview
-       chapter={{
-         ...parsedChapter,
-         timeLimit: parsedChapter.timeLimit // チャプターの制限時間
-       }}
-       progress={{
-         status: determineChapterProgress(currentChapter),
-         startedAt: currentChapter.startedAt || null,  // ここを修正
-         completedAt: parsedChapter.progress?.completedAt || null,
-         // コースレベルのタイムアウトはヘッダーで使用
-         timeOutAt: courseData.course.timeRemaining?.timeOutAt
-       }}
-     />
-      )}
+   {currentChapter && parsedChapter && (
+    <ChapterPreview
+      chapter={{
+        ...parsedChapter,
+        timeLimit: parsedChapter.timeLimit
+      }}
+      progress={{
+        status: determineChapterProgress(currentChapter),
+        startedAt: parsedChapter.progress?.startedAt || null,  // ここを修正
+        completedAt: parsedChapter.progress?.completedAt || null,
+        timeOutAt: courseData.course.timeRemaining?.timeOutAt
+      }}
+    />
+  )}
 
 
       {/* 続きから学習するボタン */}

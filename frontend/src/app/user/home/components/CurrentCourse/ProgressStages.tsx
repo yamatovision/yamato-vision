@@ -5,29 +5,34 @@ import { useTheme } from '@/contexts/theme';
 
 interface ProgressStagesProps {
   lessonWatchRate: number;
-  submission?: {
-    score?: number;
-    status?: string;
-  };
   status: string;
-  stages?: Array<{
-    status: string;
-    title: string;
-  }>;
+  score?: number;
 }
 
-
-export function ProgressStages({ lessonWatchRate, submission, status }: ProgressStagesProps) {
+export function ProgressStages({ lessonWatchRate, status, score }: ProgressStagesProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const baseStageStyle = `
-  w-1/3 rounded-lg p-3 text-center transition-all duration-200
-  ${isDark ? 'bg-opacity-20' : 'shadow-md'}  // shadow-sm から shadow-md に変更
-`;
-
+    w-1/3 rounded-lg p-3 text-center transition-all duration-200
+    ${isDark ? 'bg-opacity-20' : 'shadow-md'}
+  `;
 
   const getLessonStage = () => {
+    if (status === 'COMPLETED') {
+      return {
+        icon: '✓',
+        bgColor: isDark 
+          ? 'bg-green-500/20' 
+          : 'bg-green-50 border-green-200',
+        textColor: isDark 
+          ? 'text-green-400' 
+          : 'text-green-600',
+        animation: false,
+        label: 'レッスン完了'
+      };
+    }
+    
     if (lessonWatchRate < 95) {
       return {
         icon: '▶️',
@@ -41,6 +46,7 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         label: 'レッスンを視聴しよう'
       };
     }
+
     return {
       icon: '✓',
       bgColor: isDark 
@@ -55,6 +61,20 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
   };
 
   const getTaskStage = () => {
+    if (status === 'COMPLETED') {
+      return {
+        icon: '✓',
+        bgColor: isDark 
+          ? 'bg-green-500/20' 
+          : 'bg-green-50 border-green-200',
+        textColor: isDark 
+          ? 'text-green-400' 
+          : 'text-green-600',
+        animation: false,
+        label: '課題提出済'
+      };
+    }
+
     if (lessonWatchRate < 95) {
       return {
         icon: '📝',
@@ -68,34 +88,22 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         label: '課題'
       };
     }
-    if (!submission) {
-      return {
-        icon: '✎',
-        bgColor: isDark 
-          ? 'bg-blue-500/20' 
-          : 'bg-blue-50 border-blue-200',
-        textColor: isDark 
-          ? 'text-blue-400' 
-          : 'text-blue-600',
-        animation: true,
-        label: '課題に挑戦'
-      };
-    }
+
     return {
-      icon: '✓',
+      icon: '✎',
       bgColor: isDark 
-        ? 'bg-green-500/20' 
-        : 'bg-green-50 border-green-200',
+        ? 'bg-blue-500/20' 
+        : 'bg-blue-50 border-blue-200',
       textColor: isDark 
-        ? 'text-green-400' 
-        : 'text-green-600',
-      animation: false,
-      label: '課題提出済'
+        ? 'text-blue-400' 
+        : 'text-blue-600',
+      animation: true,
+      label: '課題に挑戦'
     };
   };
 
   const getEvaluationStage = () => {
-    if (!submission?.score) {
+    if (status !== 'COMPLETED' || typeof score === 'undefined') {
       return {
         icon: '🔒',
         bgColor: isDark 
@@ -109,7 +117,6 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
       };
     }
 
-    const score = submission.score;
     if (score >= 95) {
       return {
         icon: '👑',
@@ -123,6 +130,7 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         label: 'PERFECT'
       };
     }
+
     if (score >= 85) {
       return {
         icon: '⭐',
@@ -136,6 +144,7 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         label: 'GREAT'
       };
     }
+
     if (score >= 70) {
       return {
         icon: '✓',
@@ -149,6 +158,7 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         label: 'GOOD'
       };
     }
+
     return {
       icon: '✓',
       bgColor: isDark 
@@ -168,7 +178,6 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
 
   return (
     <div className="flex items-center justify-between space-x-4 mb-6">
-      {/* レッスンステージ */}
       <div className={`${baseStageStyle} ${lessonStage.bgColor}
         ${lessonStage.animation ? 'animate-pulse' : ''}`}>
         <div className={`text-2xl mb-1 ${lessonStage.textColor}`}>
@@ -179,7 +188,6 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         </div>
       </div>
 
-      {/* タスクステージ */}
       <div className={`${baseStageStyle} ${taskStage.bgColor}
         ${taskStage.animation ? 'animate-pulse' : ''}`}>
         <div className={`text-2xl mb-1 ${taskStage.textColor}`}>
@@ -190,7 +198,6 @@ export function ProgressStages({ lessonWatchRate, submission, status }: Progress
         </div>
       </div>
 
-      {/* 評価ステージ */}
       <div className={`${baseStageStyle} ${evaluationStage.bgColor}`}>
         <div className={`text-2xl mb-1 ${evaluationStage.textColor}`}>
           {evaluationStage.icon}

@@ -129,15 +129,25 @@ export class UserChapterService extends EventEmitter {
         orderBy: {
           updatedAt: 'desc'
         },
-        include: {
+        select: {
+          id: true,
+          userId: true,
+          courseId: true,
+          chapterId: true,
+          status: true,
+          startedAt: true,
+          completedAt: true,
+          score: true,  // ここを明示的に追加
+          lessonWatchRate: true,
+          isTimedOut: true,
+          timeOutAt: true,
+          updatedAt: true,  // これを追加
           chapter: true
         }
       });
-      console.log('【進捗確認】最後に更新されたチャプター:', {
-        チャプター名: lastProgress?.chapter?.title,
-        進捗状態: lastProgress?.status,
-        タイムアウト: lastProgress?.isTimedOut,
-        更新日時: lastProgress?.updatedAt
+      console.log('【getCurrentChapter】データ取得結果:', {
+        progress: lastProgress,
+        score: lastProgress?.score
       });
   
       // 3. タイムアウトしている場合、次のチャプターを取得
@@ -544,7 +554,11 @@ export class UserChapterService extends EventEmitter {
           status: 'TASK_IN_PROGRESS',
           score: evaluationResult.evaluation.total_score,
           completedAt: evaluationResult.evaluation.total_score >= 70 ? new Date() : null,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          bestTaskContent: submission.content,  // ユーザーの提出内容
+          bestFeedback: evaluationResult.evaluation.feedback,
+          bestNextStep: evaluationResult.evaluation.next_step || null,
+          bestEvaluatedAt: new Date()
         }
       });
 
@@ -615,6 +629,7 @@ export class UserChapterService extends EventEmitter {
           id: true,
           userId: true,
           score: true,
+          bestTaskContent: true,  // これを追加
           bestFeedback: true,
           bestNextStep: true,
           bestEvaluatedAt: true,
@@ -658,14 +673,14 @@ export class UserChapterService extends EventEmitter {
               rank: progress.user.rank,
               isCurrentUser: progress.user.id === currentUserId
             },
-            content: progress.bestFeedback || '',
+            content: progress.bestTaskContent || '',  // ユーザーの提出内容
             points: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
               ? progress.score 
               : null,
             feedback: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
               ? progress.bestFeedback 
               : null,
-            submittedAt: progress.bestEvaluatedAt || new Date()
+            submittedAt: progress.bestEvaluatedAt
           };
   
           console.log('【変換後のデータ】', submission);
