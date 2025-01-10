@@ -1024,6 +1024,7 @@ updateMaterialProgress: async (
     }
   },
 
+  
 
   // courses.ts の submitTask メソッドを修正
   submitTask: async (

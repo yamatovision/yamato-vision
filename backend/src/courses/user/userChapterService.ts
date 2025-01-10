@@ -609,19 +609,21 @@ export class UserChapterService extends EventEmitter {
         where: {
           courseId,
           chapterId,
-          bestSubmissionId: { not: null }  // 自分の提出も含めるように修正
+          score: { not: null }
         },
-        include: {
-          bestSubmission: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  avatarUrl: true,
-                  rank: true
-                }
-              }
+        select: {
+          id: true,
+          userId: true,
+          score: true,
+          bestFeedback: true,
+          bestNextStep: true,
+          bestEvaluatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+              rank: true
             }
           }
         },
@@ -639,66 +641,78 @@ export class UserChapterService extends EventEmitter {
           chapterId,
         }
       });
-      console.log('【bestSubmission詳細】', {
-        bestSubmission: peerProgresses[0]?.bestSubmission,
-        user: peerProgresses[0]?.bestSubmission?.user
+      console.log('【提出詳細】', {
+        firstRecord: peerProgresses[0],
+        user: peerProgresses[0]?.user
       });
-      // userChapterService.ts の getChapterPeerSubmissions メソッド内
-
-
-const visibleSubmissions = peerProgresses
-  .filter((progress): progress is (typeof progress & { bestSubmission: NonNullable<typeof progress.bestSubmission> }) => {
-    
-    return progress.bestSubmission !== null;
-  })
-  .map(progress => {
-   
-
-    // この時点でbestSubmissionはnullではないことが保証されている
-    const submission = {
-      id: progress.bestSubmission.id,
-      user: {
-        id: progress.bestSubmission.user.id,
-        name: progress.bestSubmission.user.name,
-        avatarUrl: progress.bestSubmission.user.avatarUrl,
-        rank: progress.bestSubmission.user.rank,
-        isCurrentUser: progress.bestSubmission.user.id === currentUserId
-      },
-      content: progress.bestSubmission.content,
-      points: progress.bestSubmission.user.id === currentUserId || timeoutStatus.isTimedOut 
-        ? progress.score 
-        : null,
-      feedback: progress.bestSubmission.user.id === currentUserId || timeoutStatus.isTimedOut 
-        ? progress.bestSubmission.feedback 
-        : null,
-      submittedAt: progress.bestSubmission.submittedAt
-    };
-
-    console.log('【変換後のデータ】', submission);
-    return submission;
-  });
-
-console.log('【最終データ】', {
-変換後の提出数: visibleSubmissions.length,
-データ: visibleSubmissions
-});
-
-return {
-submissions: visibleSubmissions,
-total: visibleSubmissions.length,
-page,
-perPage,
-timeoutStatus: {
-  isTimedOut: timeoutStatus.isTimedOut,
-  timeOutAt: timeoutStatus.timeOutAt
-}
-};
+  
+      const visibleSubmissions = peerProgresses
+        .filter(progress => progress.score !== null)
+        .map(progress => {
+          const submission = {
+            id: progress.id,
+            user: {
+              id: progress.user.id,
+              name: progress.user.name,
+              avatarUrl: progress.user.avatarUrl,
+              rank: progress.user.rank,
+              isCurrentUser: progress.user.id === currentUserId
+            },
+            content: progress.bestFeedback || '',
+            points: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
+              ? progress.score 
+              : null,
+            feedback: progress.user.id === currentUserId || timeoutStatus.isTimedOut 
+              ? progress.bestFeedback 
+              : null,
+            submittedAt: progress.bestEvaluatedAt || new Date()
+          };
+  
+          console.log('【変換後のデータ】', submission);
+          return submission;
+        });
+  
+      console.log('【最終データ】', {
+        変換後の提出数: visibleSubmissions.length,
+        データ: visibleSubmissions
+      });
+  
+      return {
+        submissions: visibleSubmissions,
+        total: visibleSubmissions.length,
+        page,
+        perPage,
+        timeoutStatus: {
+          isTimedOut: timeoutStatus.isTimedOut,
+          timeOutAt: timeoutStatus.timeOutAt
+        }
+      };
   
     } catch (error) {
       console.error('【エラー】getChapterPeerSubmissions:', error);
       throw error;
     }
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   async getPeerSubmissionDetails(
     submissionId: string,

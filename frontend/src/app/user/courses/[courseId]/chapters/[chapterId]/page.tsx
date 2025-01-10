@@ -68,25 +68,23 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         params.chapterId,
         false
       );
-      
-      // デバッグログを追加して、具体的なレスポンス構造を確認
+  
       console.log('🔍 APIレスポンスの完全な構造:', {
         responseの型: typeof response,
         response全体: response,
         dataの型: typeof response.data,
         data全体: response.data,
-        submissions存在確認: 'submissions' in (response.data || {}),
+        'data.dataの中身': response.data?.data,
+        'submissionsの場所': response.data?.data?.submissions,
+        submissions存在確認: Array.isArray(response.data?.data?.submissions)
       });
   
-      if (response.success && response.data?.data) {  // data.data を確認
+      const submissions = response.data?.data?.submissions;
+      if (response.success && Array.isArray(submissions)) {
         setSubmissionState(prev => ({
           ...prev,
-          peerSubmissions: response.data.data.submissions,  // data.data.submissions を参照
-          paginationInfo: {
-            total: response.data.data.total || 0,
-            page: response.data.data.page || 1,
-            perPage: response.data.data.perPage || 10
-          },
+          hasSubmitted: true,  // これを追加
+          peerSubmissions: submissions,
           timeoutStatus: response.data.data.timeoutStatus || { isTimedOut: false }
         }));
       }
@@ -94,59 +92,42 @@ export default function ChapterPage({ params }: ChapterPageProps) {
       console.error('【ChapterPage】更新エラー:', error);
     }
   };
-  
   useEffect(() => {
-    const initializeChapter = async () => {
-      try {
-        setLoading(true);
+    // page.tsx の initializeChapter 関数内
+const initializeChapter = async () => {
+  try {
+    setLoading(true);
 
-        try {
-          await courseApi.handleFirstAccess(
-            params.courseId,
-            params.chapterId
-          );
-        } catch (error) {
-          console.error('First access handling error:', error);
-        }
+    try {
+      await courseApi.handleFirstAccess(
+        params.courseId,
+        params.chapterId
+      );
+    } catch (error) {
+      console.error('First access handling error:', error);
+    }
 
-        const chapterResponse = await courseApi.getChapter(
-          params.courseId,
-          params.chapterId
-        );
+    const chapterResponse = await courseApi.getChapter(
+      params.courseId,
+      params.chapterId
+    );
 
-        if (chapterResponse.success && chapterResponse.data) {
-          setChapter(chapterResponse.data);
-          if (chapterResponse.data.userProgress?.[0]) {
-            setProgress(chapterResponse.data.userProgress[0]);
-          }
-
-          try {
-            const submissionResponse = await courseApi.getLatestSubmission(
-              params.courseId,
-              params.chapterId
-            );
-
-            if (submissionResponse.success && submissionResponse.data) {
-              setSubmissionState(prev => ({
-                ...prev,
-                hasSubmitted: true,
-                bestScore: submissionResponse.data.points
-              }));
-              await handleRefreshPeerSubmissions();
-            }
-          } catch (error) {
-            console.error('Error fetching submission:', error);
-          }
-        } else {
-          toast.error('チャプターの読み込みに失敗しました');
-        }
-      } catch (error) {
-        console.error('Error initializing chapter:', error);
-        toast.error('チャプターの読み込みに失敗しました');
-      } finally {
-        setLoading(false);
+    if (chapterResponse.success && chapterResponse.data) {
+      setChapter(chapterResponse.data);
+      if (chapterResponse.data.userProgress?.[0]) {
+        setProgress(chapterResponse.data.userProgress[0]);
       }
-    };
+      await handleRefreshPeerSubmissions(); // ここで直接呼び出し
+    } else {
+      toast.error('チャプターの読み込みに失敗しました');
+    }
+  } catch (error) {
+    console.error('Error initializing chapter:', error);
+    toast.error('チャプターの読み込みに失敗しました');
+  } finally {
+    setLoading(false);
+  }
+};
 
     initializeChapter();
   }, [params.courseId, params.chapterId]);

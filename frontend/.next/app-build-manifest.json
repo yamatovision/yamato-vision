@@ -5,10 +5,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/user/home/page.js"
     ],
-    "/user/layout": [
+    "/admin/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/layout.js"
+      "static/chunks/app/admin/layout.js"
+    ],
+    "/user/courses/[courseId]/chapters/[chapterId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -16,15 +21,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/user/courses/[courseId]/chapters/[chapterId]/page": [
+    "/user/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/page.js"
-    ],
-    "/admin/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/layout.js"
+      "static/chunks/app/user/layout.js"
     ],
     "/admin/courses/[courseId]/chapters/[chapterId]/page": [
       "static/chunks/webpack.js",
@@ -46,20 +46,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/[courseId]/chapters/page.js"
     ],
-    "/user/shop/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/user/shop/page.js"
-    ],
     "/user/courses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/page.js"
     ],
+    "/user/shop/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/shop/page.js"
+    ],
     "/user/forum/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/forum/page.js"
+    ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
     ],
     "/user/forum/layout": [
       "static/chunks/webpack.js",
@@ -70,11 +75,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
     ]
   }
 }
