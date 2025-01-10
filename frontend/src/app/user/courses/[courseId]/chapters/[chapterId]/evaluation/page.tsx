@@ -79,51 +79,50 @@ export default function EvaluationPage({ params }: EvaluationPageProps) {
       setPeerSubmissions([]);
     }
   };
+
   useEffect(() => {
-    const evaluateSubmission = async () => {
-      if (!submission) return;
+    const submissionKey = `submission_${params.courseId}_${params.chapterId}`;
+    const savedSubmission = sessionStorage.getItem(submissionKey);
+    
+    if (!savedSubmission) {
+      // 提出データがない場合は課題ページに戻る
+      router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}`);
+      return;
+    }
   
+    const evaluateSubmission = async () => {
       try {
-        setStatus('evaluating');
         const response = await courseApi.submitTask(
           params.courseId,
           params.chapterId,
-          {
-            submission: decodeURIComponent(submission)
-          }
+          { submission: savedSubmission }
         );
   
-        console.log('【APIレスポンス詳細】', {
-          成功: response.success,
-          データ全体: response.data,
-          提出データ: response.data?.submission,
-          評価データ: response.data?.evaluation,
-          提出内容の型: response.data?.submission ? typeof response.data.submission : '未定義',
-          nextStepの存在: response.data?.submission?.nextStep !== undefined
-        });
-        
-        if (!response.success || !response.data) {
-          throw new Error('評価に失敗しました');
+        // 結果の処理
+        if (response.success && response.data) {
+          setResult({
+            score: response.data.submission.points,
+            feedback: response.data.submission.feedback,
+            nextStep: response.data.submission.nextStep
+          });
+          setStatus('completed');
         }
-  
-        // レスポンスの構造に合わせて修正
-        setResult({
-          score: response.data.submission.points,
-          feedback: response.data.submission.feedback,
-          nextStep: response.data.submission.nextStep || '' // これで取得できるはず
-        });
-        setStatus('completed');
-  
       } catch (error) {
-        console.error('【エラー】評価実行失敗:', error);
-        setError(error instanceof Error ? error.message : '評価に失敗しました');
         setStatus('error');
+        toast.error('評価中にエラーが発生しました');
+      } finally {
+        // 必ずセッションストレージをクリア
+        sessionStorage.removeItem(submissionKey);
       }
     };
   
     evaluateSubmission();
-    fetchPeerSubmissions();
-  }, [submission, params.courseId, params.chapterId]);
+  
+    // クリーンアップ関数
+    return () => {
+      sessionStorage.removeItem(submissionKey);
+    };
+  }, [params.courseId, params.chapterId, router]);
   const handleBack = () => {
     router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}`);
   };

@@ -18,17 +18,22 @@ export function SubmissionForm({ task, courseId, chapterId }: SubmissionFormProp
   const { theme } = useTheme();
   const [submission, setSubmission] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!submission.trim() || isSubmitting) return;
-  
+    
     setIsSubmitting(true);
     
-    // 提出内容をエンコードしてクエリパラメータとして渡す
-    const encodedSubmission = encodeURIComponent(submission.trim());
-    router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation?submission=${encodedSubmission}`);
+    try {
+      const submissionKey = `submission_${courseId}_${chapterId}`;
+      sessionStorage.setItem(submissionKey, submission.trim());
+      router.push(`/user/courses/${courseId}/chapters/${chapterId}/evaluation`);
+    } catch (error) {
+      setIsSubmitting(false);
+      toast.error('提出の準備に失敗しました');
+    }
   };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
