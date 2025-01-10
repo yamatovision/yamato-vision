@@ -678,6 +678,7 @@ export class UserChapterService extends EventEmitter {
             select: {
               id: true,
               name: true,
+              nickname: true,  // nicknameを追加
               avatarUrl: true,
               rank: true
             }
@@ -711,6 +712,7 @@ export class UserChapterService extends EventEmitter {
               id: progress.user.id,
               name: progress.user.name,
               avatarUrl: progress.user.avatarUrl,
+              nickname: progress.user.nickname,  // nicknameを追加
               rank: progress.user.rank,
               isCurrentUser: progress.user.id === currentUserId
             },

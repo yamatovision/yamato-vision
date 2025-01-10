@@ -82,6 +82,11 @@ export default function ChapterPage({ params }: ChapterPageProps) {
   
       const submissions = response.data?.data?.submissions;
       if (response.success && Array.isArray(submissions)) {
+        console.log('【DEBUG】マッピング前のデータ:', {
+          'submissions[0]の構造': submissions[0],
+          'user情報': submissions[0]?.user,
+          'nicknameの値': submissions[0]?.user?.nickname
+        });
         setSubmissionState(prev => ({
           ...prev,
           hasSubmitted: true,  // これを追加
@@ -253,7 +258,7 @@ const initializeChapter = async () => {
       <h2 className={`text-lg font-semibold ${
   theme === 'dark' ? 'text-white' : 'text-gray-900'
 }`}>
-  他の受講生の提出 ({submissionState.peerSubmissions?.length || 0}件)
+  提出済みの課題 ({submissionState.peerSubmissions?.length || 0}件)
 </h2>
 
         <button
@@ -288,7 +293,7 @@ const initializeChapter = async () => {
                     <div className={`font-medium ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
-                      {submission.user.name}
+                       {submission.user.nickname || submission.user.name}
                       {submission.user.isCurrentUser && ' (あなた)'}
                     </div>
                     <div className={`text-sm ${

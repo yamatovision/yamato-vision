@@ -31,6 +31,7 @@ export interface PeerSubmission {
   user: {
     id: string;
     name: string;
+    nickname?: string;  // nicknameを追加
     avatarUrl: string | null;
     rank: string;
     isCurrentUser: boolean;

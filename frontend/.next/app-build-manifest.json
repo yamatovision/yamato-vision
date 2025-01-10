@@ -16,25 +16,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/user/home/page.js"
     ],
-    "/admin/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/layout.js"
-    ],
     "/user/courses/[courseId]/chapters/[chapterId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/page.js"
     ],
-    "/admin/courses/[courseId]/chapters/[chapterId]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/[courseId]/chapters/[chapterId]/page.js"
-    ],
     "/admin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/page.js"
+    ],
+    "/admin/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/layout.js"
+    ],
+    "/admin/courses/[courseId]/chapters/[chapterId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/courses/[courseId]/chapters/[chapterId]/page.js"
     ],
     "/admin/courses/page": [
       "static/chunks/webpack.js",
@@ -66,11 +66,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/user/forum/layout.js"
     ],
-    "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
-    ],
     "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -80,6 +75,11 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/login/page.js"
+    ],
+    "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
     ]
   }
 }
