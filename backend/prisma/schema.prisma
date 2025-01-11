@@ -26,6 +26,11 @@ model User {
   message          String?
   avatarUrl        String?
   rank             String                     @default("お試し")
+    studentId        String?    @unique  // 学籍番号
+  enrollmentYear   Int?       // 入学年度
+  totalCredits     Int        @default(0)  // 取得単位数
+  gpa             Float?     // GPA
+    gradeHistory    GradeHistory[]  // 追加
   comments         Comment[]
   experienceLogs   ExperienceLog[]
   forumPosts       ForumPost[]
@@ -36,6 +41,73 @@ model User {
   mediaProgress    UserChapterMediaProgress[]
   chapterProgress  UserChapterProgress[]
   courses          UserCourse[]
+}
+// 成績評価履歴
+model GradeHistory {
+  id              String    @id @default(cuid())
+  userId          String
+  courseId        String
+  grade           String    // 秀、優、良、可、不可
+  gradePoint      Float     // 4.0, 3.0, 2.0, 1.0, 0.0
+  credits         Int       // 単位数
+  completedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  user            User      @relation(fields: [userId], references: [id])
+  course          Course    @relation(fields: [courseId], references: [id])
+
+  @@index([userId])
+  @@index([courseId])
+}
+model FinalExamProgress {
+  id              String    @id @default(cuid())
+  progressId      String    @unique
+  examStartedAt   DateTime
+  examCompletedAt DateTime?
+  
+  // セクション情報
+  currentSection  Int       @default(1)
+  
+  // セクション1
+  section1Title   String
+  section1Score   Int?
+  section1Feedback String?
+  section1SubmittedAt DateTime?
+  section1Content String?
+  
+  // セクション2
+  section2Title   String
+  section2Score   Int?
+  section2Feedback String?
+  section2SubmittedAt DateTime?
+  section2Content String?
+  
+  // セクション3
+  section3Title   String
+  section3Score   Int?
+  section3Feedback String?
+  section3SubmittedAt DateTime?
+  section3Content String?
+  
+  // 合計スコア
+  totalScore      Int?
+  
+  // リレーションを双方向に設定
+  progress        UserChapterProgress @relation(fields: [progressId], references: [id])
+
+  @@index([progressId])
+}
+
+
+// 学籍番号管理
+model StudentIdCounter {
+  id              String    @id @default(cuid())
+  year            Int       // 年度
+  currentCount    Int       @default(0)
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([year])
 }
 
 model Chapter {
@@ -60,6 +132,7 @@ model Chapter {
   task             Task?                      @relation("ChapterTask", fields: [taskId], references: [id])
   mediaProgress    UserChapterMediaProgress[]
   userProgress     UserChapterProgress[]
+  examSettings     Json?     // 追加: 試験設定用
 
   @@unique([courseId, orderIndex])
 }
@@ -78,6 +151,8 @@ model Course {
   isPublished         Boolean               @default(false)
   publishedAt         DateTime?
   thumbnail           String?
+　 credits    　       Int?        @default(1)  // 単位数（1-4）
+  gradeHistory    GradeHistory[]  // 追加
   timeLimit           Int?
   canEarnHigherStatus Boolean               @default(true)
   requirementType     String                @default("OR")
@@ -334,6 +409,14 @@ model UserChapterProgress {
   startedAt       DateTime?
   completedAt     DateTime?
   score           Int?      // 既存のscoreカラムを維持
+
+  finalExam        FinalExamProgress?
+
+  currentSection  Int?        // 追加: 現在のセクション管理用
+  sectionScores   Json?       // 追加: セクションごとのスコア保存用
+  timeRemaining   Int?        // 追加: 残り時間管理用
+  sectionStartedAt DateTime?  // 追加: セクション開始時間管理用
+
 
   // ベストスコアデータのみ保持
   bestTaskContent String?   // これを追加（ユーザーの実際の提出内容）

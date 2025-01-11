@@ -18,6 +18,8 @@ import { timeoutChecker } from './utils/timeoutChecker';
 import { TokenSyncService } from './sync/token/tokenSyncService';
 import { UserSyncService } from './sync/user/userSyncService';
 import { submissionRoutes } from './courses/submissions/submissionRoutes';
+import { examinationRoutes } from './courses/examinations/examinationRoutes';
+
 
 dotenv.config();
 export const prisma = new PrismaClient();
@@ -80,6 +82,7 @@ app.use('/api/admin', adminRoutes);          // 管理者用エンドポイン�
 app.use('/api/courses/user', courseUserRoutes);      // ユーザー用エンドポイント
 app.use('/api/media', mediaRoutes);        
 app.use('/api', submissionRoutes);  // または app.use('/api/courses', submissionRoutes);
+app.use('/api/courses', examinationRoutes);  // 試験システムのルートを追加
 
 
 // デバッグ用エンドポイント

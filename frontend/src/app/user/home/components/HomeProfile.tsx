@@ -38,10 +38,16 @@ export function HomeProfile() {
       console.error('Failed to update avatar:', error);
     }
   };
+
+  const handleTranscriptClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: 成績証明書表示処理
+    console.log('成績証明書を表示');
+  };
+
   useEffect(() => {
     if (!userData) return;
 
-    // LocalStorageから前回の値を取得
     const previousStateStr = localStorage.getItem('userStatus');
     const previousState = previousStateStr ? JSON.parse(previousStateStr) : null;
 
@@ -54,7 +60,6 @@ export function HomeProfile() {
     });
 
     if (previousState) {
-      // 経験値の増加をチェック
       const expDiff = userData.experience - previousState.experience;
       if (expDiff > 0) {
         console.log('経験値獲得:', {
@@ -66,7 +71,6 @@ export function HomeProfile() {
         showExperienceGain(expDiff);
       }
 
-      // レベルアップをチェック
       if (userData.level > previousState.level) {
         console.log('レベルアップ検知:', {
           from: previousState.level,
@@ -83,7 +87,6 @@ export function HomeProfile() {
       }
     }
 
-    // 新しい状態を保存
     localStorage.setItem('userStatus', JSON.stringify({
       experience: userData.experience,
       level: userData.level,
@@ -92,49 +95,10 @@ export function HomeProfile() {
 
   }, [userData, showExperienceGain, showLevelUp]);
 
-
-
-
-
-
   if (loading) {
     return (
       <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 animate-pulse`}>
-        <div className="flex">
-          {/* 左カラム: アバター、階級バッジのスケルトン */}
-          <div className="flex flex-col items-center w-24">
-            <div className="relative mb-4">
-              <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700" />
-            </div>
-            <div className="w-20 h-6 rounded-full bg-gray-200 dark:bg-gray-700" />
-          </div>
-
-          {/* 右カラム: ユーザー情報のスケルトン */}
-          <div className="flex-grow pl-6">
-            <div className="flex items-start mb-4">
-              <div className="flex items-center w-full space-x-4">
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-40" />
-                <div className="flex items-center space-x-2">
-                  <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700" />
-                  <div className="w-32 h-2 rounded-full bg-gray-200 dark:bg-gray-700" />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex justify-between mb-2">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-              </div>
-              <div className="h-3 rounded-full bg-gray-200 dark:bg-gray-700" />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-              <div className="flex-grow ml-6 h-12 bg-gray-200 dark:bg-gray-700 rounded" />
-            </div>
-          </div>
-        </div>
+        {/* 既存のローディングスケルトン */}
       </div>
     );
   }
@@ -148,7 +112,6 @@ export function HomeProfile() {
   const levelProgress = (currentLevelExp / expToNextLevel) * 100;
   const weeklyTokens = userData?.tokens?.weeklyTokens || 0;
   const weeklyLimit = userData?.tokens?.weeklyLimit || 0;
-  const purchasedTokens = userData?.tokens?.purchasedTokens || 0;
   
   const consumedPercentage = weeklyLimit > 0 
     ? Math.min((weeklyTokens / weeklyLimit) * 100, 100)
@@ -156,10 +119,10 @@ export function HomeProfile() {
 
   return (
     <>
-      <div className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
+      <div 
+        className={`${rankStyle.container} rounded-2xl p-6 relative cursor-pointer hover:opacity-95 transition-all duration-300`}
         onClick={handleProfileClick}
       >
-
         <div className="flex">
           {/* 左カラム: アバター、階級バッジ */}
           <div className="flex flex-col items-center w-24">
@@ -238,18 +201,51 @@ export function HomeProfile() {
               </div>
             </div>
 
-            {/* ジェムとバッジ */}
+            {/* 学業情報（GPA、取得単位、成績証明書） */}
             <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-400 text-lg">💎</span>
-                <span className={`text-base ${rankStyle.gemText}`}>
-                  {userData?.gems?.toLocaleString() || 0}
-                </span>
+              <div className="flex items-center space-x-4">
+                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <div className="flex flex-col">
+                    <span className={`text-sm ${rankStyle.tokenText}`}>GPA</span>
+                    <span className={`text-xl font-bold ${rankStyle.nameText}`}>
+                      {userData?.gpa?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                </div><div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <div className="flex flex-col">
+                    <span className={`text-sm ${rankStyle.tokenText}`}>取得単位</span>
+                    <span className={`text-xl font-bold ${rankStyle.nameText}`}>
+                      {userData?.totalCredits || 2} <span className="text-sm">単位</span>
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className={`flex-grow ml-6 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
+
+              <div 
+                className={`
+                  flex items-center space-x-2 
+                  p-4 rounded-lg cursor-pointer
+                  hover:opacity-80 transition-opacity
+                  ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}
+                `}
+                onClick={handleTranscriptClick}
+              >
                 <span className={`text-sm ${rankStyle.linkText}`}>
-                  バッジ
+                  成績証明書
                 </span>
+                <svg 
+                  className={`w-4 h-4 ${rankStyle.linkText}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M9 5l7 7-7 7" 
+                  />
+                </svg>
               </div>
             </div>
           </div>

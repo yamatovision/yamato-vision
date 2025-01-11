@@ -10,6 +10,21 @@ import { ChapterTimeSettings } from './ChapterTimeSettings';
 import { TaskForm } from './TaskForm';
 import { Chapter, Task, CreateChapterDTO, TaskContent, ReferenceFile } from '@/types/course';
 
+// 型定義
+interface ExamSection {
+  number: 1 | 2 | 3;
+  title: string;
+  task: {
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+  };
+}
+
+interface ExamSettings {
+  sections: ExamSection[];
+}
+
 interface ChapterFormData {
   title: string;
   subtitle: string;
@@ -32,6 +47,8 @@ interface ChapterFormData {
     evaluationCriteria?: string;
     maxPoints: number;
   };
+  isFinalExam: boolean;
+  examSettings?: ExamSettings;
 }
 
 interface ChapterFormProps {
@@ -71,16 +88,40 @@ export function ChapterForm({
       task: initialData.task.task,
       evaluationCriteria: initialData.task.evaluationCriteria,
       maxPoints: initialData.task.maxPoints
+    } : undefined,
+    isFinalExam: initialData?.isFinalExam || false,
+    examSettings: initialData?.isFinalExam ? {
+      sections: [
+        {
+          number: 1,
+          title: initialData.examSettings?.sections[0]?.title || "基礎理解度確認",
+          task: {
+            materials: initialData.examSettings?.sections[0]?.task.materials || '',
+            task: initialData.examSettings?.sections[0]?.task.task || '',
+            evaluationCriteria: initialData.examSettings?.sections[0]?.task.evaluationCriteria || ''
+          }
+        },
+        {
+          number: 2,
+          title: initialData.examSettings?.sections[1]?.title || "実践応用課題",
+          task: {
+            materials: initialData.examSettings?.sections[1]?.task.materials || '',
+            task: initialData.examSettings?.sections[1]?.task.task || '',
+            evaluationCriteria: initialData.examSettings?.sections[1]?.task.evaluationCriteria || ''
+          }
+        },
+        {
+          number: 3,
+          title: initialData.examSettings?.sections[2]?.title || "総合課題",
+          task: {
+            materials: initialData.examSettings?.sections[2]?.task.materials || '',
+            task: initialData.examSettings?.sections[2]?.task.task || '',
+            evaluationCriteria: initialData.examSettings?.sections[2]?.task.evaluationCriteria || ''
+          }
+        }
+      ]
     } : undefined
   });
-
-  const validateForm = () => {
-    if (!formData.title.trim()) {
-      toast.error('コースタイトルを入力してください');
-      return false;
-    }
-    return true;
-  };
 
   const handleTimeSettingsUpdate = async (settings: { timeLimit?: number; releaseTime?: number }) => {
     setFormData(prev => ({
@@ -89,13 +130,36 @@ export function ChapterForm({
       releaseTime: settings.releaseTime ?? prev.releaseTime
     }));
   };
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      toast.error('タイトルを入力してください');
+      return false;
+    }
+  
+    if (formData.isFinalExam && formData.examSettings) {
+      for (const section of formData.examSettings.sections) {
+        if (!section.title.trim()) {
+          toast.error(`セクション${section.number}のタイトルを入力してください`);
+          return false;
+        }
+        if (!section.task.materials.trim() || 
+            !section.task.task.trim() || 
+            !section.task.evaluationCriteria.trim()) {
+          toast.error(`セクション${section.number}の課題内容をすべて入力してください`);
+          return false;
+        }
+      }
+    }
+  
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
     setIsSubmitting(true);
-
+  
     try {
       const submitData: CreateChapterDTO = {
         title: formData.title,
@@ -112,9 +176,24 @@ export function ChapterForm({
         timeLimit: formData.timeLimit,
         releaseTime: formData.releaseTime,
         orderIndex: formData.orderIndex,
-        task: formData.task
+        isFinalExam: formData.isFinalExam,
+        examSettings: formData.isFinalExam ? {
+          sections: formData.examSettings!.sections.map(section => ({
+            number: section.number,
+            title: section.title,
+            task: {
+              materials: section.task.materials,
+              task: section.task.task,
+              evaluationCriteria: section.task.evaluationCriteria
+            }
+          }))
+        } : undefined,
+        task: formData.isFinalExam ? {
+          title: "最終試験",
+          maxPoints: 100
+        } : formData.task
       };
-
+  
       if (initialData) {
         await courseApi.updateChapter(courseId, initialData.id, submitData);
         toast.success('チャプターを更新しました');
@@ -131,7 +210,7 @@ export function ChapterForm({
     }
   };
 
-  return (
+return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* 基本情報セクション */}
@@ -290,6 +369,169 @@ export function ChapterForm({
             }}
             disabled={isSubmitting}
           />
+        </section>
+
+        {/* 試験設定セクション */}
+        <section className={`p-6 rounded-lg ${
+          theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+        }`}>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className={`text-lg font-medium ${
+              theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+            }`}>
+              試験設定
+            </h3>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isFinalExam"
+                checked={formData.isFinalExam}
+                onChange={(e) => {
+                  const isExam = e.target.checked;
+                  setFormData(prev => ({
+                    ...prev,
+                    isFinalExam: isExam,
+                    examSettings: isExam ? {
+                      sections: [
+                        {
+                          number: 1,
+                          title: "基礎理解度確認",
+                          task: { materials: '', task: '', evaluationCriteria: '' }
+                        },
+                        {
+                          number: 2,
+                          title: "実践応用課題",
+                          task: { materials: '', task: '', evaluationCriteria: '' }
+                        },
+                        {
+                          number: 3,
+                          title: "総合課題",
+                          task: { materials: '', task: '', evaluationCriteria: '' }
+                        }
+                      ]
+                    } : undefined
+                  }));
+                }}
+                className="form-checkbox h-5 w-5 text-blue-600"
+              />
+              <label htmlFor="isFinalExam" className="text-sm text-gray-300">
+                このチャプターを最終試験として設定する
+              </label>
+            </div>
+          </div>
+
+          {formData.isFinalExam && formData.examSettings && (
+            <div className="space-y-6">
+              {formData.examSettings.sections.map((section) => (
+                <div key={section.number} className="border border-gray-700 rounded-lg p-6">
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      セクション {section.number} タイトル
+                    </label>
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => {
+                        const newSections = formData.examSettings!.sections.map(s => 
+                          s.number === section.number 
+                            ? { ...s, title: e.target.value }
+                            : s
+                        );
+                        setFormData(prev => ({
+                          ...prev,
+                          examSettings: {
+                            ...prev.examSettings!,
+                            sections: newSections
+                          }
+                        }));
+                      }}
+                      className="w-full rounded-lg p-3 bg-gray-700 text-white border-gray-600"
+                      placeholder={`セクション ${section.number} のタイトルを入力`}
+                    />
+                  </div>
+
+                  {/* 配点表示 */}
+                  <div className="mb-4 text-sm text-gray-400">
+                    配点: {section.number === 3 ? '40' : '30'}点
+                  </div>
+
+                  {/* 課題内容設定 */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        教材内容
+                      </label>
+                      <textarea
+                        value={section.task.materials}
+                        onChange={(e) => {
+                          const newSections = formData.examSettings!.sections.map(s =>
+                            s.number === section.number
+                              ? { ...s, task: { ...s.task, materials: e.target.value } }
+                              : s
+                          );
+                          setFormData(prev => ({
+                            ...prev,
+                            examSettings: {
+                              ...prev.examSettings!,
+                              sections: newSections
+                            }
+                          }));
+                        }}
+                        className="w-full h-32 rounded-lg p-3 bg-gray-700 text-white border-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        課題内容
+                      </label>
+                      <textarea
+                        value={section.task.task}
+                        onChange={(e) => {
+                          const newSections = formData.examSettings!.sections.map(s =>
+                            s.number === section.number
+                              ? { ...s, task: { ...s.task, task: e.target.value } }
+                              : s
+                          );
+                          setFormData(prev => ({
+                            ...prev,
+                            examSettings: {
+                              ...prev.examSettings!,
+                              sections: newSections
+                            }
+                          }));
+                        }}
+                        className="w-full h-32 rounded-lg p-3 bg-gray-700 text-white border-gray-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        評価基準
+                      </label>
+                      <textarea
+                        value={section.task.evaluationCriteria}
+                        onChange={(e) => {
+                          const newSections = formData.examSettings!.sections.map(s =>
+                            s.number === section.number
+                              ? { ...s, task: { ...s.task, evaluationCriteria: e.target.value } }
+                              : s
+                          );
+                          setFormData(prev => ({
+                            ...prev,
+                            examSettings: {
+                              ...prev.examSettings!,
+                              sections: newSections
+                            }
+                          }));
+                        }}
+                        className="w-full h-32 rounded-lg p-3 bg-gray-700 text-white border-gray-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 操作ボタン */}

@@ -10,3 +10,16 @@ export interface APIResponse<T> {
   message?: string;
   error?: string;  // エラー18を解決
 }
+
+export interface StartExamResponse {
+  startedAt: string;
+  timeLimit: number;
+}
+
+export interface ExamResult {
+  sectionNumber: number;
+  score: number;
+  feedback: string;
+  submittedAt: string;
+  isComplete?: boolean;
+}

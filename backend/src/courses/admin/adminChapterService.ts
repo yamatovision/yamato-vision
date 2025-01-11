@@ -10,9 +10,34 @@ import {
   ReferenceFile
 } from '../types/chapter';
 
+
+
+interface ExamSection {
+  title: string;
+  task: {
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+  };
+}
+
+interface ExamSettings {
+  sections: ExamSection[];
+}
+
+
 export class AdminChapterService {
+  
   private prisma: PrismaClient;
   private progressManager: CourseProgressManager;
+
+  private createTaskContent(taskContent: TaskContent | undefined, examSettings: Prisma.JsonValue): Prisma.JsonValue {
+    const baseContent = taskContent ? this.formatTaskContent(taskContent) : {};
+    return {
+      ...(baseContent as object),
+      examSettings
+    };
+  }
 
   private async reorderChapters(tx: Prisma.TransactionClient, courseId: string): Promise<void> {
     const chapters = await tx.chapter.findMany({
@@ -46,13 +71,15 @@ export class AdminChapterService {
     };
   }
   
-  private formatTaskContent(content: TaskContent | undefined): Prisma.InputJsonValue {
+  private formatTaskContent(content: TaskContent | undefined): Record<string, any> {
     if (!content) return {};
     return {
       description: content.description || ''
     };
   }
-  
+
+
+
   private formatReferenceFiles(files: ReferenceFile[] | undefined): Prisma.InputJsonValue {
     if (!files) return [];
     return files.map(file => ({
@@ -64,6 +91,8 @@ export class AdminChapterService {
       uploadedAt: file.uploadedAt
     }));
   }
+
+
   async updateChapter(chapterId: string, data: UpdateChapterDTO): Promise<ChapterWithTask> {
     const chapter = await this.prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -80,12 +109,13 @@ export class AdminChapterService {
         }
       }
     });
-
+  
     if (!chapter) {
       throw new Error('Chapter not found');
     }
-
+  
     const updatedChapter = await this.prisma.$transaction(async (tx) => {
+      // チャプターの更新
       const updateResult = await tx.chapter.update({
         where: { id: chapterId },
         data: {
@@ -93,13 +123,17 @@ export class AdminChapterService {
           subtitle: data.subtitle || chapter.subtitle,
           content: data.content 
             ? this.formatChapterContent(data.content) 
-            : (chapter.content || Prisma.JsonNull),
+            : (chapter.content as Prisma.InputJsonValue),
           taskContent: data.taskContent 
-            ? this.formatTaskContent(data.taskContent) 
-            : (chapter.taskContent || Prisma.JsonNull),
+            ? this.formatTaskContent(data.taskContent)
+            : (chapter.taskContent as Prisma.InputJsonValue),
+          examSettings: data.isFinalExam 
+            ? this.formatExamSettings(data)
+            : (data.isFinalExam === false ? Prisma.JsonNull : chapter.examSettings as Prisma.InputJsonValue),
+          isFinalExam: data.isFinalExam ?? chapter.isFinalExam,
           referenceFiles: data.referenceFiles 
             ? this.formatReferenceFiles(data.referenceFiles) 
-            : (chapter.referenceFiles || Prisma.JsonNull),
+            : (chapter.referenceFiles ?? Prisma.JsonNull),
           timeLimit: data.timeLimit ?? chapter.timeLimit,
           releaseTime: data.releaseTime ?? chapter.releaseTime,
           isVisible: data.isVisible ?? chapter.isVisible,
@@ -118,34 +152,102 @@ export class AdminChapterService {
           }
         }
       });
-      if (data.task && chapter.taskId) {
-        const systemMessage = `<materials>
-${data.task.materials || ''}
-</materials>
-<task>
-${data.task.task || ''}
-</task>
-<evaluation_criteria>
-${data.task.evaluationCriteria || ''}
-</evaluation_criteria>`;
-
-        await tx.task.update({
-          where: { id: chapter.taskId },
-          data: {
-            title: chapter.title, // チャプタータイトルを使用
-            materials: data.task.materials || null,
-            task: data.task.task || null,
-            evaluationCriteria: data.task.evaluationCriteria || null,
-            maxPoints: 100, // 固定値として設定
-            systemMessage: systemMessage
-          }
+    
+      // 試験モードの場合のTask更新
+      if (data.isFinalExam && data.examSettings) {
+        // すべてのセクションの情報を結合
+        const combinedMaterials = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.materials}`
+          ).join('\n\n');
+  
+        const combinedTasks = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.task}`
+          ).join('\n\n');
+  
+        const combinedCriteria = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.evaluationCriteria}`
+          ).join('\n\n');
+  
+        const systemMessage = `<exam_settings>
+          ${data.examSettings.sections.map((section, index) => `
+            <section number="${index + 1}" title="${section.title}">
+              <materials>${section.task.materials}</materials>
+              <task>${section.task.task}</task>
+              <evaluation_criteria>${section.task.evaluationCriteria}</evaluation_criteria>
+            </section>
+          `).join('')}
+        </exam_settings>`;
+  
+        if (chapter.taskId) {
+          // 既存のTaskを更新
+          await tx.task.update({
+            where: { id: chapter.taskId },
+            data: {
+              title: `${updateResult.title} - 最終試験`,
+              materials: combinedMaterials,
+              task: combinedTasks,
+              evaluationCriteria: combinedCriteria,
+              maxPoints: 100,
+              systemMessage: systemMessage
+            }
+          });
+        } else {
+          // 新規にTaskを作成
+          const task = await tx.task.create({
+            data: {
+              courseId: chapter.courseId,
+              title: `${updateResult.title} - 最終試験`,
+              materials: combinedMaterials,
+              task: combinedTasks,
+              evaluationCriteria: combinedCriteria,
+              maxPoints: 100,
+              systemMessage: systemMessage,
+              chapter: {
+                connect: { id: chapter.id }
+              }
+            }
+          });
+  
+          await tx.chapter.update({
+            where: { id: chapter.id },
+            data: { taskId: task.id }
+          });
+        }
+      } else if (data.isFinalExam === false && chapter.taskId) {
+        // 試験モードが解除された場合、関連するTaskを削除
+        await tx.task.delete({
+          where: { id: chapter.taskId }
+        });
+  
+        await tx.chapter.update({
+          where: { id: chapter.id },
+          data: { taskId: null }
         });
       }
-
+  
       return updateResult;
     });
-
+  
     return updatedChapter as ChapterWithTask;
+  }
+  
+  // formatExamSettings のヘルパー関数も追加
+  private formatExamSettings(data: CreateChapterDTO | UpdateChapterDTO): Prisma.NullTypes.JsonNull | Prisma.InputJsonValue {
+    if (!data.examSettings) return Prisma.JsonNull;
+    
+    return {
+      sections: data.examSettings.sections.map(section => ({
+        title: section.title,
+        task: {
+          materials: section.task.materials || '',
+          task: section.task.task || '',
+          evaluationCriteria: section.task.evaluationCriteria || ''
+        }
+      }))
+    };
   }
 
   async createChapter(courseId: string, data: CreateChapterDTO): Promise<ChapterWithTask> {
@@ -171,8 +273,14 @@ ${data.task.evaluationCriteria || ''}
           courseId,
           title: data.title,
           subtitle: data.subtitle || '',
-          content: this.formatChapterContent(data.content),
-          taskContent: this.formatTaskContent(data.taskContent),
+          content: this.formatChapterContent(data.content) as Prisma.InputJsonValue,
+          taskContent: data.taskContent 
+            ? (this.formatTaskContent(data.taskContent) as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          examSettings: data.isFinalExam 
+            ? (this.formatExamSettings(data) as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          isFinalExam: data.isFinalExam || false,
           referenceFiles: this.formatReferenceFiles(data.referenceFiles),
           timeLimit: data.timeLimit || 0,
           releaseTime: data.releaseTime || 0,
@@ -194,25 +302,42 @@ ${data.task.evaluationCriteria || ''}
         }
       });
   
-      if (data.task) {
-        const systemMessage = `<materials>
-  ${data.task.materials || ''}
-  </materials>
-  <task>
-  ${data.task.task || ''}
-  </task>
-  <evaluation_criteria>
-  ${data.task.evaluationCriteria || ''}
-  </evaluation_criteria>`;
+      // 試験モードの場合のTask作成を修正
+      if (data.isFinalExam && data.examSettings) {
+        // すべてのセクションの情報を結合して保存
+        const combinedMaterials = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.materials}`
+          ).join('\n\n');
+  
+        const combinedTasks = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.task}`
+          ).join('\n\n');
+  
+        const combinedCriteria = data.examSettings.sections
+          .map((section, index) => 
+            `【セクション${index + 1}】${section.title}\n${section.task.evaluationCriteria}`
+          ).join('\n\n');
+  
+        const systemMessage = `<exam_settings>
+          ${data.examSettings.sections.map((section, index) => `
+            <section number="${index + 1}" title="${section.title}">
+              <materials>${section.task.materials}</materials>
+              <task>${section.task.task}</task>
+              <evaluation_criteria>${section.task.evaluationCriteria}</evaluation_criteria>
+            </section>
+          `).join('')}
+        </exam_settings>`;
   
         const task = await tx.task.create({
           data: {
             courseId,
-            title: chapter.title,  // チャプタータイトルを使用
-            materials: data.task.materials || null,
-            task: data.task.task || null,
-            evaluationCriteria: data.task.evaluationCriteria || null,
-            maxPoints: data.task.maxPoints || 100,
+            title: `${chapter.title} - 最終試験`,
+            materials: combinedMaterials,
+            task: combinedTasks,
+            evaluationCriteria: combinedCriteria,
+            maxPoints: 100,
             systemMessage: systemMessage,
             chapter: {
               connect: { id: chapter.id }

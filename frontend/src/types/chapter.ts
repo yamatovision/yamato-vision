@@ -3,11 +3,29 @@ import {
   ChapterEvaluationStatus 
 } from './status';
 
-export interface CurrentChapterData {
-  chapterId: string;  // 現在のチャプターID
+// 試験セクションの評価結果
+export interface ExamSectionResult {
+  sectionNumber: number;
+  score: number;
+  feedback: string;
+  submittedAt: Date;
 }
 
-// フロントエンド用の基本型定義
+// 試験モード用の拡張データ
+export interface ExamChapterData extends ChapterPreviewData {
+  isFinalExam: true;
+  sections: {
+    id: string;
+    title: string;
+    task: ChapterTask;
+  }[];
+  timeLimit: number;  // 分単位
+  sectionResults?: ExamSectionResult[];
+  currentSection?: number;
+  startedAt?: Date;
+}
+
+// フロントエンド用の基本型定義（既存）
 export interface ChapterContent {
   type: 'video' | 'audio';
   videoId: string;
@@ -22,7 +40,7 @@ export interface ChapterTask {
   maxPoints: number;
 }
 
-// プレビュー表示用の型定義
+// プレビュー表示用の型定義（isFinalExam追加）
 export interface ChapterPreviewData {
   id: string;
   title: string;
@@ -38,6 +56,7 @@ export interface ChapterPreviewData {
   isLocked: boolean;
   canAccess: boolean;
   nextUnlockTime?: Date;
+  isFinalExam: boolean;  // 追加
 }
 
 // 学習継続用の現在のチャプター情報の型定義
@@ -53,5 +72,6 @@ export interface CurrentChapterData {
     orderIndex: number;
     timeLimit?: number;
     task?: ChapterTask;
+    isFinalExam?: boolean;  // 追加
   };
 }

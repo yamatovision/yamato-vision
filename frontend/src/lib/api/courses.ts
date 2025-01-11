@@ -32,6 +32,32 @@ interface CourseListResponse extends BaseResponse {
   })[];
 }
 
+interface ExamResult {
+  totalScore: number;
+  grade: '秀' | '優' | '良' | '可' | '不可';
+  gradePoint: number;
+  feedback: string;
+  sectionResults: {
+    sectionId: string;
+    score: number;
+    feedback: string;
+    nextStep: string;
+    submittedAt: Date;
+  }[];
+  evaluatedAt: Date;
+}
+
+interface CertificateData {
+  studentName: string;
+  studentId: string;
+  courseName: string;
+  grade: string;
+  score: number;
+  completedAt: string;
+  certificateId: string;
+}
+
+
 interface PeerSubmissionResponse {
   submissions: Array<{
     id: string;
@@ -158,6 +184,138 @@ export const courseApi = {
       };
     } catch (error) {
       console.error('Error getting media progress:', error);
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  startExam: async (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/start`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+      
+      
+
+      if (!response.ok) {
+        throw new Error('Failed to start exam');
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // セクション提出
+  submitExamSection: async (
+    courseId: string,
+    chapterId: string,
+    sectionId: string,
+    content: string
+  ): Promise<APIResponse<ExamResult | null>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/sections/${sectionId}/submit`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify({ content })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to submit exam section');
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data,
+        isComplete: data.isComplete
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // 試験結果取得
+  getExamResult: async (
+    courseId: string,
+    chapterId: string
+  ): Promise<APIResponse<ExamResult>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/result`,
+        {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to get exam result');
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+  // 証明書データ取得
+  getExamCertificate: async (
+    courseId: string,
+    chapterId: string
+  ): Promise<APIResponse<CertificateData>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/certificate`,
+        {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to get certificate data');
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
       return {
         success: false,
         data: null,

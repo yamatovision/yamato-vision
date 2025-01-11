@@ -27,7 +27,8 @@ export interface ReferenceFile {
 
 // TaskContent型の定義を追加
 export interface TaskContent {
-  description: string;  // リッチテキスト形式の課題説明
+  description: string;
+  examSettings?: ExamSettings;  // 追加
 }
 // JsonValue 型の定義も追加
 type JsonValue =
@@ -49,17 +50,33 @@ export interface ChapterContent {
   transcription?: string;
 }
 
+export interface ExamTaskSection {
+  materials: string;
+  task: string;
+  evaluationCriteria: string;
+}
+
+export interface ExamSection {
+  title: string;
+  task: ExamTaskSection;
+}
+
+export interface ExamSettings {
+  sections: ExamSection[];
+}
 // DTOs
 export interface CreateChapterDTO {
   title: string;
   subtitle?: string;
   content?: ChapterContent;
-  taskContent?: TaskContent;  // 変更
-  referenceFiles?: ReferenceFile[];  // 追加
+  taskContent?: TaskContent;
+  referenceFiles?: ReferenceFile[];
   timeLimit?: number;
   releaseTime?: number;
   orderIndex?: number;
   experienceWeight?: number;
+  isFinalExam?: boolean;  // 追加
+  examSettings?: ExamSettings;  // 追加
   task?: {
     title: string;
     materials?: string;
@@ -75,6 +92,7 @@ export interface UpdateChapterDTO {
   taskContent?: TaskContent;  // 変更
   referenceFiles?: ReferenceFile[];  // 追加
   timeLimit?: number;
+  examSettings?: ExamSettings;  // 追加
   releaseTime?: number;
   isVisible?: boolean;
   isFinalExam?: boolean;

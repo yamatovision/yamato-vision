@@ -14,12 +14,28 @@ export interface ChapterContent {
 // タスクの定義
 export interface Task {
   id?: string;
+  title: string;  // 追加
   materials?: string;
   task?: string;
   evaluationCriteria?: string;
   systemMessage: string;
-  maxPoints?: number;
+  maxPoints: number;  // optional を削除
 }
+
+export interface ExamSection {
+  number: 1 | 2 | 3;
+  title: string;
+  task: {
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+  };
+}
+
+export interface ExamSettings {
+  sections: ExamSection[];
+}
+
 
 export interface ReferenceFile {
   id: string;
@@ -52,6 +68,8 @@ export interface TaskContent {
   description: string;  // リッチテキスト形式の課題説明
 }
 
+
+
 // チャプターの定義
 export interface Chapter {
   id: string;
@@ -70,7 +88,7 @@ export interface Chapter {
   experienceWeight: number;
   task?: Task;
   userProgress?: UserChapterProgress[];  // 追加
-
+  examSettings?: ExamSettings;
 }
 
 // ChapterContent型も修正
@@ -175,6 +193,7 @@ export interface ChapterProgressInfo {
     orderIndex: number;
     timeLimit: number;
     isVisible: boolean;
+    examSettings?: ExamSettings;
     experienceWeight?: number;
     releaseTime?: number;     // 追加必要
     isPerfectOnly?: boolean;  // 追加必要
@@ -197,6 +216,7 @@ export interface UpdateChapterDTO {
   orderIndex?: number;
   timeLimit?: number;
   waitTime?: number;
+  examSettings?: ExamSettings;
   releaseTime?: number;
   experienceWeight?: number;
   isVisible?: boolean;

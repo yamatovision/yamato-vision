@@ -88,43 +88,50 @@ export default function ChapterPage({ params }: ChapterPageProps) {
 
   useEffect(() => {
     // page.tsx の initializeChapter 関数内
-const initializeChapter = async () => {
-  try {
-    setLoading(true);
+    const initializeChapter = async () => {
+      try {
+        setLoading(true);
 
-    try {
-      await courseApi.handleFirstAccess(
-        params.courseId,
-        params.chapterId
-      );
-    } catch (error) {
-      console.error('First access handling error:', error);
-    }
+        try {
+          await courseApi.handleFirstAccess(
+            params.courseId,
+            params.chapterId
+          );
+        } catch (error) {
+          console.error('First access handling error:', error);
+        }
 
-    const chapterResponse = await courseApi.getChapter(
-      params.courseId,
-      params.chapterId
-    );
+        const chapterResponse = await courseApi.getChapter(
+          params.courseId,
+          params.chapterId
+        );
 
-    if (chapterResponse.success && chapterResponse.data) {
-      setChapter(chapterResponse.data);
-      if (chapterResponse.data.userProgress?.[0]) {
-        setProgress(chapterResponse.data.userProgress[0]);
+        if (chapterResponse.success && chapterResponse.data) {
+          // 試験モードの場合はリダイレクト
+          if (chapterResponse.data.isFinalExam) {
+            router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}/examination`);
+            return;
+          }
+
+          setChapter(chapterResponse.data);
+          if (chapterResponse.data.userProgress?.[0]) {
+            setProgress(chapterResponse.data.userProgress[0]);
+          }
+          await handleRefreshPeerSubmissions();
+        } else {
+          toast.error('チャプターの読み込みに失敗しました');
+        }
+      } catch (error) {
+        console.error('Error initializing chapter:', error);
+        toast.error('チャプターの読み込みに失敗しました');
+      } finally {
+        setLoading(false);
       }
-      await handleRefreshPeerSubmissions(); // ここで直接呼び出し
-    } else {
-      toast.error('チャプターの読み込みに失敗しました');
-    }
-  } catch (error) {
-    console.error('Error initializing chapter:', error);
-    toast.error('チャプターの読み込みに失敗しました');
-  } finally {
-    setLoading(false);
-  }
-};
+    };
 
     initializeChapter();
   }, [params.courseId, params.chapterId]);
+
 
   if (loading) {
     return (
