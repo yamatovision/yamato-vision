@@ -15,12 +15,13 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
   const [isWarning, setIsWarning] = useState(false);
   const [isDanger, setIsDanger] = useState(false);
 
+
   // 残り時間の計算（ミリ秒→秒）
-  const calculateTimeLeft = useCallback(() => {
-    const now = new Date();
-    const endTime = new Date(startedAt.getTime() + duration * 60 * 60 * 1000); // 時間をミリ秒に変換
-    return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
-  }, [startedAt, duration]);
+    const calculateTimeLeft = useCallback(() => {
+      const now = new Date();
+      const endTime = new Date(startedAt.getTime() + duration * 60 * 60 * 1000); // 時間単位
+      return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+    }, [startedAt, duration]);
 
   // 時間のフォーマット
   const formatTime = useCallback((seconds: number) => {

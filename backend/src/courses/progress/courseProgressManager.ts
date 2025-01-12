@@ -68,12 +68,16 @@ type ProgressEvent<T extends keyof ProgressEventType> = {
 export class CourseProgressManager {
   private prisma: PrismaClient;
   private eventEmitter: EventEmitter;
+  private readonly MILLISECONDS_PER_HOUR = 60 * 60 * 1000; // 1時間のミリ秒
   private readonly MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
   constructor() {
     this.prisma = new PrismaClient();
     this.eventEmitter = new EventEmitter();
   }
+
+
+
   async handleFirstAccess(
     tx: Prisma.TransactionClient,
     userId: string,
@@ -113,7 +117,7 @@ export class CourseProgressManager {
     if (progress?.status === 'NOT_STARTED') {
       const now = new Date();
       const timeOutAt = progress.chapter.timeLimit 
-        ? new Date(now.getTime() + progress.chapter.timeLimit * 24 * 60 * 60 * 1000)
+      ? new Date(now.getTime() + progress.chapter.timeLimit * this.MILLISECONDS_PER_HOUR) // 時間単位に変更
         : null;
   
       const updatedProgress = await tx.userChapterProgress.update({
@@ -1136,7 +1140,7 @@ private calculateFinalStatus(
   return 'failed';
 }
 private calculateTimeoutDate(startDate: Date, timeLimit: number): Date {
-  return new Date(startDate.getTime() + timeLimit * this.MILLISECONDS_PER_DAY);
+  return new Date(startDate.getTime() + timeLimit * this.MILLISECONDS_PER_HOUR); // 時間単位に変更
 }
 
 

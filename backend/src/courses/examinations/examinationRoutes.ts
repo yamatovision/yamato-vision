@@ -20,11 +20,15 @@ router.post(
   examinationController.submitSection
 );
 
-// 試験状態取得も同様に修正
 router.get(
-  '/user/:courseId/chapters/:chapterId/exam/status',
-  authMiddleware,
-  examinationController.getExamStatus.bind(examinationController)
+  '/:courseId/chapters/:chapterId/exam/progress',
+  examinationController.getExamProgress
 );
+router.post(
+  '/:courseId/chapters/:chapterId/exam/start',
+  examinationController.startExam
+);
+
+
 
 export { router as examinationRoutes };

@@ -1,9 +1,10 @@
 // backend/src/courses/examinations/examinationService.ts
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { evaluationService } from '../submissions/evaluationService';
 import { claudeService } from '../submissions/claudeService';
 import { finalExamEvaluationService } from '../submissions/finalExamEvaluationService';
+import { CourseProgressManager } from '../progress/courseProgressManager';
 
 
 import {
@@ -18,6 +19,40 @@ import {
 import { timeoutService } from '../timeouts/timeoutService';
 
 const prisma = new PrismaClient();
+
+interface SectionResult {
+  sectionId: string;
+  score: number;
+  feedback: string;
+  nextStep: string;
+  submittedAt: Date;
+}
+
+interface FinalExamProgress {
+  section1Score: number | null;
+  section1Feedback: string | null;
+  section1SubmittedAt: Date | null;
+  section2Score: number | null;
+  section2Feedback: string | null;
+  section2SubmittedAt: Date | null;
+  section3Score: number | null;
+  section3Feedback: string | null;
+  section3SubmittedAt: Date | null;
+  currentSection: number;
+}
+
+interface ExamSectionConfig {
+  number: number;
+  title: string;
+  task: {
+    materials: string;
+    task: string;
+    evaluationCriteria: string;
+  };
+  maxPoints: number;
+}
+
+
 
 interface ExamSettings {
   sections: {
@@ -42,7 +77,16 @@ interface ExamSectionConfig {
 }
 
 export class ExaminationService {
-  // examinationService.ts の修正箇所
+  private prisma: PrismaClient;
+  private progressManager: CourseProgressManager;
+
+  constructor() {
+    this.prisma = new PrismaClient();
+    this.progressManager = new CourseProgressManager();
+  }
+
+
+
   private async getExamSections(chapterId: string): Promise<ExamSectionConfig[]> {
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -82,76 +126,163 @@ export class ExaminationService {
     }));
   }
 
+  async getExamProgress({ userId, courseId, chapterId }: {
+    userId: string;
+    courseId: string;
+    chapterId: string;
+  }): Promise<ExamProgress> {
+    return await this.prisma.$transaction(async (tx) => {
+      // チャプターの存在確認と試験設定の取得
+      const chapter = await tx.chapter.findUnique({
+        where: { 
+          id: chapterId,
+          isFinalExam: true
+        },
+        include: { task: true }
+      });
+
+      if (!chapter) {
+        throw new ExamError('試験が見つかりません', 'NOT_FOUND');
+      }
+
+      // 進捗状態の取得
+      const progress = await tx.userChapterProgress.findUnique({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        },
+        include: {
+          finalExam: true  // 試験固有のデータを取得
+        }
+      });
+
+      // 試験セクション情報の取得
+      const sections = await this.getExamSections(chapterId);
+
+      if (!progress) {
+        // 未開始の場合は基本情報のみ返す
+        return {
+          userId,
+          chapterId,
+          currentSection: 0,
+          startedAt: new Date(),  // この時点では仮の日時
+          timeLimit: chapter.timeLimit || 2,
+          isComplete: false,
+          sections: sections.map(section => ({
+            id: `section-${section.number}`, // section.id を section.number を使用した文字列に変更
+            title: section.title,
+            maxPoints: section.maxPoints,
+            task: section.task
+          }))
+        };
+      }
+
+      // 進行中または完了済みの場合
+      return {
+        userId,
+        chapterId,
+        currentSection: progress.finalExam?.currentSection ?? 0,
+        startedAt: progress.startedAt!,
+        timeLimit: chapter.timeLimit || 2,
+        isComplete: progress.status === 'COMPLETED',
+        completedAt: progress.completedAt || undefined,
+        sections: sections.map(section => ({
+          id: `section-${section.number}`, // section.id を section.number を使用した文字列に変更
+          title: section.title,
+          maxPoints: section.maxPoints,
+          task: section.task
+        })),
+        sectionResults: progress.finalExam ? this.formatSectionResults(progress.finalExam) : []
+      };
+    });
+  }
+  private formatSectionResults(finalExam: FinalExamProgress): SectionResult[] {
+    const results: SectionResult[] = [];
+    
+    // 各セクションのデータが存在する場合のみ結果に追加
+    if (finalExam.section1Score !== null && finalExam.section1SubmittedAt) {
+      results.push({
+        sectionId: 'section-1',
+        score: finalExam.section1Score,
+        feedback: finalExam.section1Feedback || '',
+        nextStep: '',
+        submittedAt: finalExam.section1SubmittedAt
+      });
+    }
+  
+    if (finalExam.section2Score !== null && finalExam.section2SubmittedAt) {
+      results.push({
+        sectionId: 'section-2',
+        score: finalExam.section2Score,
+        feedback: finalExam.section2Feedback || '',
+        nextStep: '',
+        submittedAt: finalExam.section2SubmittedAt
+      });
+    }
+  
+    if (finalExam.section3Score !== null && finalExam.section3SubmittedAt) {
+      results.push({
+        sectionId: 'section-3',
+        score: finalExam.section3Score,
+        feedback: finalExam.section3Feedback || '',
+        nextStep: '',
+        submittedAt: finalExam.section3SubmittedAt
+      });
+    }
+  
+    return results;
+  }
+
   // 試験開始処理
   async startExam({ userId, chapterId }: StartExamRequest): Promise<ExamProgress> {
-    const chapter = await prisma.chapter.findUnique({
-      where: { 
-        id: chapterId,
-        isFinalExam: true
-      },
-      include: { task: true }
-    });
-  
-    if (!chapter) {
-      throw new ExamError('試験が見つかりません', 'NOT_FOUND');
-    }
-  
-    if (!chapter.examTimeLimit) {
-      throw new ExamError('試験の制限時間が設定されていません', 'INVALID_STATE');
-    }
-    const timeLimit = chapter.timeLimit ?? 48; // デフォルト48時間、または適切な値に変更
+    return await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 1. チャプター情報の取得
+      const chapter = await tx.chapter.findUnique({
+        where: { 
+          id: chapterId,
+          isFinalExam: true
+        },
+        include: { task: true }
+      });
 
-  
-    // 試験セクション情報の取得
-    const sections = await this.getExamSections(chapterId);
-  
-    // 試験開始記録
-    const progress = await prisma.userChapterProgress.upsert({
-      where: {
-        userId_courseId_chapterId: {
-          userId,
-          courseId: chapter.courseId,
-          chapterId
-        }
-      },
-      create: {
-        userId,
-        courseId: chapter.courseId,
-        chapterId,
-        status: 'IN_PROGRESS',
-        startedAt: new Date(),
-        currentSection: 0,
-        sectionScores: {},
-        bestTaskContent: '',
-        bestFeedback: '',
-        score: 0
-      },
-      update: {
-        status: 'IN_PROGRESS',
-        startedAt: new Date(),
-        currentSection: 0,
-        sectionScores: {},
-        bestTaskContent: '',
-        bestFeedback: '',
-        score: 0
+      if (!chapter) {
+        throw new ExamError('試験が見つかりません', 'NOT_FOUND');
       }
+
+      // 2. CourseProgressManager経由で進捗管理を行う
+      const progress = await this.progressManager.handleFirstAccess(
+        tx,
+        userId,
+        chapter.courseId,
+        chapterId
+      );
+
+      if (!progress || !progress.startedAt) {
+        throw new ExamError('試験の開始に失敗しました', 'INVALID_STATE');
+      }
+
+      // 3. 試験セクション情報の取得
+      const sections = await this.getExamSections(chapterId);
+
+      // 4. レスポンスの形成
+      return {
+        userId,
+        chapterId,
+        currentSection: 0,
+        startedAt: progress.startedAt!,
+        timeLimit: chapter.timeLimit || 2, // デフォルト2時間
+        isComplete: false,
+        sections: sections.map(section => ({
+          id: `section-${section.number}`,
+          title: section.title,
+          task: section.task,
+          maxPoints: section.maxPoints
+        }))
+      };
     });
-  
-    return {
-      userId,
-      chapterId,
-      currentSection: 0,
-      startedAt: progress.startedAt!,
-      timeLimit, // nullチェック済みの値を使用
-      isComplete: false,
-      sections: sections.map(section => ({
-        id: `section-${section.number}`,
-        title: section.title,
-        task: section.task, // 課題内容を含める
-        content: '',
-        maxPoints: section.maxPoints
-      }))
-    };
   }
   
   // セクション提出処理

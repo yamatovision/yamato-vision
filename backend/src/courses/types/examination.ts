@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 export interface ExamSection {
   id: string;
   title: string;
-  content: string;
+  content?: string;
   maxPoints: number;
 }
 
@@ -42,17 +42,23 @@ export interface SectionResult {
   submittedAt: Date;
 }
 
+export interface GetExamProgressParams {
+  userId: string;
+  courseId: string;
+  chapterId: string;
+}
+
 // 試験の進捗状況
 export interface ExamProgress {
   userId: string;
   chapterId: string;
   currentSection: number;
   startedAt: Date;
-  timeLimit?: number;  // timeLimitを追加
+  timeLimit: number;
   isComplete: boolean;
   completedAt?: Date;
-  sectionResults?: SectionResult[]; // 追加
-  sections: ExamSection[];  // この行を追加
+  sections: ExamSection[];
+  sectionResults?: SectionResult[];
 }
 
 // 試験提出データ

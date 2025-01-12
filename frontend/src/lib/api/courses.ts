@@ -44,6 +44,29 @@ interface UpdateExamChapterDTO {
   isVisible?: boolean;
 }
 
+interface ExamProgress {
+  currentSection: number;
+  startedAt: string;
+  timeLimit: number;
+  isComplete: boolean;
+  sections: {
+    id: string;
+    title: string;
+    task: {
+      materials: string;
+      task: string;
+      evaluationCriteria: string;
+    };
+    maxPoints: number;
+  }[];
+  sectionResults?: {
+    sectionId: string;
+    score: number;
+    feedback: string;
+    nextStep: string;
+    submittedAt: string;
+  }[];
+}
 
 interface CourseResponse extends BaseResponse {
   data: Course;
@@ -422,6 +445,35 @@ updateExamChapter: async (
         throw new Error('Failed to get certificate data');
       }
 
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+
+
+  getExamProgress: async (courseId: string, chapterId: string): Promise<APIResponse<ExamProgress>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/progress`,
+        {
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch exam progress');
+      }
+  
       const data = await response.json();
       return {
         success: true,

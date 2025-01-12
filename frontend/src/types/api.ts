@@ -24,3 +24,4 @@ export interface ExamResult {
   submittedAt: string;
   isComplete?: boolean;
 }
+

@@ -116,8 +116,7 @@ model Chapter {
   title            String
   subtitle         String?
   orderIndex       Int
-  timeLimit        Int?
-  examTimeLimit    Int?     // 追加: 試験用の分単位の制限時間
+  timeLimit        Int?     // コメントを更新: 制限時間（時間単位）
   isVisible        Boolean                    @default(true)
   isFinalExam      Boolean                    @default(false)
   createdAt        DateTime                   @default(now())

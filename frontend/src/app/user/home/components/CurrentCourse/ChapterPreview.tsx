@@ -34,7 +34,7 @@ interface ChapterPreviewProps {
     title: string;
     subtitle?: string;
     orderIndex: number;
-    timeLimit: number;  // number型に変更
+    timeLimit: number;  // 制限時間（時間単位）
     content: ChapterContent;
     lessonWatchRate: number;
     submission?: {
@@ -48,8 +48,8 @@ interface ChapterPreviewProps {
   progress?: ChapterProgress | null;  // nullableに
 }
 
-const getMuxThumbnail = (videoId: string | undefined) => {
-  if (!videoId) return null;
+const getMuxThumbnail = (videoId: string | undefined): string | undefined => {
+  if (!videoId) return undefined;
   return `https://image.mux.com/${videoId}/animated.gif`;
 };
 
@@ -93,8 +93,6 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
   // 残り時間の計算ロジックを修正
 
   const calculateRemainingTime = () => {
-    
-  
     if (!progress?.startedAt || !chapter?.timeLimit) {
       console.log('Missing data:', { 
         startedAt: progress?.startedAt, 
@@ -102,9 +100,10 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
       });
       return null;
     }
-
+  
     const startTime = new Date(progress.startedAt).getTime();
-    const timeLimit = chapter.timeLimit * 24 * 60 * 60 * 1000;
+    // timeLimit を時間単位に変更（24 * 60 * 60 * 1000 を 60 * 60 * 1000 に変更）
+    const timeLimit = chapter.timeLimit * 60 * 60 * 1000; // 時間をミリ秒に変換
     const endTime = startTime + timeLimit;
     const currentTime = new Date().getTime();
     
@@ -138,6 +137,7 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
   }, [progress?.startedAt, chapter.timeLimit]);
   // 残りの時間表示の条件を修正
   const renderTimeStatus = () => {
+    if (!progress) return null;  // progress が null/undefined の場合は早期リターン
 
     // タイムアウト状態の判定を修正
     const isTimedOut = progress.status === 'FAILED' || (remainingTime !== null && remainingTime <= 0);

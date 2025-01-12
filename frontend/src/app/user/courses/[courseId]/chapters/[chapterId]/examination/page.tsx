@@ -81,23 +81,31 @@ export default function ExaminationPage() {
         const courseId = params.courseId as string;
         const chapterId = params.chapterId as string;
         
-        const response = await courseApi.startExam(courseId, chapterId);
-        console.log('試験開始APIレスポンス:', {
-          success: response.success,
-          data: response.data,
-          sections: response.data?.sections
-        });
-  
-        if (response.success && response.data) {
+        // 既存の進捗を確認
+        const progressResponse = await courseApi.getExamProgress(courseId, chapterId);
+        
+        if (progressResponse.success && progressResponse.data) {
+          // 既存の進捗がある場合はそれを使用
           setExamState(prev => ({
             ...prev,
-            startedAt: new Date(response.data.startedAt),
-            timeLimit: response.data.timeLimit,
-            currentSection: response.data.currentSection,
-            sections: response.data.sections
+            startedAt: new Date(progressResponse.data.startedAt),
+            timeLimit: progressResponse.data.timeLimit,
+            currentSection: progressResponse.data.currentSection,
+            sections: progressResponse.data.sections,
+            sectionResults: progressResponse.data.sectionResults || []
           }));
         } else {
-          throw new Error('Failed to start exam');
+          // 新規開始の場合
+          const startResponse = await courseApi.startExam(courseId, chapterId);
+          if (startResponse.success && startResponse.data) {
+            setExamState(prev => ({
+              ...prev,
+              startedAt: new Date(startResponse.data.startedAt),
+              timeLimit: startResponse.data.timeLimit,
+              currentSection: startResponse.data.currentSection,
+              sections: startResponse.data.sections
+            }));
+          }
         }
       } catch (error) {
         showToast('試験の開始に失敗しました', 'error');
@@ -108,16 +116,7 @@ export default function ExaminationPage() {
     };
   
     initializeExam();
-  }, [params.courseId, params.chapterId, router, showToast]);
-
-
-
-
-
-
-
-
-
+  }, [params.courseId, params.chapterId]);
 
 
 
@@ -255,7 +254,7 @@ export default function ExaminationPage() {
                   </h2>
                   <div className="text-gray-300 bg-gray-700/50 p-3 sm:p-4 rounded-lg mb-4">
                     <div>
-                      <h3 className="text-sm font-medium text-gray-400 mb-2">課題内容:</h3>
+                      <h3 className="text-sm font-medium text-gray-400 mb-2"></h3>
                       <div className="text-white text-sm sm:text-base whitespace-pre-wrap">
                         {examState.sections[examState.currentSection].task.task || '課題内容が設定されていません'}
                       </div>
