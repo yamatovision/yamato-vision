@@ -91,7 +91,9 @@ export default function ExaminationPage() {
     timeLimit: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [isHandlingTimeout, setIsHandlingTimeout] = useState(false);  // 追加
+
+
   // 試験開始処理
   // useEffect内の試験開始処理を修正
 useEffect(() => {
@@ -259,11 +261,46 @@ const handleSubmitSection = async () => {
     setIsSubmitting(false);
   }
 };
-  // タイムアウト処理
+
+
   const handleTimeout = useCallback(async () => {
-    showToast('制限時間が終了しました。現在までの回答で提出します', 'warning');
-    await handleSubmitSection();
-  }, [handleSubmitSection, showToast]);
+    try {
+      if (isHandlingTimeout) return;
+
+      setIsHandlingTimeout(true);
+      showToast('制限時間が終了しました。現在までの回答を提出します', 'warning');
+
+      if (examState.answers[examState.currentSection]) {
+        const response = await courseApi.submitExamSection(
+          params.courseId as string,
+          params.chapterId as string,
+          examState.currentSection.toString(),
+          examState.answers[examState.currentSection]
+        );
+
+        if (response.success) {
+          router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}/examination/results`);
+        } else {
+          showToast('回答の提出に失敗しました', 'error');
+        }
+      } else {
+        router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}/examination/results`);
+      }
+    } catch (error) {
+      console.error('Timeout handling error:', error);
+      showToast('タイムアウト処理中にエラーが発生しました', 'error');
+    } finally {
+      setIsHandlingTimeout(false);
+    }
+  }, [
+    isHandlingTimeout,
+    examState.answers,
+    examState.currentSection,
+    params.courseId,
+    params.chapterId,
+    router,
+    showToast
+  ]);
 
   if (loading) {
     return (
@@ -373,11 +410,4 @@ const handleSubmitSection = async () => {
       </div>
     </div>
   );
-
 }
-
-
-
-
-
-

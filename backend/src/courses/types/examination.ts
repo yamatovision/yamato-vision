@@ -17,9 +17,11 @@ export interface ExamSectionSubmission {
 }
 
 export interface ExamSectionResponse {
+  sectionId: string;      // 追加
   score: number;
   feedback: string;
-  submittedAt: Date;
+  nextStep: string;       // 追加
+  submittedAt: string;    // Date → string に変更
   isComplete: boolean;
 }
 

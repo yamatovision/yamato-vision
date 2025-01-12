@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTheme } from '@/contexts/theme';
 
 interface ExamTimerProps {
@@ -14,14 +14,15 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isWarning, setIsWarning] = useState(false);
   const [isDanger, setIsDanger] = useState(false);
-
+  const hasTimedOut = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout>();
 
   // 残り時間の計算（ミリ秒→秒）
-    const calculateTimeLeft = useCallback(() => {
-      const now = new Date();
-      const endTime = new Date(startedAt.getTime() + duration * 60 * 60 * 1000); // 時間単位
-      return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
-    }, [startedAt, duration]);
+  const calculateTimeLeft = useCallback(() => {
+    const now = new Date();
+    const endTime = new Date(startedAt.getTime() + duration * 60 * 60 * 1000); // 時間単位
+    return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+  }, [startedAt, duration]);
 
   // 時間のフォーマット
   const formatTime = useCallback((seconds: number) => {
@@ -43,23 +44,51 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
     setIsDanger(remainingMinutes <= 10);
   }, []);
 
-  useEffect(() => {
-    // 初期時間の設定
-    setTimeLeft(calculateTimeLeft());
+  // タイマーのクリーンアップ
+  const cleanupTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = undefined;
+    }
+  }, []);
 
-    const timer = setInterval(() => {
+  // タイムアウト処理
+  const handleTimeout = useCallback(() => {
+    if (!hasTimedOut.current) {
+      hasTimedOut.current = true;
+      cleanupTimer();
+      onTimeout();
+    }
+  }, [onTimeout, cleanupTimer]);
+
+  useEffect(() => {
+    // 初期時間の設定と確認
+    const initialTime = calculateTimeLeft();
+    setTimeLeft(initialTime);
+    updateWarningStatus(initialTime);
+
+    // 既にタイムアウトしている場合
+    if (initialTime <= 0) {
+      handleTimeout();
+      return;
+    }
+
+    // タイマーの設定
+    timerRef.current = setInterval(() => {
       const remaining = calculateTimeLeft();
       setTimeLeft(remaining);
       updateWarningStatus(remaining);
 
       if (remaining <= 0) {
-        clearInterval(timer);
-        onTimeout();
+        handleTimeout();
       }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [calculateTimeLeft, updateWarningStatus, onTimeout]);
+    // クリーンアップ
+    return () => {
+      cleanupTimer();
+    };
+  }, [calculateTimeLeft, updateWarningStatus, handleTimeout, cleanupTimer]);
 
   // スタイルの決定
   const getTimerStyle = () => {

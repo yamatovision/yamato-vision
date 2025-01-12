@@ -279,7 +279,8 @@ export const courseApi = {
   ): Promise<APIResponse<ExamResult | null>> => {
     try {
       const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/sections/${sectionId}/submit`,
+`${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/sections/${sectionId}/submit`,
+
         {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -402,7 +403,7 @@ updateExamChapter: async (
   ): Promise<APIResponse<ExamResult>> => {
     try {
       const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/result`,
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/result`,
         {
           headers: getAuthHeaders(),
           credentials: 'include'
@@ -426,38 +427,34 @@ updateExamChapter: async (
       };
     }
   },
-
-  // 証明書データ取得
-  getExamCertificate: async (
-    courseId: string,
-    chapterId: string
-  ): Promise<APIResponse<CertificateData>> => {
-    try {
-      const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/certificate`,
-        {
-          headers: getAuthHeaders(),
-          credentials: 'include'
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get certificate data');
+// frontend/src/lib/api/courses.ts のgetExamCertificateを修正
+getExamCertificate: async (courseId: string, chapterId: string): Promise<APIResponse<CertificateData>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/certificate`, // パスを修正
+      {
+        headers: getAuthHeaders(),
+        credentials: 'include'
       }
+    );
 
-      const data = await response.json();
-      return {
-        success: true,
-        data: data.data
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+    if (!response.ok) {
+      throw new Error('Failed to get certificate data');
     }
-  },
+
+    const data = await response.json();
+    return {
+      success: true,
+      data: data.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
   getExamProgress: async (courseId: string, chapterId: string): Promise<APIResponse<ExamProgress>> => {
     try {
       const response = await fetch(

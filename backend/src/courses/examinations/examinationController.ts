@@ -43,7 +43,6 @@ export const examinationController = {
       });
     }
   },
-
   async submitSection(req: AuthRequest, res: Response) {
     try {
       if (!req.user?.id) {
@@ -52,19 +51,19 @@ export const examinationController = {
           message: '認証が必要です'
         });
       }
-
-      const { chapterId, sectionId } = req.params;
+  
+      const { chapterId, sectionNumber } = req.params;
       const { content } = req.body;
-
-      const sectionNumber = parseInt(sectionId.replace('section-', '')) - 1;
-
+  
+      const sectionIndex = parseInt(sectionNumber, 10);
+  
       const result = await examinationService.submitSection({
         userId: req.user.id,
         chapterId,
-        sectionNumber,
+        sectionNumber: sectionIndex,
         content
       });
-
+  
       if (result) {
         return res.status(200).json({
           success: true,
@@ -73,13 +72,13 @@ export const examinationController = {
           isComplete: true
         });
       }
-
+  
       return res.status(200).json({
         success: true,
         message: 'セクションを提出しました',
         isComplete: false
       });
-
+  
     } catch (error) {
       console.error('Error submitting section:', error);
       
@@ -89,13 +88,95 @@ export const examinationController = {
           message: error.message
         });
       }
-
+  
       return res.status(500).json({
         success: false,
         message: 'セクションの提出に失敗しました'
       });
     }
   },
+
+
+async getExamResult(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: '認証が必要です'
+      });
+    }
+
+    const { courseId, chapterId } = req.params;
+
+    const result = await examinationService.getExamResult({
+      userId: req.user.id,
+      courseId,
+      chapterId
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('Error getting exam result:', error);
+    
+    if (error instanceof ExamError) {
+      return res.status(getErrorStatusCode(error.code)).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: '試験結果の取得に失敗しました'
+    });
+  }
+},
+// src/courses/examinations/examinationController.ts に追加
+
+async getExamCertificate(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: '認証が必要です'
+      });
+    }
+
+    const { courseId, chapterId } = req.params;
+
+    const certificateData = await examinationService.generateCertificate({
+      userId: req.user.id,
+      courseId,
+      chapterId
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: certificateData
+    });
+
+  } catch (error) {
+    console.error('Error generating certificate:', error);
+    
+    if (error instanceof ExamError) {
+      return res.status(getErrorStatusCode(error.code)).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: '証明書の生成に失敗しました'
+    });
+  }
+},
+
+
 
   async getExamProgress(req: AuthRequest, res: Response) {
     try {
@@ -147,3 +228,4 @@ function getErrorStatusCode(errorCode: ExamError['code']): number {
   };
   return statusCodes[errorCode];
 }
+

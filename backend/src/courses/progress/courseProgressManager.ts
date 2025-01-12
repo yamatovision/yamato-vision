@@ -113,6 +113,30 @@ export class CourseProgressManager {
       }
     });
   
+    if (!progress) {
+      const now = new Date();
+      const chapter = await tx.chapter.findUnique({
+        where: { id: chapterId }
+      });
+  
+      const timeOutAt = chapter?.timeLimit 
+        ? new Date(now.getTime() + chapter.timeLimit * this.MILLISECONDS_PER_HOUR)
+        : null;
+  
+      return await tx.userChapterProgress.create({
+        data: {
+          userId,
+          courseId,
+          chapterId,
+          status: 'NOT_STARTED',
+          startedAt: now,
+          timeOutAt,
+        }
+      });
+    }
+  
+
+
     // 条件を開始日時のチェックなしに修正
     if (progress?.status === 'NOT_STARTED') {
       const now = new Date();

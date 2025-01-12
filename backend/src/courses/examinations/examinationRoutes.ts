@@ -31,6 +31,18 @@ router.post(
   examinationController.submitSection
 );
 
+// examinationRoutes.ts に追加
+router.get(
+  '/user/:courseId/chapters/:chapterId/exam/result',
+  authMiddleware,
+  examinationController.getExamResult
+);
 
+
+router.get(
+  '/user/:courseId/chapters/:chapterId/exam/certificate',
+  authMiddleware,
+  examinationController.getExamCertificate
+);
 
 export { router as examinationRoutes };
