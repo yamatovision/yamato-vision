@@ -48,7 +48,7 @@ export interface ExamProgress {
   chapterId: string;
   currentSection: number;
   startedAt: Date;
-  examTimeLimit: number; // timeRemaining から examTimeLimit に変更
+  timeLimit?: number;  // timeLimitを追加
   isComplete: boolean;
   completedAt?: Date;
   sectionResults?: SectionResult[]; // 追加

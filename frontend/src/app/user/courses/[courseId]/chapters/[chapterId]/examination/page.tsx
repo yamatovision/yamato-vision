@@ -10,6 +10,7 @@ import { useToast } from '@/contexts/toast';
 import { ExamSectionResult } from '@/types/chapter';
 import { APIResponse } from '@/types/api'; // 追加が必要
 
+
 const AUTOSAVE_INTERVAL = 30000; // 30秒
 
 interface ExamState {
@@ -56,6 +57,7 @@ interface StartExamResponse {
       task: string;
       evaluationCriteria: string;
     };
+    maxPoints: number;
   }[];
 }
 export default function ExaminationPage() {
@@ -71,6 +73,7 @@ export default function ExaminationPage() {
     timeLimit: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // 試験開始処理
   useEffect(() => {
     const initializeExam = async () => {
@@ -79,13 +82,19 @@ export default function ExaminationPage() {
         const chapterId = params.chapterId as string;
         
         const response = await courseApi.startExam(courseId, chapterId);
+        console.log('試験開始APIレスポンス:', {
+          success: response.success,
+          data: response.data,
+          sections: response.data?.sections
+        });
+  
         if (response.success && response.data) {
           setExamState(prev => ({
             ...prev,
-            startedAt: new Date(response.data.startedAt), // 文字列から Date オブジェクトに変換
-            timeLimit: response.data.timeLimit, // すでに分単位なので変換不要
+            startedAt: new Date(response.data.startedAt),
+            timeLimit: response.data.timeLimit,
             currentSection: response.data.currentSection,
-            sections: response.data.sections // セクション情報を保存
+            sections: response.data.sections
           }));
         } else {
           throw new Error('Failed to start exam');
@@ -212,11 +221,18 @@ export default function ExaminationPage() {
     );
   }
   
+
+
+
+
+
+
+
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* ヘッダー部分 */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 space-y-4 sm:space-y-0">
           <h1 className="text-2xl font-bold text-white">最終試験</h1>
           {examState.startedAt && (
             <ExamTimer
@@ -226,12 +242,28 @@ export default function ExaminationPage() {
             />
           )}
         </div>
-
-        {/* メインコンテンツ */}
-        <div className="grid grid-cols-[1fr_300px] gap-6">
+  
+        {/* メインコンテンツ - モバイルではスタック表示、デスクトップではグリッド表示 */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 sm:gap-6">
           {/* 左側：回答エリア */}
-          <div className="space-y-6">
-            <div className="bg-gray-800 p-6 rounded-lg">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+              {examState.sections && examState.sections[examState.currentSection] && (
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">
+                    セクション {examState.currentSection + 1}: {examState.sections[examState.currentSection].title}
+                  </h2>
+                  <div className="text-gray-300 bg-gray-700/50 p-3 sm:p-4 rounded-lg mb-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-400 mb-2">課題内容:</h3>
+                      <div className="text-white text-sm sm:text-base whitespace-pre-wrap">
+                        {examState.sections[examState.currentSection].task.task || '課題内容が設定されていません'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+  
               <textarea
                 value={examState.answers[examState.currentSection] || ''}
                 onChange={(e) => setExamState(prev => ({
@@ -241,48 +273,63 @@ export default function ExaminationPage() {
                     [prev.currentSection]: e.target.value
                   }
                 }))}
-                className="w-full h-64 p-4 bg-gray-700 text-white rounded-lg
-                  border border-gray-600 focus:ring-2 focus:ring-blue-500"
+                className="w-full h-48 sm:h-64 p-3 sm:p-4 bg-gray-700 text-white rounded-lg
+                  border border-gray-600 focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                 placeholder="回答を入力してください..."
                 disabled={isSubmitting}
               />
               
-              <div className="mt-4 flex justify-end space-x-4">
+              <div className="mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                 <button
                   onClick={() => setExamState(prev => ({
                     ...prev,
                     currentSection: Math.max(0, prev.currentSection - 1)
                   }))}
                   disabled={examState.currentSection === 0 || isSubmitting}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg
-                    hover:bg-gray-600 disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-gray-700 text-white rounded-lg
+                    hover:bg-gray-600 disabled:opacity-50 text-sm sm:text-base"
                 >
                   前のセクション
                 </button>
                 <button
                   onClick={handleSubmitSection}
                   disabled={isSubmitting || !examState.answers[examState.currentSection]?.trim()}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg
-                    hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg
+                    hover:bg-blue-700 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isSubmitting ? '提出中...' : 'セクションを提出'}
                 </button>
               </div>
             </div>
           </div>
-
-          {/* 右側：進捗表示 */}
-          <div>
+  
+          {/* 右側：進捗表示 - モバイルでは下部に表示 */}
+          <div className="lg:sticky lg:top-4">
             <SectionNavigation
               currentSection={examState.currentSection}
               sectionResults={examState.sectionResults}
+              sections={examState.sections || []}
             />
           </div>
         </div>
       </div>
     </div>
   );
+
+
+
+
+
+
 }
+
+
+
+
+
+
+
+
 // src/lib/api/courses.ts に追加
 export const courseApi = {
   startExam: baseCourseApi.startExam,

@@ -63,16 +63,22 @@ export class ExaminationService {
       throw new ExamError('試験設定が見つかりません', 'NOT_FOUND');
     }
   
-    // セクション番号を明示的に追加
+    // セクションごとの配点を定義
+    const sectionPoints = {
+      1: 30, // セクション1: 30点
+      2: 30, // セクション2: 30点
+      3: 40  // セクション3: 40点
+    };
+  
     return examSettings.sections.map((section, index) => ({
-      number: index + 1 as 1 | 2 | 3, // 1, 2, 3 のいずれかになることを保証
+      number: (index + 1) as 1 | 2 | 3,
       title: section.title,
       task: {
         materials: section.task.materials,
         task: section.task.task,
         evaluationCriteria: section.task.evaluationCriteria
       },
-      maxPoints: 100 / examSettings.sections.length
+      maxPoints: sectionPoints[index + 1 as 1 | 2 | 3]
     }));
   }
 
@@ -93,6 +99,8 @@ export class ExaminationService {
     if (!chapter.examTimeLimit) {
       throw new ExamError('試験の制限時間が設定されていません', 'INVALID_STATE');
     }
+    const timeLimit = chapter.timeLimit ?? 48; // デフォルト48時間、または適切な値に変更
+
   
     // 試験セクション情報の取得
     const sections = await this.getExamSections(chapterId);
@@ -134,11 +142,12 @@ export class ExaminationService {
       chapterId,
       currentSection: 0,
       startedAt: progress.startedAt!,
-      examTimeLimit: chapter.examTimeLimit, // ExamProgress の型も修正が必要
+      timeLimit, // nullチェック済みの値を使用
       isComplete: false,
       sections: sections.map(section => ({
         id: `section-${section.number}`,
         title: section.title,
+        task: section.task, // 課題内容を含める
         content: '',
         maxPoints: section.maxPoints
       }))

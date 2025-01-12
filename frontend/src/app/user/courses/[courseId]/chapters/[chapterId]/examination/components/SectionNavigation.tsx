@@ -1,5 +1,3 @@
-// frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/examination/components/SectionNavigation.tsx
-
 'use client';
 
 import { ExamSectionResult } from '@/types/chapter';
@@ -8,15 +6,22 @@ import { useTheme } from '@/contexts/theme';
 interface SectionNavigationProps {
   currentSection: number;
   sectionResults: ExamSectionResult[];
+  sections: {
+    id: string;
+    title: string;
+    task: {
+      materials: string;
+      task: string;
+      evaluationCriteria: string;
+    };
+  }[];
 }
 
-const SECTIONS = [
-  { id: 1, title: 'ブルーランプの基本' },
-  { id: 2, title: 'トークン管理' },
-  { id: 3, title: 'AIファクトリー設計' }
-];
-
-export function SectionNavigation({ currentSection, sectionResults }: SectionNavigationProps) {
+export function SectionNavigation({ 
+  currentSection, 
+  sectionResults,
+  sections 
+}: SectionNavigationProps) {
   const { theme } = useTheme();
 
   const getSectionStatus = (index: number) => {
@@ -26,41 +31,50 @@ export function SectionNavigation({ currentSection, sectionResults }: SectionNav
     return 'locked';
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="p-4 bg-gray-800 rounded-lg">
-        <h2 className="text-lg font-medium text-white mb-4">試験の進捗</h2>
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="p-3 sm:p-4 bg-gray-800 rounded-lg">
+          <h2 className="text-base sm:text-lg font-medium text-white mb-3 sm:mb-4">試験の進捗</h2>
+    
+          {/* プログレスバー */}
+          <div className="relative h-2 bg-gray-700 rounded-full mb-4 sm:mb-6">
+            <div 
+              className="absolute h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ 
+                width: `${Math.min(100, (currentSection / sections.length) * 100)}%` 
+              }}
+            />
+          </div>
+    
+          {/* セクションリスト */}
+          <div className="space-y-2 sm:space-y-3">
+            {sections.map((section, index) => {
+              const status = getSectionStatus(index);
+              const result = sectionResults[index];
+    
+              return (
+                <div
+                  key={section.id}
+                  className={`p-3 sm:p-4 rounded-lg border ${
+                    status === 'current'
+                      ? 'bg-blue-900/30 border-blue-500'
+                      : status === 'completed'
+                      ? 'bg-gray-800/30 border-green-500'
+                      : 'bg-gray-800/30 border-gray-700'
+                  }`}
+                >
 
-        {/* プログレスバー */}
-        <div className="relative h-2 bg-gray-700 rounded-full mb-6">
-          <div 
-            className="absolute h-full bg-blue-600 rounded-full transition-all duration-300"
-            style={{ 
-              width: `${Math.min(100, (currentSection / SECTIONS.length) * 100)}%` 
-            }}
-          />
-        </div>
 
-        {/* セクションリスト */}
-        <div className="space-y-3">
-          {SECTIONS.map((section, index) => {
-            const status = getSectionStatus(index);
-            const result = sectionResults[index];
 
-            return (
-              <div
-                key={section.id}
-                className={`p-4 rounded-lg border ${
-                  status === 'current'
-                    ? 'bg-blue-900/30 border-blue-500'
-                    : status === 'completed'
-                    ? 'bg-gray-800/30 border-green-500'
-                    : 'bg-gray-800/30 border-gray-700'
-                }`}
-              >
+
+
+
+
+
+
+                {/* 残りの実装は同じ */}
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-3">
-                    {/* ステータスアイコン */}
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                       status === 'completed'
                         ? 'bg-green-500'
@@ -76,11 +90,10 @@ export function SectionNavigation({ currentSection, sectionResults }: SectionNav
                     </div>
                     
                     <h3 className="text-sm font-medium text-white">
-                      {section.title}
+                      {section.title}  {/* ここでAPIから受け取ったタイトルを使用 */}
                     </h3>
                   </div>
 
-                  {/* 得点表示 */}
                   {result && (
                     <span className="text-sm font-medium text-green-400">
                       {result.score}点
@@ -88,7 +101,6 @@ export function SectionNavigation({ currentSection, sectionResults }: SectionNav
                   )}
                 </div>
 
-                {/* フィードバック表示 */}
                 {result && (
                   <div className="mt-2 text-sm text-gray-400 pl-9">
                     {result.feedback}
@@ -100,7 +112,7 @@ export function SectionNavigation({ currentSection, sectionResults }: SectionNav
         </div>
       </div>
 
-      {/* 注意事項 */}
+      {/* 注意事項部分は変更なし */}
       <div className="p-4 bg-yellow-900/30 border border-yellow-800 rounded-lg">
         <h3 className="text-sm font-medium text-yellow-500 mb-2">
           注意事項
@@ -114,6 +126,7 @@ export function SectionNavigation({ currentSection, sectionResults }: SectionNav
     </div>
   );
 }
+
 
 // アイコンコンポーネント
 function CheckIcon({ className = "w-6 h-6" }) {
