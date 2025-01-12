@@ -5,10 +5,12 @@ import {
 
 // 試験セクションの評価結果
 export interface ExamSectionResult {
+  sectionId: string;
   sectionNumber: number;
   score: number;
   feedback: string;
-  submittedAt: Date;
+  nextStep: string;
+  submittedAt: string;
 }
 
 // 試験モード用の拡張データ

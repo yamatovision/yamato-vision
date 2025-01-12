@@ -458,12 +458,10 @@ updateExamChapter: async (
       };
     }
   },
-
-
   getExamProgress: async (courseId: string, chapterId: string): Promise<APIResponse<ExamProgress>> => {
     try {
       const response = await fetch(
-        `${FRONTEND_API_BASE}/courses/${courseId}/chapters/${chapterId}/exam/progress`,
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/progress`, // ✅
         {
           headers: getAuthHeaders(),
           credentials: 'include'

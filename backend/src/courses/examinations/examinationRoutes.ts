@@ -19,14 +19,16 @@ router.post(
   authMiddleware,
   examinationController.submitSection
 );
-
-router.get(
-  '/:courseId/chapters/:chapterId/exam/progress',
-  examinationController.getExamProgress
-);
 router.post(
-  '/:courseId/chapters/:chapterId/exam/start',
+  '/user/:courseId/chapters/:chapterId/exam/start',
+  authMiddleware,
   examinationController.startExam
+);
+
+router.post(
+  '/user/:courseId/chapters/:chapterId/exam/sections/:sectionNumber/submit',
+  authMiddleware,
+  examinationController.submitSection
 );
 
 
