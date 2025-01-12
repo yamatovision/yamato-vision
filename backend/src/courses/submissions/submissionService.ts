@@ -160,11 +160,13 @@ export class SubmissionService {
     };
   }
 
-  private extractSection(text: string, tag: string): string {
+  private extractSection(text: string | null, tag: string): string {
+    if (!text) return '';
     const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
     const match = text.match(regex);
     return match ? match[1].trim() : '';
   }
+  
 }
 
 export const submissionService = new SubmissionService();

@@ -20,7 +20,7 @@ router.put('/courses/:id', adminCourseController.updateCourse);
 router.delete('/courses/:id', adminCourseController.deleteCourse);
 router.patch('/courses/:id/thumbnail', adminCourseController.updateCourseThumbnail);
 
-// チャプター関連のルート
+// 通常チャプター関連のルート
 router.post('/courses/:courseId/chapters', adminChapterController.createChapter);
 router.get('/courses/:courseId/chapters', adminChapterController.getChapters);
 router.get('/courses/:courseId/chapters/:chapterId', adminChapterController.getChapter);
@@ -32,5 +32,8 @@ router.patch('/courses/:courseId/chapters/:chapterId/perfect-only', adminChapter
 router.post('/courses/:courseId/chapters/reorder', adminChapterController.reorderChapters);
 router.post('/courses/:courseId/chapters/reset-order', adminChapterController.resetChapterOrder);
 
+// 最終試験チャプター関連のルート
+router.post('/courses/:courseId/exam-chapters', adminChapterController.createExamChapter);
+router.put('/courses/:courseId/exam-chapters/:chapterId', adminChapterController.updateExamChapter);
 
 export { router as adminRoutes };

@@ -10,7 +10,8 @@ import { CourseProgressManager } from '../progress/courseProgressManager';
 
 const prisma = new PrismaClient();
 
-const extractContent = (text: string, tag: string): string => {
+const extractContent = (text: string | null, tag: string): string => {
+  if (!text) return '';
   const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
   const match = text.match(regex);
   return match ? match[1].trim() : '';
@@ -56,7 +57,6 @@ export class SubmissionController {
           message: '課題が見つかりません'
         });
       }
-  
       const materials = extractContent(task.systemMessage, 'materials');
       const taskContent = extractContent(task.systemMessage, 'task');
       const evaluationCriteria = extractContent(task.systemMessage, 'evaluation_criteria');

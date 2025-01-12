@@ -3,7 +3,7 @@
 import { PrismaClient } from '@prisma/client';
 import { evaluationService } from '../submissions/evaluationService';
 import { claudeService } from '../submissions/claudeService';
-
+import { finalExamEvaluationService } from '../submissions/finalExamEvaluationService';
 
 
 import {
@@ -31,6 +31,7 @@ interface ExamSettings {
 }
 
 interface ExamSectionConfig {
+  number: number;  // 追加
   title: string;
   task: {
     materials: string;
@@ -62,7 +63,9 @@ export class ExaminationService {
       throw new ExamError('試験設定が見つかりません', 'NOT_FOUND');
     }
   
-    return examSettings.sections.map((section) => ({
+    // セクション番号を明示的に追加
+    return examSettings.sections.map((section, index) => ({
+      number: index + 1 as 1 | 2 | 3, // 1, 2, 3 のいずれかになることを保証
       title: section.title,
       task: {
         materials: section.task.materials,
@@ -82,29 +85,18 @@ export class ExaminationService {
       },
       include: { task: true }
     });
-
+  
     if (!chapter) {
       throw new ExamError('試験が見つかりません', 'NOT_FOUND');
     }
-
-    // 既存の進行中の試験をチェック
-    const existingProgress = await prisma.userChapterProgress.findUnique({
-      where: {
-        userId_courseId_chapterId: {
-          userId,
-          courseId: chapter.courseId,
-          chapterId
-        }
-      }
-    });
-
-    if (existingProgress?.status === 'COMPLETED') {
-      throw new ExamError('既に試験は完了しています', 'INVALID_STATE');
+  
+    if (!chapter.examTimeLimit) {
+      throw new ExamError('試験の制限時間が設定されていません', 'INVALID_STATE');
     }
-
+  
     // 試験セクション情報の取得
     const sections = await this.getExamSections(chapterId);
-
+  
     // 試験開始記録
     const progress = await prisma.userChapterProgress.upsert({
       where: {
@@ -136,23 +128,23 @@ export class ExaminationService {
         score: 0
       }
     });
-
+  
     return {
       userId,
       chapterId,
       currentSection: 0,
       startedAt: progress.startedAt!,
-      timeRemaining: chapter.timeLimit!,
+      examTimeLimit: chapter.examTimeLimit, // ExamProgress の型も修正が必要
       isComplete: false,
-      sections: sections.map(s => ({
-        id: `section-${s.title}`,  // IDを追加
-        title: s.title,
-        content: '',  // content を追加
-        maxPoints: s.maxPoints
+      sections: sections.map(section => ({
+        id: `section-${section.number}`,
+        title: section.title,
+        content: '',
+        maxPoints: section.maxPoints
       }))
     };
   }
-
+  
   // セクション提出処理
   async submitSection({ userId, chapterId, sectionNumber, content }: SubmitSectionRequest): Promise<ExamResult | null> {
     const progress = await prisma.userChapterProgress.findUnique({
@@ -185,12 +177,15 @@ export class ExaminationService {
     const isTimeOut = timeoutCheck.isTimedOut;
 
     // 提出を評価
-    const evaluationResult = await evaluationService.evaluateSubmission({
-      materials: currentSection.task.materials,
-      task: currentSection.task.task,
-      evaluationCriteria: currentSection.task.evaluationCriteria,
+    const evaluationResult = await finalExamEvaluationService.evaluateSection({
+      sectionNumber: (sectionNumber + 1) as 1 | 2 | 3,
+      title: sections[sectionNumber].title,
+      materials: sections[sectionNumber].task.materials,
+      task: sections[sectionNumber].task.task,
+      evaluationCriteria: sections[sectionNumber].task.evaluationCriteria,
       submission: content
     });
+  
 
     // セクション結果を保存
     const submission = await prisma.submission.create({

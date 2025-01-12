@@ -3,11 +3,11 @@ import { TimeoutCheckResult, TimeCalculation, TimeWarningLevel } from './timeout
 
 const prisma = new PrismaClient();
 
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
-const MILLISECONDS_PER_MINUTE = 60 * 1000;
 
 export class TimeoutService {
+  private static readonly MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+
   async checkChapterTimeout(userId: string, courseId: string, chapterId: string): Promise<TimeoutCheckResult> {
     const progress = await prisma.userChapterProgress.findUnique({
       where: {
@@ -27,7 +27,8 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    const timeLimit = progress.chapter.timeLimit * MILLISECONDS_PER_DAY;
+    // 時間単位での計算に変更
+    const timeLimit = progress.chapter.timeLimit * MILLISECONDS_PER_HOUR;
     const timeDiff = now.getTime() - progress.startedAt.getTime();
 
     if (timeDiff > timeLimit && !progress.isTimedOut) {
@@ -67,7 +68,8 @@ export class TimeoutService {
     }
 
     const now = new Date();
-    const timeLimit = userCourse.course.timeLimit * MILLISECONDS_PER_DAY;
+    // 時間単位での計算に変更
+    const timeLimit = userCourse.course.timeLimit * MILLISECONDS_PER_HOUR;
     const timeDiff = now.getTime() - userCourse.startedAt.getTime();
 
     if (timeDiff > timeLimit && !userCourse.isTimedOut) {
@@ -95,32 +97,35 @@ export class TimeoutService {
   calculateRemainingTime(startTime: Date, timeLimit: number): number {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
-    return Math.max(0, Math.floor(timeLimit - (timeDiff / MILLISECONDS_PER_DAY)));
+    // 時間単位での計算に変更
+    return Math.max(0, Math.floor(timeLimit - (timeDiff / MILLISECONDS_PER_HOUR)));
   }
 
   calculateRemainingTimeDetailed(startTime: Date, timeLimit: number): TimeCalculation {
     const now = new Date();
     const timeDiff = now.getTime() - startTime.getTime();
-    const remainingMs = Math.max(0, (timeLimit * MILLISECONDS_PER_DAY) - timeDiff);
+    // 時間単位での計算に変更
+    const remainingMs = Math.max(0, (timeLimit * MILLISECONDS_PER_HOUR) - timeDiff);
     
-    const days = Math.floor(remainingMs / MILLISECONDS_PER_DAY);
-    const hours = Math.floor((remainingMs % MILLISECONDS_PER_DAY) / MILLISECONDS_PER_HOUR);
-    const minutes = Math.floor((remainingMs % MILLISECONDS_PER_HOUR) / MILLISECONDS_PER_MINUTE);
-    const seconds = Math.floor((remainingMs % MILLISECONDS_PER_MINUTE) / 1000);
+    const days = Math.floor(remainingMs / (24 * MILLISECONDS_PER_HOUR));
+    const hours = Math.floor((remainingMs % (24 * MILLISECONDS_PER_HOUR)) / MILLISECONDS_PER_HOUR);
+    const minutes = Math.floor((remainingMs % MILLISECONDS_PER_HOUR) / (60 * 1000));
+    const seconds = Math.floor((remainingMs % (60 * 1000)) / 1000);
 
     return {
       days,
       hours,
       minutes,
       seconds,
-      totalDays: days + (hours / 24) + (minutes / (24 * 60)),
+      totalHours: timeLimit,
       timeOutAt: this.calculateTimeOutDate(startTime, timeLimit).toISOString()
     };
   }
 
   calculateTimeOutDate(startDate: Date, timeLimit: number): Date {
     const timeOutDate = new Date(startDate);
-    timeOutDate.setDate(timeOutDate.getDate() + timeLimit);
+    // 時間単位での計算に変更
+    timeOutDate.setHours(timeOutDate.getHours() + timeLimit);
     return timeOutDate;
   }
 
@@ -134,9 +139,12 @@ export class TimeoutService {
 
   formatTimeDisplay(timeCalc: TimeCalculation): string {
     if (timeCalc.days > 0) {
-      return `${timeCalc.days}日 ${timeCalc.hours.toString().padStart(2, '0')}:${timeCalc.minutes.toString().padStart(2, '0')}`;
+      return `${timeCalc.days}日 ${timeCalc.hours.toString().padStart(2, '0')}時間`;
     }
-    return `${timeCalc.hours.toString().padStart(2, '0')}:${timeCalc.minutes.toString().padStart(2, '0')}:${timeCalc.seconds.toString().padStart(2, '0')}`;
+    if (timeCalc.hours > 0) {
+      return `${timeCalc.hours}時間 ${timeCalc.minutes.toString().padStart(2, '0')}分`;
+    }
+    return `${timeCalc.minutes}分 ${timeCalc.seconds.toString().padStart(2, '0')}秒`;
   }
 }
 

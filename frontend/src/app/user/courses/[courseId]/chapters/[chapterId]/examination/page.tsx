@@ -18,6 +18,7 @@ interface ExamState {
   sectionResults: ExamSectionResult[];
   startedAt?: Date;
   timeLimit: number;
+  sections?: StartExamResponse['sections']; // 追加
 }
 interface ExamApi {
   startExam: typeof baseCourseApi.startExam;
@@ -42,12 +43,21 @@ interface ExamResult {
   isComplete?: boolean;
 }
 
+
 interface StartExamResponse {
   startedAt: string;
   timeLimit: number;
-  success: boolean;
+  currentSection: number;
+  sections: {
+    id: string;
+    title: string;
+    task: {
+      materials: string;
+      task: string;
+      evaluationCriteria: string;
+    };
+  }[];
 }
-
 export default function ExaminationPage() {
   const router = useRouter();
   const params = useParams();
@@ -69,13 +79,13 @@ export default function ExaminationPage() {
         const chapterId = params.chapterId as string;
         
         const response = await courseApi.startExam(courseId, chapterId);
-        if (response.success && response.data) {  // null チェックを追加
+        if (response.success && response.data) {
           setExamState(prev => ({
             ...prev,
-            startedAt: new Date(response.data.startedAt),
-            timeLimit: response.data.timeLimit,
-            currentSection: 0,
-            sectionResults: []
+            startedAt: new Date(response.data.startedAt), // 文字列から Date オブジェクトに変換
+            timeLimit: response.data.timeLimit, // すでに分単位なので変換不要
+            currentSection: response.data.currentSection,
+            sections: response.data.sections // セクション情報を保存
           }));
         } else {
           throw new Error('Failed to start exam');
@@ -87,10 +97,22 @@ export default function ExaminationPage() {
         setLoading(false);
       }
     };
-
+  
     initializeExam();
   }, [params.courseId, params.chapterId, router, showToast]);
 
+
+
+
+
+
+
+
+
+
+
+
+  
   // 自動保存
   useEffect(() => {
     const autoSaveTimer = setInterval(() => {

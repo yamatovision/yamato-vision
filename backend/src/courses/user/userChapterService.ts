@@ -532,7 +532,7 @@ export class UserChapterService extends EventEmitter {
   
       // AI採点の実行
       const evaluationResult = await evaluationService.evaluateSubmission({
-        materials: chapter.task.systemMessage,
+        materials: chapter.task?.systemMessage || '',  // nullの場合は空文字列を使用
         task: chapter.task?.task ?? '',
         evaluationCriteria: chapter.task.evaluationCriteria ?? '',
         submission: submission.content

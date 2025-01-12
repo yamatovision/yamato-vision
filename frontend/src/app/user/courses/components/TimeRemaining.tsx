@@ -6,44 +6,45 @@ import { TimeoutSeverity, TimeConfig, TimeoutType } from '@/types/timeout';
 
 const TIME_CONFIG: TimeConfig = {
   chapter: {
-    warningThreshold: 86400,  // 24時間
-    dangerThreshold: 21600    // 6時間
+    warningThreshold: 24,  // 24時間
+    dangerThreshold: 6     // 6時間
   },
   course: {
-    warningThreshold: 1296000, // 15日
-    dangerThreshold: 259200    // 3日
+    warningThreshold: 360, // 15日 = 360時間
+    dangerThreshold: 72    // 3日 = 72時間
   },
   archive: {
-    warningThreshold: 172800,  // 2日
-    dangerThreshold: 43200     // 12時間
+    warningThreshold: 48,  // 2日 = 48時間
+    dangerThreshold: 12    // 12時間
   }
 };
 
 interface Props {
   startTime: Date;
-  timeLimit: number;
+  timeLimit: number; // 時間単位
   type: TimeoutType;
   onTimeout?: () => void;
 }
 
 export function TimeRemaining({ 
   startTime,
-  timeLimit, // 日数で渡される
+  timeLimit,
   type,
   onTimeout = () => {}
 }: Props) {
   const { theme } = useTheme();
   const [remainingTime, setRemainingTime] = useState(() => {
     const now = new Date();
-    const endTime = new Date(startTime.getTime() + (timeLimit * 24 * 60 * 60 * 1000)); // 日数を秒に変換
+    const endTime = new Date(startTime.getTime() + (timeLimit * 60 * 60 * 1000)); // 時間を秒に変換
     const remaining = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
     return remaining;
   });
 
   const severity: TimeoutSeverity = useMemo(() => {
     const thresholds = TIME_CONFIG[type];
-    if (remainingTime <= thresholds.dangerThreshold) return 'danger';
-    if (remainingTime <= thresholds.warningThreshold) return 'warning';
+    const remainingHours = remainingTime / (60 * 60);
+    if (remainingHours <= thresholds.dangerThreshold) return 'danger';
+    if (remainingHours <= thresholds.warningThreshold) return 'warning';
     return 'normal';
   }, [remainingTime, type]);
 
@@ -63,25 +64,26 @@ export function TimeRemaining({
 
   const formatTime = (seconds: number) => {
     if (type === 'course') {
-      const days = Math.floor(seconds / 86400);
-      const hours = Math.floor((seconds % 86400) / 3600);
+      const days = Math.floor(seconds / (24 * 60 * 60));
+      const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
       return `${days}日${hours}時間`;
     } else if (type === 'archive') {
-      const days = Math.floor(seconds / 86400);
-      const hours = Math.floor((seconds % 86400) / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      if (days > 0) {
-        return `${days}日${hours}時間`;
+      const hours = Math.floor(seconds / (60 * 60));
+      const minutes = Math.floor((seconds % (60 * 60)) / 60);
+      if (hours >= 24) {
+        const days = Math.floor(hours / 24);
+        const remainingHours = hours % 24;
+        return `${days}日${remainingHours}時間`;
       }
       return `${hours}時間${minutes}分`;
     } else {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
+      const hours = Math.floor(seconds / (60 * 60));
+      const minutes = Math.floor((seconds % (60 * 60)) / 60);
       const secs = seconds % 60;
       if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        return `${hours}時間${minutes}分`;
       }
-      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+      return `${minutes}分${secs}秒`;
     }
   };
 

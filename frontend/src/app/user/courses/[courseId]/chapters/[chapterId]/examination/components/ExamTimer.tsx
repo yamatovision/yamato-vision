@@ -1,12 +1,10 @@
-// frontend/src/app/user/courses/[courseId]/chapters/[chapterId]/examination/components/ExamTimer.tsx
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '@/contexts/theme';
 
 interface ExamTimerProps {
-  duration: number;    // 分単位での制限時間
+  duration: number;    // 時間単位での制限時間
   startedAt: Date;    // 試験開始時刻
   onTimeout: () => void;
 }
@@ -17,10 +15,10 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
   const [isWarning, setIsWarning] = useState(false);
   const [isDanger, setIsDanger] = useState(false);
 
-  // 残り時間の計算
+  // 残り時間の計算（ミリ秒→秒）
   const calculateTimeLeft = useCallback(() => {
     const now = new Date();
-    const endTime = new Date(startedAt.getTime() + duration * 60 * 1000);
+    const endTime = new Date(startedAt.getTime() + duration * 60 * 60 * 1000); // 時間をミリ秒に変換
     return Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
   }, [startedAt, duration]);
 
@@ -30,23 +28,18 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
 
-    const parts = [];
     if (hours > 0) {
-      parts.push(`${hours}時間`);
+      return `${hours}時間${minutes.toString().padStart(2, '0')}分${remainingSeconds.toString().padStart(2, '0')}秒`;
     }
-    if (minutes > 0 || hours > 0) {
-      parts.push(`${minutes}分`);
-    }
-    parts.push(`${remainingSeconds}秒`);
-
-    return parts.join(' ');
+    return `${minutes}分${remainingSeconds.toString().padStart(2, '0')}秒`;
   }, []);
 
   // 警告状態の更新
   const updateWarningStatus = useCallback((seconds: number) => {
-    // 残り15分で警告、残り5分で危険
-    setIsWarning(seconds <= 900 && seconds > 300);
-    setIsDanger(seconds <= 300);
+    const remainingMinutes = seconds / 60;
+    // 残り30分で警告、残り10分で危険
+    setIsWarning(remainingMinutes <= 30 && remainingMinutes > 10);
+    setIsDanger(remainingMinutes <= 10);
   }, []);
 
   useEffect(() => {
@@ -80,8 +73,18 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
     return `${baseStyle} bg-gray-800/50 text-gray-300`;
   };
 
+  const getWarningMessage = () => {
+    if (isDanger) {
+      return '⚠️ 制限時間が迫っています！';
+    }
+    if (isWarning) {
+      return '残り時間が少なくなっています';
+    }
+    return null;
+  };
+
   return (
-    <div className="flex items-center space-x-3">
+    <div className="flex flex-col items-center space-y-2">
       <div className={getTimerStyle()}>
         {formatTime(timeLeft)}
       </div>
@@ -91,10 +94,7 @@ export function ExamTimer({ duration, startedAt, onTimeout }: ExamTimerProps) {
         <div className={`text-sm ${
           isDanger ? 'text-red-300 animate-pulse' : 'text-yellow-300'
         }`}>
-          {isDanger
-            ? '制限時間が迫っています！'
-            : '残り時間が少なくなっています'
-          }
+          {getWarningMessage()}
         </div>
       )}
     </div>

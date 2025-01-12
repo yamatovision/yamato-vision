@@ -13,25 +13,25 @@ export interface TimeCalculation {
   hours: number;
   minutes: number;
   seconds: number;
-  totalDays: number;
+  totalHours: number;        // totalDaysからtotalHoursに変更
   timeOutAt: string;
 }
 
 export const TIME_LIMITS = {
   chapter: {
-    warningThreshold: 24 * 60 * 60,    // 24時間（秒）
-    dangerThreshold: 6 * 60 * 60,      // 6時間（秒）
-    defaultLimit: 48 * 60 * 60         // 2日（秒）
+    warningThreshold: 24,    // 24時間
+    dangerThreshold: 6,      // 6時間
+    defaultLimit: 48         // 48時間
   },
   course: {
-    warningThreshold: 15 * 24 * 60 * 60,  // 15日（秒）
-    dangerThreshold: 3 * 24 * 60 * 60,    // 3日（秒）
-    defaultLimit: 30 * 24 * 60 * 60       // 30日（秒）
+    warningThreshold: 360,   // 15日 * 24時間
+    dangerThreshold: 72,     // 3日 * 24時間
+    defaultLimit: 720        // 30日 * 24時間
   }
 };
 
 export interface TimeoutSettings {
-  timeLimit: number;  // 日数単位
+  timeLimit: number;  // 時間単位
   startedAt: Date;
   timeOutAt?: Date;
 }
@@ -45,11 +45,10 @@ export interface TimeoutStatus {
 
 export interface TimeoutConfig {
   enableWarnings: boolean;
-  warningThreshold: number;  // 日数単位
-  dangerThreshold: number;   // 日数単位
+  warningThreshold: number;  // 時間単位
+  dangerThreshold: number;   // 時間単位
 }
 
-// フロントエンド表示用の型
 export interface TimeDisplay {
   formatted: string;
   warningLevel: TimeWarningLevel;
@@ -57,13 +56,12 @@ export interface TimeDisplay {
   isExpired: boolean;
 }
 
-// 時間計算のオプション
 export interface TimeCalculationOptions {
   includeSeconds?: boolean;
-  roundUpDays?: boolean;format?: '24hour' | '12hour';
+  roundUpHours?: boolean;    // roundUpDaysをroundUpHoursに変更
+  format?: '24hour' | '12hour';
 }
 
-// 進行状況を含む拡張タイムアウト情報
 export interface ExtendedTimeoutInfo extends TimeoutStatus {
   progress?: number;
   startDate: Date;
@@ -72,16 +70,51 @@ export interface ExtendedTimeoutInfo extends TimeoutStatus {
   pauseDuration?: number;  // ミリ秒単位
 }
 
-// 時間関連の検証ルール
 export const TIME_VALIDATION = {
-  minTimeLimit: 1,          // 最小制限日数
-  maxTimeLimit: 365,        // 最大制限日数
-  minReleaseTime: 0,        // 最小解放日数
-  maxReleaseTime: 30,       // 最大解放日数
+  minTimeLimit: 24,         // 最小制限時間（1日）
+  maxTimeLimit: 8760,       // 最大制限時間（365日）
+  minReleaseTime: 0,        // 最小解放時間
+  maxReleaseTime: 720,      // 最大解放時間（30日）
 };
 
-// アーカイブ期間の定数
 export const ARCHIVE_PERIOD = {
-  days: 7,                  // アーカイブ期間（日数）
+  hours: 168,               // アーカイブ期間（7日 * 24時間）
   milliseconds: 7 * 24 * 60 * 60 * 1000  // アーカイブ期間（ミリ秒）
+};
+
+// 時間単位の変換ヘルパー
+export const TIME_CONVERSIONS = {
+  HOURS_PER_DAY: 24,
+  MINUTES_PER_HOUR: 60,
+  SECONDS_PER_MINUTE: 60,
+  MILLISECONDS_PER_SECOND: 1000,
+  
+  // 変換ヘルパーメソッド
+  hoursToMilliseconds: (hours: number) => 
+    hours * 60 * 60 * 1000,
+  
+  millisecondsToHours: (ms: number) => 
+    Math.floor(ms / (60 * 60 * 1000)),
+  
+  daysToHours: (days: number) => 
+    days * 24,
+  
+  hoursToDays: (hours: number) => 
+    Math.floor(hours / 24)
+};
+
+// 警告しきい値の定義
+export const WARNING_THRESHOLDS = {
+  chapter: {
+    warning: 24,  // 24時間前に警告
+    danger: 6     // 6時間前に危険警告
+  },
+  course: {
+    warning: 72,  // 3日（72時間）前に警告
+    danger: 24    // 1日（24時間）前に危険警告
+  },
+  exam: {
+    warning: 0.5, // 30分前に警告
+    danger: 0.25  // 15分前に危険警告
+  }
 };

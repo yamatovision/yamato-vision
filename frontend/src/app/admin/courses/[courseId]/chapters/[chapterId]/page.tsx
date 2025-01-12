@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Chapter } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { ChapterForm } from '../components/ChapterForm';
+import { ExamChapterForm } from '../components/ExamChapterForm';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 
@@ -14,6 +15,7 @@ export default function ChapterEditPage() {
   const { theme } = useTheme();
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExamMode, setIsExamMode] = useState(false);
 
   useEffect(() => {
     if (params.courseId && params.chapterId) {
@@ -29,6 +31,7 @@ export default function ChapterEditPage() {
       );
       if (response.success && response.data) {
         setChapter(response.data);
+        setIsExamMode(response.data.isFinalExam || false);
       }
     } catch (error) {
       console.error('Failed to load chapter:', error);
@@ -38,12 +41,10 @@ export default function ChapterEditPage() {
   };
 
   const handleSuccess = () => {
-    // チャプターリストページに遷移するように修正
     router.push(`/admin/courses/${params.courseId}/chapters`);
   };
 
   const handleCancel = () => {
-    // キャンセル時もチャプターリストページに遷移
     router.push(`/admin/courses/${params.courseId}/chapters`);
   };
 
@@ -66,23 +67,46 @@ export default function ChapterEditPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-white">
-                チャプター編集
+                {chapter ? (isExamMode ? '最終試験編集' : 'チャプター編集') : '新規作成'}
               </h1>
               <p className="mt-2 text-gray-400">
-                チャプターの内容を編集できます
+                {isExamMode ? '最終試験の内容を編集できます' : 'チャプターの内容を編集できます'}
               </p>
             </div>
+            {!chapter && ( // 新規作成時のみ表示
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="examMode"
+                  checked={isExamMode}
+                  onChange={(e) => setIsExamMode(e.target.checked)}
+                  className="form-checkbox h-5 w-5 text-blue-600"
+                />
+                <label htmlFor="examMode" className="text-gray-300">
+                  最終試験として作成
+                </label>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg">
           <div className="p-6">
-            <ChapterForm
-              courseId={params.courseId as string}
-              initialData={chapter || undefined}
-              onSuccess={handleSuccess}
-              onCancel={handleCancel}
-            />
+            {isExamMode ? (
+              <ExamChapterForm
+                courseId={params.courseId as string}
+                initialData={chapter || undefined}
+                onSuccess={handleSuccess}
+                onCancel={handleCancel}
+              />
+            ) : (
+              <ChapterForm
+                courseId={params.courseId as string}
+                initialData={chapter || undefined}
+                onSuccess={handleSuccess}
+                onCancel={handleCancel}
+              />
+            )}
           </div>
         </div>
       </div>

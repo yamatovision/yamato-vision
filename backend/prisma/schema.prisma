@@ -117,6 +117,7 @@ model Chapter {
   subtitle         String?
   orderIndex       Int
   timeLimit        Int?
+  examTimeLimit    Int?     // 追加: 試験用の分単位の制限時間
   isVisible        Boolean                    @default(true)
   isFinalExam      Boolean                    @default(false)
   createdAt        DateTime                   @default(now())
@@ -184,14 +185,14 @@ model UserCourse {
 model Task {
   id                String       @id @default(cuid())
   courseId          String
-  title             String
+  title             String?
   maxPoints         Int          @default(100)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   materials         String?      // optional
   task              String?       // これは必須（課題内容）
   evaluationCriteria String?     // optional
-  systemMessage     String       // XMLフォーマット済みの評価用データ
+  systemMessage     String?       // XMLフォーマット済みの評価用データ
   chapter           Chapter?     @relation("ChapterTask")
   submissions       Submission[]
   course            Course       @relation(fields: [courseId], references: [id])

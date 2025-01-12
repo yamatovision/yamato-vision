@@ -8,6 +8,7 @@ export class AdminChapterController {
     this.chapterService = new AdminChapterService();
   }
 
+  // 通常チャプター作成
   createChapter = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { courseId } = req.params;
@@ -25,24 +26,94 @@ export class AdminChapterController {
     }
   };
 
-  resetChapterOrder = async (req: Request, res: Response) => {
-    try {
+  // 最終試験チャプター作成
+  // adminChapterController.ts
+
+createExamChapter = async (req: Request, res: Response): Promise<Response> => {
+  try {
+      console.log('【最終試験作成 開始】', {
+          タイムスタンプ: new Date().toISOString(),
+          コースID: req.params.courseId,
+          リクエストボディ: req.body
+      });
+
       const { courseId } = req.params;
-      await this.chapterService.resetOrderIndices(courseId);
       
-      res.status(200).json({
+      console.log('【チャプターサービス呼び出し前】', {
+          メソッド: 'createExamChapter',
+          パラメータ: {
+              courseId,
+              データ: req.body
+          }
+      });
+
+      const chapter = await this.chapterService.createExamChapter(courseId, req.body);
+      
+      console.log('【チャプター作成完了】', {
+          作成されたチャプター: {
+              id: chapter.id,
+              title: chapter.title,
+              isFinalExam: chapter.isFinalExam,
+              examSettings: chapter.examSettings
+          }
+      });
+
+      return res.json({
+          success: true,
+          data: chapter
+      });
+  } catch (error) {
+      console.error('【最終試験作成 エラー】', {
+          タイムスタンプ: new Date().toISOString(),
+          エラー: {
+              メッセージ: error instanceof Error ? error.message : '不明なエラー',
+              スタック: error instanceof Error ? error.stack : null
+          }
+      });
+
+      return res.status(500).json({
+          success: false,
+          message: '最終試験の作成に失敗しました',
+          error: error instanceof Error ? error.message : '不明なエラー'
+      });
+  }
+};
+
+  // 通常チャプター更新
+  updateChapter = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { chapterId } = req.params;
+      const chapter = await this.chapterService.updateChapter(chapterId, req.body);
+      return res.json({
         success: true,
-        message: 'Chapter order indices reset successfully'
+        data: chapter
       });
     } catch (error) {
-      console.error('Error resetting chapter order:', error);
-      res.status(500).json({
+      console.error('Error updating chapter:', error);
+      return res.status(500).json({
         success: false,
-        message: 'Failed to reset chapter order'
+        message: 'チャプターの更新に失敗しました'
       });
     }
   };
 
+  // 最終試験チャプター更新
+  updateExamChapter = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { chapterId } = req.params;
+      const chapter = await this.chapterService.updateExamChapter(chapterId, req.body);
+      return res.json({
+        success: true,
+        data: chapter
+      });
+    } catch (error) {
+      console.error('Error updating exam chapter:', error);
+      return res.status(500).json({
+        success: false,
+        message: '最終試験の更新に失敗しました'
+      });
+    }
+  };
 
   getChapter = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -83,24 +154,6 @@ export class AdminChapterController {
       return res.status(500).json({
         success: false,
         message: 'チャプター一覧の取得に失敗しました'
-      });
-    }
-  };
-
-  updateChapter = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const { chapterId } = req.params;
-      const chapter = await this.chapterService.updateChapter(chapterId, req.body);
-      
-      return res.json({
-        success: true,
-        data: chapter
-      });
-    } catch (error) {
-      console.error('Error updating chapter:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'チャプターの更新に失敗しました'
       });
     }
   };
@@ -162,24 +215,6 @@ export class AdminChapterController {
       });
     }
   };
-  reorderChapters = async (req: Request, res: Response) => {
-    try {
-      const { courseId } = req.params;
-      await this.chapterService.reorderAllChapters(courseId);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Chapters reordered successfully'
-      });
-    } catch (error) {
-      console.error('Error reordering chapters:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to reorder chapters'
-      });
-    }
-  };
-
 
   updatePerfectOnly = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -199,6 +234,42 @@ export class AdminChapterController {
       return res.status(500).json({
         success: false,
         message: 'パーフェクトモード設定の更新に失敗しました'
+      });
+    }
+  };
+
+  resetChapterOrder = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      await this.chapterService.resetOrderIndices(courseId);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Chapter order indices reset successfully'
+      });
+    } catch (error) {
+      console.error('Error resetting chapter order:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset chapter order'
+      });
+    }
+  };
+
+  reorderChapters = async (req: Request, res: Response) => {
+    try {
+      const { courseId } = req.params;
+      await this.chapterService.reorderAllChapters(courseId);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Chapters reordered successfully'
+      });
+    } catch (error) {
+      console.error('Error reordering chapters:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reorder chapters'
       });
     }
   };

@@ -11,6 +11,8 @@ import { ChapterList } from './components/ChapterList';  // パスを修正
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 
+
+
 export default function CourseChaptersPage() {
   const { theme } = useTheme();
   const params = useParams();
@@ -144,19 +146,25 @@ export default function CourseChaptersPage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            <Link
-              href={`/admin/courses/${params.courseId}`}
-              className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors shadow-sm"
-            >
-              コース基本情報へ戻る
-            </Link>
-            <Link
-              href={`/admin/courses/${params.courseId}/chapters/new`}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
-            >
-              新規チャプター作成
-            </Link>
-          </div>
+  <Link
+    href={`/admin/courses/${params.courseId}`}
+    className="px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors shadow-sm"
+  >
+    コース基本情報へ戻る
+  </Link>
+  <Link
+    href={`/admin/courses/${params.courseId}/chapters/new`}
+    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
+  >
+    通常チャプター作成
+  </Link>
+  <Link
+    href={`/admin/courses/${params.courseId}/chapters/new?type=exam`}
+    className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors shadow-sm"
+  >
+    最終試験作成
+  </Link>
+</div>
         </div>
       </div>
 

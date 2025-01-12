@@ -1,16 +1,5 @@
 // 基本的なチャプターの内容定義
-export interface ChapterContent {
-  type: 'video' | 'audio';
-  videoId?: string;
-  url?: string;  // 追加
-  id?: string;   // 追加
-  transcription?: string;
-  isFinalExam: boolean;     // 追加必要
-  taskId?: string;          // 追加必要
-  releaseTime?: number;     // 追加必要
-  isPerfectOnly: boolean;   // 追加必要
-  content: ChapterContent;  // optional (?)を削除
-}
+
 // タスクの定義
 export interface Task {
   id?: string;
@@ -195,6 +184,7 @@ export interface ChapterProgressInfo {
     isVisible: boolean;
     examSettings?: ExamSettings;
     experienceWeight?: number;
+    examTimeLimit?: number;  // 追加
     releaseTime?: number;     // 追加必要
     isPerfectOnly?: boolean;  // 追加必要
     isFinalExam?: boolean;    // 追加必要
@@ -219,6 +209,7 @@ export interface UpdateChapterDTO {
   examSettings?: ExamSettings;
   releaseTime?: number;
   experienceWeight?: number;
+  examTimeLimit?: number;  // 追加
   isVisible?: boolean;
   isFinalExam?: boolean;
   isPerfectOnly?: boolean;

@@ -138,6 +138,18 @@ export function ChapterList({
     }
   };
 
+  const formatTimeLimit = (hours: number | undefined | null) => {
+    if (!hours) return '-';
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return remainingHours > 0 
+        ? `${days}日 ${remainingHours}時間`
+        : `${days}日`;
+    }
+    return `${hours}時間`;
+  };
+
   const handlePerfectModeToggle = async (chapterId: string, currentPerfectOnly: boolean) => {
     try {
       setIsUpdating(chapterId);
@@ -258,31 +270,31 @@ export function ChapterList({
                             </div>
 
                             <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-400">
-                                  コンテンツタイプ:
-                                </span>
-                                <span className="ml-2 text-gray-300">
-                                  {chapter.content?.type === 'video' ? '動画' : '音声'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-400">
-                                  制限時間:
-                                </span>
-                                <span className="ml-2 text-gray-300">
-                                  {chapter.timeLimit ? `${chapter.timeLimit}日` : '-'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-400">
-                                  解放時間:
-                                </span>
-                                <span className="ml-2 text-gray-300">
-                                  {chapter.releaseTime ? `${chapter.releaseTime}日後` : '即時'}
-                                </span>
-                              </div>
-                            </div>
+  <div>
+    <span className="text-gray-400">
+      コンテンツタイプ:
+    </span>
+    <span className="ml-2 text-gray-300">
+      {chapter.content?.type === 'video' ? '動画' : '音声'}
+    </span>
+  </div>
+  <div>
+    <span className="text-gray-400">
+      制限時間:
+    </span>
+    <span className="ml-2 text-gray-300">
+      {formatTimeLimit(chapter.timeLimit)}
+    </span>
+  </div>
+  <div>
+    <span className="text-gray-400">
+      解放時間:
+    </span>
+    <span className="ml-2 text-gray-300">
+      {chapter.releaseTime ? `${chapter.releaseTime}日後` : '即時'}
+    </span>
+  </div>
+</div>
                           </div>
 
                           <div className="flex space-x-2 ml-4">

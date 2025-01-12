@@ -1,16 +1,15 @@
 // FinalExamEvaluationService.ts
+
 import { claudeService } from './claudeService';
-interface SectionEvaluationResult {
-  score: number;
-  feedback: string;
+
+interface SectionEvaluationResponse {
+  evaluation: {
+    total_score: number;
+    feedback: string;
+    next_step?: string;
+  }
 }
 
-interface FinalExamEvaluationResult {
-  section1: SectionEvaluationResult;
-  section2: SectionEvaluationResult;
-  section3: SectionEvaluationResult;
-  totalScore: number;
-}
 export class FinalExamEvaluationService {
   private static readonly SECTION_MAX_SCORES = {
     1: 30,
@@ -18,7 +17,6 @@ export class FinalExamEvaluationService {
     3: 40
   } as const;
 
-  // 各セクション用の評価メッセージ
   private static getSectionSystemMessage(sectionNumber: 1 | 2 | 3) {
     const maxScore = FinalExamEvaluationService.SECTION_MAX_SCORES[sectionNumber];
     return `あなたは教育評価者です。最終試験のセクション${sectionNumber}を評価します。
@@ -28,8 +26,9 @@ export class FinalExamEvaluationService {
 
 {
   "evaluation": {
-    "score": 0から${maxScore}までの整数値,
-    "feedback": "評価フィードバック（箇条書き禁止。改行なし）"
+    "total_score": 0から${maxScore}までの整数値,
+    "feedback": "評価フィードバック（箇条書き禁止。改行なし）",
+    "next_step": "今後の学習アドバイス（具体的な提案を1つだけ記載）"
   }
 }`;
   }
@@ -41,7 +40,7 @@ export class FinalExamEvaluationService {
     task: string;
     evaluationCriteria: string;
     submission: string;
-  }) {
+  }): Promise<SectionEvaluationResponse> {
     const { sectionNumber, title, materials, task, evaluationCriteria, submission } = params;
     const maxScore = FinalExamEvaluationService.SECTION_MAX_SCORES[sectionNumber];
 
@@ -60,14 +59,26 @@ export class FinalExamEvaluationService {
     ];
 
     try {
+      // オプションでトークン数を事前確認
+      try {
+        const tokenCount = await claudeService.countTokens(messages, 
+          FinalExamEvaluationService.getSectionSystemMessage(sectionNumber));
+        console.log('Section evaluation token count:', tokenCount);
+      } catch (error) {
+        console.warn('Token counting failed:', error);
+      }
+
       const response = await claudeService.messages.create({
         system: FinalExamEvaluationService.getSectionSystemMessage(sectionNumber),
         messages,
         max_tokens: 1024
       });
 
-      const result = this.parseSectionEvaluation(response.content[0].text, maxScore);
-      return result;
+      const responseText = response.content[0].type === 'text' 
+        ? response.content[0].text 
+        : '';
+
+      return this.parseResponse(responseText, maxScore);
 
     } catch (error) {
       console.error(`Section ${sectionNumber} evaluation failed:`, error);
@@ -75,27 +86,33 @@ export class FinalExamEvaluationService {
     }
   }
 
-  private parseSectionEvaluation(responseText: string, maxScore: number) {
+  private parseResponse(responseText: string, maxScore: number): SectionEvaluationResponse {
     try {
       const jsonMatch = responseText.match(/{[\s\S]*}/);
       if (!jsonMatch) {
-        throw new Error('評価結果の解析に失敗しました');
+        throw new Error('レスポンスの解析に失敗しました');
       }
 
-      const result = JSON.parse(jsonMatch[0]);
-      
-      if (!result.evaluation?.score || !result.evaluation?.feedback) {
-        throw new Error('不完全な評価結果です');
+      const result: SectionEvaluationResponse = JSON.parse(jsonMatch[0]);
+
+      if (!result.evaluation || 
+          typeof result.evaluation.total_score !== 'number' ||
+          !result.evaluation.feedback) {
+        throw new Error('不完全なレスポンス形式です');
       }
 
       // スコアの範囲チェックと整数化
-      return {
-        score: Math.min(maxScore, Math.round(result.evaluation.score)),
-        feedback: result.evaluation.feedback.trim()
-      };
+      result.evaluation.total_score = Math.max(0, Math.min(maxScore, 
+        Math.round(result.evaluation.total_score)
+      ));
+
+      return result;
+
     } catch (error) {
-      console.error('Evaluation parsing failed:', error);
+      console.error('Response parsing failed:', error);
       throw new Error('評価結果の解析に失敗しました');
     }
   }
 }
+
+export const finalExamEvaluationService = new FinalExamEvaluationService();

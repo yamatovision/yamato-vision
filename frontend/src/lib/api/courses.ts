@@ -10,7 +10,10 @@ import {
   Course, 
   Chapter,
   CreateCourseDTO, 
-  UpdateCourseDTO, 
+  UpdateCourseDTO,
+  ExamSection, 
+  ExamSettings,
+  UpdateChapterDTO,  // 追加 
   CreateChapterDTO,
   CourseStatus,
 } from '@/types/course';
@@ -20,6 +23,27 @@ interface BaseResponse {
   success: boolean;
   message?: string;
 }
+
+interface CreateExamChapterDTO {
+  title: string;
+  subtitle?: string;
+  timeLimit: number;
+  releaseTime: number;
+  examSettings: ExamSettings;
+  isVisible?: boolean;
+  isFinalExam: boolean;  // 常にtrue
+}
+
+// 試験チャプター更新用DTO
+interface UpdateExamChapterDTO {
+  title?: string;
+  subtitle?: string;
+  timeLimit?: number;
+  releaseTime?: number;
+  examSettings: ExamSettings;
+  isVisible?: boolean;
+}
+
 
 interface CourseResponse extends BaseResponse {
   data: Course;
@@ -259,6 +283,94 @@ export const courseApi = {
       };
     }
   },
+
+
+// 最終試験チャプター作成
+createExamChapter: async (courseId: string, data: CreateExamChapterDTO): Promise<APIResponse<Chapter>> => {
+  try {
+    console.log('createExamChapter - リクエスト情報:', {
+      URL: `${FRONTEND_API_BASE}/admin/courses/${courseId}/exam-chapters`,
+      メソッド: 'POST',
+      ヘッダー: getAuthHeaders(),
+      送信データ: data
+    });
+
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/admin/courses/${courseId}/exam-chapters`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      }
+    );
+
+    console.log('createExamChapter - レスポンス情報:', {
+      ステータス: response.status,
+      ステータスText: response.statusText,
+      OK: response.ok  // "?" を削除
+    });
+
+    if (!response.ok) {
+      // エラーレスポンスの詳細を取得
+      const errorData = await response.json().catch(() => null);
+      console.error('サーバーエラーの詳細:', errorData);
+      throw new Error(errorData?.message || 'Failed to create exam chapter');
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.data
+    };
+  } catch (error) {
+    console.error('createExamChapter - エラー詳細:', {
+      エラー: error,
+      メッセージ: error instanceof Error ? error.message : 'Unknown error',
+      スタック: error instanceof Error ? error.stack : null
+    });
+
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
+// 最終試験チャプター更新
+updateExamChapter: async (
+  courseId: string, 
+  chapterId: string, 
+  data: UpdateExamChapterDTO
+): Promise<APIResponse<Chapter>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/admin/courses/${courseId}/exam-chapters/${chapterId}`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to update exam chapter');
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result.data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
+
 
   // 試験結果取得
   getExamResult: async (
@@ -604,7 +716,6 @@ getChapterPeerSubmissions: async (
       {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
         credentials: 'include'
@@ -877,27 +988,24 @@ updateChapter: async (
   data: UpdateChapterDTO
 ): Promise<APIResponse<Chapter>> => {
   try {
-    const { waitTime, ...restData } = data;
-    const updatedData = {
-      ...restData,
-      releaseTime: data.releaseTime || waitTime,
-      task: {
-        ...data.task,
-        referenceText: data.task.referenceText || ''
-      }
-    };
+    console.log('チャプター更新リクエスト:', {
+      courseId,
+      chapterId,
+      data
+    });
 
     const response = await fetch(
       `${FRONTEND_API_BASE}/admin/courses/${courseId}/chapters/${chapterId}`,
       {
         method: 'PUT',
         headers: getAuthHeaders(),
-        body: JSON.stringify(updatedData)
+        body: JSON.stringify(data)  // データをそのまま送信
       }
     );
 
     if (!response.ok) {
-      throw new Error('Failed to update chapter');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update chapter');
     }
 
     const result = await response.json();
@@ -906,6 +1014,7 @@ updateChapter: async (
       data: result.data
     };
   } catch (error) {
+    console.error('チャプター更新エラー:', error);
     return {
       success: false,
       data: null,

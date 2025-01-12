@@ -75,8 +75,6 @@ export interface CreateChapterDTO {
   releaseTime?: number;
   orderIndex?: number;
   experienceWeight?: number;
-  isFinalExam?: boolean;  // 追加
-  examSettings?: ExamSettings;  // 追加
   task?: {
     title: string;
     materials?: string;
@@ -92,10 +90,8 @@ export interface UpdateChapterDTO {
   taskContent?: TaskContent;  // 変更
   referenceFiles?: ReferenceFile[];  // 追加
   timeLimit?: number;
-  examSettings?: ExamSettings;  // 追加
   releaseTime?: number;
   isVisible?: boolean;
-  isFinalExam?: boolean;
   isPerfectOnly?: boolean;
   task?: {
     title: string;

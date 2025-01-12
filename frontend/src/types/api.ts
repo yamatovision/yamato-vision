@@ -9,6 +9,7 @@ export interface APIResponse<T> {
   data: T | null;  // null を許容するように変更
   message?: string;
   error?: string;  // エラー18を解決
+  isComplete?: boolean;  // オプショナルプロパティとして追加
 }
 
 export interface StartExamResponse {

@@ -1,20 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 import { Course } from '@/types/course';
 import { courseApi } from '@/lib/api';
 import { ChapterForm } from '../components/ChapterForm';
+import { ExamChapterForm } from '../components/ExamChapterForm';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 
 export default function NewChapterPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme } = useTheme();
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isExamMode = searchParams.get('type') === 'exam';
 
   useEffect(() => {
     fetchCourse();
@@ -34,7 +37,7 @@ export default function NewChapterPage() {
   };
 
   const handleSuccess = () => {
-    toast.success('チャプターを作成しました');
+    toast.success(isExamMode ? '最終試験を作成しました' : 'チャプターを作成しました');
     router.push(`/admin/courses/${params.courseId}/chapters`);
   };
 
@@ -84,12 +87,12 @@ export default function NewChapterPage() {
             <h1 className={`text-2xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              {course.title} - 新規チャプター作成
+              {course.title} - {isExamMode ? '最終試験作成' : '新規チャプター作成'}
             </h1>
             <p className={`mt-2 ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              新しいチャプターを作成します
+              {isExamMode ? '新しい最終試験を作成します' : '新しいチャプターを作成します'}
             </p>
           </div>
           <Link
@@ -108,11 +111,26 @@ export default function NewChapterPage() {
       <div className={`p-6 rounded-lg ${
         theme === 'dark' ? 'bg-gray-800' : 'bg-white'
       } shadow-sm`}>
-        <ChapterForm
-          courseId={params.courseId as string}
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-        />
+       {isExamMode ? (
+  <ExamChapterForm
+    courseId={params.courseId as string}
+    onSuccess={() => {
+      toast.success('最終試験を作成しました');
+      router.push(`/admin/courses/${params.courseId}/chapters`);
+    }}
+    onCancel={() => {
+      router.push(`/admin/courses/${params.courseId}/chapters`);
+    }}
+  />
+) : (
+  <ChapterForm
+    courseId={params.courseId as string}
+    onSuccess={handleSuccess}
+    onCancel={handleCancel}
+  />
+)}
+
+
       </div>
     </div>
   );
