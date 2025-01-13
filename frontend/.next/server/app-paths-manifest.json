@@ -1,7 +1,8 @@
 {
   "/login/page": "app/login/page.js",
-  "/user/shop/page": "app/user/shop/page.js",
   "/user/home/page": "app/user/home/page.js",
+  "/user/shop/page": "app/user/shop/page.js",
+  "/user/courses/[courseId]/page": "app/user/courses/[courseId]/page.js",
   "/user/courses/[courseId]/chapters/[chapterId]/examination/certificate/page": "app/user/courses/[courseId]/chapters/[chapterId]/examination/certificate/page.js",
   "/user/courses/[courseId]/chapters/[chapterId]/examination/results/page": "app/user/courses/[courseId]/chapters/[chapterId]/examination/results/page.js"
 }

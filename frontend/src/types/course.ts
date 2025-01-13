@@ -99,11 +99,10 @@ export type CourseStatus =
   | 'perfect'  // perfectを追加
   | 'failed';      // 失敗
 
-  export interface CourseAction {
-    type: 'select' | 'activate' | 'format';
-    available: boolean;
-    buttonText: string;
-  }
+
+export const COURSE_ACTIONS = ['select', 'activate', 'format'] as const;
+export type CourseAction = typeof COURSE_ACTIONS[number];
+
 
   export interface UserChapterProgress {
     id: string;
