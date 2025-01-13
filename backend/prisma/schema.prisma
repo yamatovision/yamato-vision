@@ -177,7 +177,7 @@ model UserCourse {
   certificationEligibility Boolean   @default(true)
   course                   Course    @relation(fields: [courseId], references: [id])
   user                     User      @relation(fields: [userId], references: [id])
-
+  isCurrent Boolean @default(false)  // カレントコース管理用
   @@unique([userId, courseId])
 }
 

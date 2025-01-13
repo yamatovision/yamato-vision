@@ -64,6 +64,7 @@ export interface CourseResponse {
   timeInfo?: CourseTimeInfo;
   certificationEligibility: boolean;
   gradient?: string;
+  isCurrent?: boolean;  // この行を追加
   archiveUntil?: string;
   completion?: {
     badges?: {

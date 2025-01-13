@@ -92,13 +92,18 @@ export interface ChapterContent {
 // コースのステータス定義
 export type CourseStatus = 
   | 'restricted'   // 条件未達成
+  | 'blocked'     // 他のアクティブコース存在
   | 'available'    // 受講可能
   | 'active'       // 受講中
   | 'completed'    // 通常クリア
-  | 'certified'    // 認証バッジ獲得
-  | 'archived'      // パーフェクト達成
+  | 'perfect'  // perfectを追加
   | 'failed';      // 失敗
 
+  export interface CourseAction {
+    type: 'select' | 'activate' | 'format';
+    available: boolean;
+    buttonText: string;
+  }
 
   export interface UserChapterProgress {
     id: string;
@@ -171,6 +176,23 @@ export interface ChapterProgressInfo {
   completedAt?: Date;
 }
 
+export interface CurrentCourseState {
+  courseId: string;
+  status: CourseStatus;
+  currentChapter: {
+    id: string;
+    status: ChapterProgressStatus;
+    lastAccessedAt: Date;
+  } | null;
+  timeInfo: {
+    timeRemaining?: number;
+    isTimedOut: boolean;
+    timeOutAt?: Date;
+  };
+}
+
+// ChapterProgressStatus がまだ定義されていない場合は以下も追加
+export type ChapterProgressStatus = 'not_started' | 'in_progress' | 'completed' | 'timeout';
 
 // チャプター作成用DTO
   export interface CreateChapterDTO {

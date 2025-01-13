@@ -5,9 +5,8 @@ import { useTheme } from '@/contexts/theme';
 import { CourseCard } from './CourseCard';
 import { courseApi } from '@/lib/api/courses';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Course, CourseStatus } from '@/types/course';
+import { Course, CourseStatus, CurrentCourseState } from '@/types/course';
 import { toast } from 'react-hot-toast';
-import { ActivationModal } from './ActivationModal';
 import api from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { ShopCourse } from '@/types/course';
@@ -34,31 +33,28 @@ export default function ShopPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [userLoading, setUserLoading] = useState(true);
   const [coursesLoading, setCoursesLoading] = useState(true);
-  
+  const [currentState, setCurrentState] = useState<CurrentCourseState | null>(null);
+  const [activeCourse, setActiveCourse] = useState<Course | null>(null);
+
   // モーダル状態管理
   const [activatingCourse, setActivatingCourse] = useState<string | null>(null);
   const [showActivationModal, setShowActivationModal] = useState(false);
 
-  // page.tsx
-const handleCourseAction = async (courseId: string, status: CourseStatus) => {
-  const course = courses.find(c => c.id === courseId);
-  if (!course) return;
-
-  // archivedステータスはチャプター一覧モーダル表示
- // if (status === 'archived') {
- //   setSelectedCourseData({
- //     courseId,
-//      course
-//    });
-//    setShowCourseOverviewModal(true);
- //   return;
- // }
-
-  // その他のステータスは全てスタートモーダル表示
-  setActivatingCourse(courseId);
-  setShowActivationModal(true);
-};
-
+  useEffect(() => {
+    const fetchActiveCourse = async () => {
+      try {
+        const response = await courseApi.getAvailableCourses();
+        if (response.success) {
+          const active = response.data.find(course => course.status === 'active');
+          setActiveCourse(active || null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch active course:', error);
+      }
+    };
+    
+    fetchActiveCourse();
+  }, []);
   // ユーザー詳細情報の取得
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -86,6 +82,18 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
     }
   }, [authUser]);
 
+  useEffect(() => {
+    const fetchCurrentState = async () => {
+      const response = await courseApi.getCurrentCourseState();
+      if (response.success) {
+        setCurrentState(response.data);
+      }
+    };
+    
+    fetchCurrentState();
+  }, []);
+
+  
   // コース一覧の取得
     useEffect(() => {
       const fetchCourses = async () => {
@@ -121,7 +129,60 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
       };
       fetchCourses();
     }, []);
-  
+
+    const handleCourseAction = async (courseId: string, status: CourseStatus, action: 'select' | 'activate' | 'format') => {
+      try {
+        switch (action) {
+          case 'activate':
+            if (status !== 'available') {
+              toast.error('このコースは開始できません');
+              return;
+            }
+            const activateResult = await courseApi.activateCourse(courseId);
+            if (activateResult.success) {
+              toast.success('コースを開始しました');
+              await refreshCourses();
+            }
+            break;
+    
+          case 'select':
+            if (!['active', 'completed', 'perfect', 'failed'].includes(status)) {
+              toast.error('このコースは選択できません');
+              return;
+            }
+            const selectResult = await courseApi.selectCourse(courseId);
+            if (selectResult.success) {
+              toast.success('コースを選択しました');
+              await refreshCourses();
+            }
+            break;
+    
+          case 'format':
+            if (!['active', 'failed'].includes(status)) {
+              toast.error('このコースは初期化できません');
+              return;
+            }
+            const confirmed = window.confirm(
+              'コースのデータを初期化します。\n' +
+              '- 全進捗データが削除されます\n' +
+              '- 最終試験データが削除されます\n' +
+              '- 課題提出データが削除されます\n' +
+              'よろしいですか？'
+            );
+            if (!confirmed) return;
+            
+            const formatResult = await courseApi.formatCourse(courseId);
+            if (formatResult.success) {
+              toast.success('コースを初期化しました');
+              await refreshCourses();
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('Course action error:', error);
+        toast.error('操作に失敗しました');
+      }
+    };
 
   // コース操作のハンドラー
   const handleUnlock = async (courseId: string) => {
@@ -140,7 +201,6 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
       case 'active':
       case 'perfect':
       case 'completed':
-      case 'certified':
         try {
           const response = await courseApi.getCurrentChapter(courseId);
           if (response.success && response.data) {
@@ -189,8 +249,6 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
         return 'available';
       case 'completed':
         return 'completed';
-      case 'certified':
-        return 'certified';
       case 'perfect':
         return 'perfect';
       case 'failed':
@@ -223,11 +281,12 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
         restricted: 6,
         available: 2,
         active: 0,
-        completed: 4,
-        certified: 3,
-        perfect: 1,
-        failed: 5
+        completed: 5,
+        blocked: 3,
+        perfect: 4,
+        failed: 1
       };
+
       return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
     });
   }, [courses, filter, searchTerm]);
@@ -238,8 +297,8 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
 
   return (
     <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
-      {/* ユーザー情報パネル */}
-      <div className={theme === 'dark' ? 'bg-gray-800 rounded-lg p-4 mb-6' : 'bg-white rounded-lg p-4 mb-6 border border-[#DBEAFE] shadow-sm'}>
+    <div className={theme === 'dark' ? 'bg-gray-800 rounded-lg p-4 mb-6' : 'bg-white rounded-lg p-4 mb-6 border border-[#DBEAFE] shadow-sm'}>
+      <div className="flex flex-col space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="text-sm">
@@ -256,53 +315,35 @@ const handleCourseAction = async (courseId: string, status: CourseStatus) => {
             </div>
           </div>
         </div>
+        {activeCourse && (
+          <div className="text-sm">
+            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+              現在受講中のコース：
+            </span>
+            <span className={`font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+              {activeCourse.title}
+            </span>
+          </div>
+        )}
       </div>
-
+    </div>
       {/* コース一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {filteredCourses.map((course) => (
-  <CourseCard
-    key={course.id}
-    {...course}
-    gradient={course.gradient || 'default-gradient'}
-    status={course.status}
-    onAction={() => handleCourseAction(course.id, course.status)}  // アロー関数として定義
-  />
+ <CourseCard
+ key={course.id}
+ {...course}
+ gradient={course.gradient || 'default-gradient'}
+ status={course.status}
+ onAction={(action) => {
+   console.log('Action triggered:', action, course.id, course.status); // デバッグログ追加
+   handleCourseAction(course.id, course.status, action);
+ }}
+/>
 ))}
       </div>
 
-      {/* アクティベーションモーダル */}
-      <ActivationModal
-  isOpen={showActivationModal}
-  onClose={() => {
-    setShowActivationModal(false);
-    setActivatingCourse(null);
-  }}
-  onConfirm={async () => {
-    if (!activatingCourse) return;
-    try {
-      // courseApi.startCourse を呼び出し
-      const result = await courseApi.startCourse(activatingCourse);
-      if (result.success) {
-        toast.success('コースを開始しました！');
-        await refreshCourses();
-        
-        // 最初のチャプターへ遷移
-        const currentChapterResponse = await courseApi.getCurrentChapter(activatingCourse);
-        if (currentChapterResponse.success && currentChapterResponse.data) {
-          router.push(`/user/courses/${activatingCourse}/chapters/${currentChapterResponse.data.chapterId}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error starting course:', error);
-      toast.error('コースの開始に失敗しました');
-    } finally {
-      setShowActivationModal(false);
-      setActivatingCourse(null);
-    }
-  }}
-  hasCurrentCourse={courses.some(c => c.status === 'active')}
-/>
+     
     </div>
   );
 }

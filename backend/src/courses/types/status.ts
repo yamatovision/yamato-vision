@@ -19,13 +19,13 @@ export interface ReleaseTimeStatus {
 }
   
 export type CourseStatus = 
-  | 'restricted'     // すべて小文字に統一
+  | 'restricted'
+  | 'blocked'      // 追加
   | 'available'
   | 'active'
-  | 'completed'      // 70点以上
-  | 'certified'      // 85点以上
-  | 'perfect'        // 95点以上
-  | 'failed';        // 70点未満またはタイムアウト
+  | 'completed'
+  | 'perfect'
+  | 'failed'
 
   export type ChapterProgressStatus = 
   | 'NOT_STARTED'
@@ -44,15 +44,15 @@ export type ChapterEvaluationStatus =
   | 'PASS'       // 提出のみ
   | 'FAILED'     // タイムアウト
 
-export const CourseStatus = {
-  RESTRICTED: 'restricted' as CourseStatus,
-  AVAILABLE: 'available' as CourseStatus,
-  ACTIVE: 'active' as CourseStatus,
-  COMPLETED: 'completed' as CourseStatus,
-  CERTIFIED: 'certified' as CourseStatus,
-  PERFECT: 'perfect' as CourseStatus,
-  FAILED: 'failed' as CourseStatus,
-} as const;
+  export const CourseStatus = {
+    RESTRICTED: 'restricted' as CourseStatus,
+    BLOCKED: 'blocked' as CourseStatus,      // 追加
+    AVAILABLE: 'available' as CourseStatus,
+    ACTIVE: 'active' as CourseStatus,
+    COMPLETED: 'completed' as CourseStatus,
+    PERFECT: 'perfect' as CourseStatus,
+    FAILED: 'failed' as CourseStatus,
+  } as const;
 
 // Chapter Status（重複を統合）
 export type ChapterStatus = 

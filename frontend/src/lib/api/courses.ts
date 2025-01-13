@@ -15,6 +15,7 @@ import {
   ExamSettings,
   UpdateChapterDTO,  // 追加 
   CreateChapterDTO,
+  CurrentCourseState,
   CourseStatus,
 } from '@/types/course';
 
@@ -201,6 +202,79 @@ export const courseApi = {
       return {
         success: false,
         data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },activateCourse: async (courseId: string): Promise<APIResponse<void>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/activate`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to activate course');
+      }
+  
+      return { success: true, data: null };  // data: null を追加
+    } catch (error) {
+      return {
+        success: false,
+        data: null,  // data: null を追加
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+  
+  selectCourse: async (courseId: string): Promise<APIResponse<void>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/select`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to select course');
+      }
+  
+      return { success: true, data: null };  // data: null を追加
+    } catch (error) {
+      return {
+        success: false,
+        data: null,  // data: null を追加
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
+  
+  formatCourse: async (courseId: string): Promise<APIResponse<void>> => {
+    try {
+      const response = await fetch(
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/format`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          credentials: 'include'
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to format course');
+      }
+  
+      return { success: true, data: null };  // data: null を追加
+    } catch (error) {
+      return {
+        success: false,
+        data: null,  // data: null を追加
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -798,6 +872,32 @@ getChapterPeerSubmissions: async (
     );
     return { success: true };
   },
+
+
+  // courses.ts に追加
+getCurrentCourseState: async (): Promise<APIResponse<CurrentCourseState>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/current-state`,
+      {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch current course state');
+    }
+
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
 
   // 利用可能なコース一覧取得
   getAvailableCourses: async (): Promise<CourseListResponse> => {

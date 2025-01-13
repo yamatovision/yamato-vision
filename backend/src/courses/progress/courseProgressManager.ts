@@ -1073,7 +1073,7 @@ public async handleCourseCompletion(
     });
 
     // 4. バッジの付与
-    if (finalStatus === 'perfect' || finalStatus === 'certified') {
+    if (finalStatus === 'perfect') {
       const badgeCondition: BadgeCondition = finalStatus === 'perfect' 
   ? 'COURSE_COMPLETE'
   : 'COURSE_COMPLETE';
@@ -1113,7 +1113,7 @@ public async handleCourseCompletion(
       data: {
         status: finalStatus,
         completedAt: new Date(),
-        badgeAwarded: finalStatus === 'perfect' || finalStatus === 'certified'
+        badgeAwarded: finalStatus === 'perfect' 
       }
     });
 
@@ -1155,9 +1155,7 @@ private calculateFinalStatus(
   if (scores.every(score => score >= 95)) {
     return 'perfect';
   }
-  if (scores.every(score => score >= 85)) {
-    return 'certified';
-  }
+ 
   if (scores.every(score => score >= 70)) {
     return 'completed';
   }

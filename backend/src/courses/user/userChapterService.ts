@@ -103,10 +103,9 @@ export class UserChapterService extends EventEmitter {
     this.prisma = new PrismaClient();
     this.progressManager = new CourseProgressManager();
   }
-
   async getCurrentChapter(userId: string, courseId: string) {
     return await this.prisma.$transaction(async (tx) => {
-      // 1. コースの有効性確認
+      // 1. コースの状態確認
       const userCourse = await tx.userCourse.findUnique({
         where: {
           userId_courseId: {
@@ -116,11 +115,11 @@ export class UserChapterService extends EventEmitter {
         }
       });
   
-      if (!userCourse?.isActive) {
-        throw new Error('Active course not found');
+      if (!userCourse) {
+        throw new Error('Course not found');
       }
   
-      // 2. 最新の進捗状態を取得（updatedAtでソート）
+      // 2. 最後にアクセスしたチャプターの取得
       const lastProgress = await tx.userChapterProgress.findFirst({
         where: {
           userId,
@@ -137,68 +136,16 @@ export class UserChapterService extends EventEmitter {
           status: true,
           startedAt: true,
           completedAt: true,
-          score: true,  // ここを明示的に追加
+          score: true,
           lessonWatchRate: true,
           isTimedOut: true,
           timeOutAt: true,
-          updatedAt: true,  // これを追加
+          updatedAt: true,
           chapter: true
         }
       });
-      console.log('【getCurrentChapter】データ取得結果:', {
-        progress: lastProgress,
-        score: lastProgress?.score
-      });
   
-      // 3. タイムアウトしている場合、次のチャプターを取得
-      if (lastProgress?.isTimedOut) {
-        const nextChapter = await tx.chapter.findFirst({
-          where: {
-            courseId,
-            orderIndex: {
-              gt: lastProgress.chapter.orderIndex
-            },
-            isVisible: true
-          },
-          orderBy: {
-            orderIndex: 'asc'
-          }
-        });
-        console.log('【次チャプター確認】タイムアウト後の次チャプター:', {
-          現在のチャプター: lastProgress.chapter.title,
-          次のチャプター: nextChapter?.title,
-          次のチャプターID: nextChapter?.id,
-          次のチャプターIndex: nextChapter?.orderIndex
-        });
-        if (nextChapter) {
-          // 次のチャプターの進捗状態を取得または作成
-          return await tx.userChapterProgress.upsert({
-            where: {
-              userId_courseId_chapterId: {
-                userId,
-                courseId,
-                chapterId: nextChapter.id
-              }
-            },
-            create: {
-              userId,
-              courseId,
-              chapterId: nextChapter.id,
-              status: 'NOT_STARTED',
-              startedAt: new Date(),
-              lessonWatchRate: 0,
-              updatedAt: new Date()
-            },
-            update: {
-              status: 'NOT_STARTED',
-              startedAt: new Date(),
-              updatedAt: new Date()
-            }
-          });
-        }
-      }
-  
-      // 4. まだ進捗がない場合、最初のチャプターを取得
+      // 3. 進捗がない場合は最初のチャプターを取得
       if (!lastProgress) {
         const firstChapter = await tx.chapter.findFirst({
           where: {
@@ -225,7 +172,54 @@ export class UserChapterService extends EventEmitter {
         }
       }
   
-      // 5. 既存の進捗を返す
+      // 4. perfect/failedの場合でも最後にアクセスしたチャプターを返す
+      if (userCourse.status === 'perfect' || userCourse.status === 'failed') {
+        return lastProgress;
+      }
+  
+      // 5. タイムアウト時の次チャプター取得ロジックは維持
+      if (lastProgress?.isTimedOut) {
+        const nextChapter = await tx.chapter.findFirst({
+          where: {
+            courseId,
+            orderIndex: {
+              gt: lastProgress.chapter.orderIndex
+            },
+            isVisible: true
+          },
+          orderBy: {
+            orderIndex: 'asc'
+          }
+        });
+  
+        if (nextChapter) {
+          return await tx.userChapterProgress.upsert({
+            where: {
+              userId_courseId_chapterId: {
+                userId,
+                courseId,
+                chapterId: nextChapter.id
+              }
+            },
+            create: {
+              userId,
+              courseId,
+              chapterId: nextChapter.id,
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              lessonWatchRate: 0,
+              updatedAt: new Date()
+            },
+            update: {
+              status: 'NOT_STARTED',
+              startedAt: new Date(),
+              updatedAt: new Date()
+            }
+          });
+        }
+      }
+  
+      // 6. 既存の進捗を返す
       return lastProgress;
     });
   }

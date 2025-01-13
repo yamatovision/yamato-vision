@@ -1,7 +1,17 @@
-'use client';
-import React from 'react';
+// CourseCard.tsx
 import { useTheme } from '@/contexts/theme';
 import { CourseStatus } from '@/types/course';
+interface ActionButton {
+  label: string;
+  className: string;
+  action: 'select' | 'activate' | 'format' | null;
+  disabled: boolean;
+}
+
+// コース状態ごとの設定の型を定義
+interface StatusConfig {
+  buttons: ActionButton[];
+}
 
 interface CourseCardProps {
   id: string;
@@ -12,7 +22,7 @@ interface CourseCardProps {
   rankRequired?: string;
   gradient: string;
   thumbnail?: string;
-  onAction: () => void;  // ここが重要: 関数型として明確に定義
+  onAction: (action: 'select' | 'activate' | 'format') => void;
   completion?: {
     badges?: {
       completion?: boolean;
@@ -27,53 +37,162 @@ export function CourseCard({
   description,
   status,
   levelRequired,
-  rankRequired,
   thumbnail,
+  completion,
+  rankRequired,
   gradient,
-  onAction,
-  completion
+  onAction
 }: CourseCardProps) {
   const { theme } = useTheme();
 
-  const getStatusBadge = () => {
-    const badges: Record<CourseStatus, { text: string; color: string }> = {
+  // ボタン設定の取得関数
+  const getButtonConfig = (): StatusConfig => {
+    const configs: Record<CourseStatus, StatusConfig> = {
+      failed: {
+        buttons: [
+          {
+            label: '選択',
+            className: 'bg-blue-500 hover:bg-blue-600',
+            action: 'select',
+            disabled: false
+          },
+          {
+            label: 'データを初期化',
+            className: 'bg-red-500 hover:bg-red-600',
+            action: 'format',
+            disabled: false
+          }
+        ]
+      },
       restricted: {
-        text: '条件未達成',
-        color: 'bg-gray-500'
+        buttons: [{
+          label: `${levelRequired ? `Lv${levelRequired}` : ''} ${rankRequired || ''}必要`,
+          className: 'bg-gray-300 text-gray-500',
+          disabled: true,
+          action: null
+        }]
+      },
+      blocked: {
+        buttons: [{
+          label: '他のコースが進行中',
+          className: 'bg-gray-400 cursor-not-allowed',
+          disabled: true,
+          action: null
+        }]
       },
       available: {
-        text: '受講可能',
-        color: 'bg-blue-500'
+        buttons: [{
+          label: 'コースを開始',
+          className: 'bg-blue-500 hover:bg-blue-600',
+          disabled: false,
+          action: 'activate'
+        }]
       },
       active: {
-        text: '受講中',
-        color: 'bg-green-600'
+        buttons: [{
+          label: '選択',
+          className: 'bg-green-600 hover:bg-green-700',
+          disabled: false,
+          action: 'select'
+        }]
       },
       completed: {
-        text: 'クリア',
-        color: 'bg-green-500'
+        buttons: [{
+          label: '選択',
+          className: 'bg-green-500 hover:bg-green-600',
+          disabled: false,
+          action: 'select'
+        }]
       },
-      certified: {
-        text: '認定',
-        color: 'bg-yellow-500'
-      },
-      archived: {
-        text: 'Perfect',
-        color: 'bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse'
-      },
-      failed: {
-        text: '失敗',
-        color: 'bg-red-500'
+      perfect: {
+        buttons: [{
+          label: '選択',
+          className: 'bg-purple-500 hover:bg-purple-600',
+          disabled: false,
+          action: 'select'
+        }]
       }
     };
+    return configs[status];
+  };
 
-    const badge = badges[status];
-    return (
-      <span className={`absolute top-2 right-2 ${badge.color} text-xs px-2 py-1 rounded-full
-        ${status === 'archived' ? 'animate-pulse' : ''}`}>
-        {badge.text}
-      </span>
-    );
+  // ステータス情報の定義
+  const getStatusInfo = () => {
+    const statusConfig: Record<CourseStatus, {
+      mainText: string;
+      subText?: string;
+      icon: string;
+      bgColor: string;
+      textColor: string;
+      borderColor: string;
+    }> = {
+      restricted: {
+        mainText: '条件未達成',
+        icon: '🔒',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-600',
+        borderColor: 'border-gray-300'
+      },
+      blocked: {
+        mainText: '受講不可',
+        subText: '他のコースが進行中',
+        icon: '⛔',
+        bgColor: 'bg-gray-100',
+        textColor: 'text-gray-600',
+        borderColor: 'border-gray-300'
+      },
+      available: {
+        mainText: '受講可能',
+        icon: '✨',
+        bgColor: 'bg-blue-50',
+        textColor: 'text-blue-600',
+        borderColor: 'border-blue-200'
+      },
+      active: {
+        mainText: '受講中',
+        icon: '📚',
+        bgColor: 'bg-green-50',
+        textColor: 'text-green-600',
+        borderColor: 'border-green-200'
+      },
+      completed: {
+        mainText: '合格',
+        subText: '単位取得済み',
+        icon: '🎓',
+        bgColor: 'bg-green-50',
+        textColor: 'text-green-600',
+        borderColor: 'border-green-200'
+      },
+      perfect: {
+        mainText: '秀',
+        subText: 'パーフェクト達成！',
+        icon: '🏆',
+        bgColor: 'bg-purple-50',
+        textColor: 'text-purple-600',
+        borderColor: 'border-purple-200'
+      },
+      failed: {
+        mainText: '不可',
+        subText: '単位取得失敗',
+        icon: '❌',
+        bgColor: 'bg-red-50',
+        textColor: 'text-red-600',
+        borderColor: 'border-red-200'
+      }
+    };
+    return statusConfig[status];
+  };
+
+  const config = getButtonConfig();
+
+  const getGradientStyle = () => {
+    if (status === 'perfect') {
+      return 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 animate-gradient';
+    }
+    if (['completed', 'certified'].includes(status)) {
+      return `${gradient} opacity-90`;
+    }
+    return gradient;
   };
 
   const renderThumbnailOrGradient = () => {
@@ -94,55 +213,6 @@ export function CourseCard({
     );
   };
 
-  const getGradientStyle = () => {
-    if (status === 'archived') {
-      return 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 animate-gradient';
-    }
-    if (['completed', 'certified'].includes(status)) {
-      return `${gradient} opacity-90`;
-    }
-    return gradient;
-  };
-
-  const getButtonConfig = () => {
-    const configs = {
-      archived: {
-        label: '栄光の記録を見る',
-        className: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90',
-        icon: '🏆'
-      },
-      active: {
-        label: 'やり直す',
-        className: `${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`
-      },
-      available: {
-        label: '開始する',
-        className: `${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`
-      },
-      completed: {
-        label: 'やり直す',
-        className: 'bg-green-600 hover:bg-green-700 text-white'
-      },
-      certified: {
-        label: 'やり直す',
-        className: 'bg-yellow-600 hover:bg-yellow-700 text-white'
-      },
-      failed: {
-        label: 'やり直す',
-        className: `${theme === 'dark' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white`
-      },
-      restricted: {
-        label: `${levelRequired ? `Lv${levelRequired}` : ''} ${rankRequired || ''}で解放`,
-        className: theme === 'dark'
-          ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-      }
-    };
-
-    return configs[status] || configs.available;
-  };
-
-  const config = getButtonConfig();
 
   return (
     <div className={`relative ${
@@ -154,8 +224,7 @@ export function CourseCard({
     }`}>
       <div className={`h-40 ${getGradientStyle()} relative`}>
         {renderThumbnailOrGradient()}
-        {getStatusBadge()}
-        {status === 'archived' && (
+        {status === 'perfect' && (
           <div className="absolute bottom-2 left-2 flex space-x-2">
             <span className="text-2xl animate-bounce">🏆</span>
           </div>
@@ -185,6 +254,28 @@ export function CourseCard({
         }`}>
           {description}
         </p>
+
+        {/* ステータスバッジ */}
+        <div className={`
+          flex items-center gap-2 p-2 rounded-lg mb-4
+          ${getStatusInfo().bgColor}
+          ${getStatusInfo().textColor}
+          border ${getStatusInfo().borderColor}
+        `}>
+          <span className="text-xl">{getStatusInfo().icon}</span>
+          <div className="flex flex-col">
+            <span className="font-semibold">
+              {getStatusInfo().mainText}
+            </span>
+            {getStatusInfo().subText && (
+              <span className="text-sm opacity-75">
+                {getStatusInfo().subText}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* レベルと階級要件 */}
         {(levelRequired || rankRequired) && (
           <div className="flex items-center space-x-2 mb-4">
             {levelRequired && (
@@ -204,14 +295,22 @@ export function CourseCard({
             )}
           </div>
         )}
-       <button
-  onClick={onAction}  // アロー関数を除去、直接onActionを渡す
-  className={`w-full py-2 rounded-lg flex items-center justify-center space-x-2 ${config.className}`}
-  disabled={status === 'restricted'}
->
-  {config.icon && <span>{config.icon}</span>}
-  <span>{config.label}</span>
-</button>
+
+        {/* アクションボタン */}
+        <div className={status === 'failed' ? 'grid grid-cols-3 gap-2' : ''}>
+        {config.buttons.map((button, index) => (
+          <button
+            key={index}
+            onClick={() => button.action && onAction(button.action)}
+            disabled={button.disabled}
+            className={`w-full py-2 px-4 rounded-lg text-white ${button.className} ${
+              button.disabled ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+              {button.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
