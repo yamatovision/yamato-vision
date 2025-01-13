@@ -27,7 +27,8 @@ export class AdminCourseService {
           isPublished: false,
           isArchived: false,
           timeLimit: data.timeLimit,
-          thumbnail: data.thumbnail
+          thumbnail: data.thumbnail,
+          credits: data.credits ?? 1,  // 追加：デフォルト1単位
         },
         include: {
           chapters: {
@@ -64,6 +65,7 @@ export class AdminCourseService {
           }),
           ...(typeof data.timeLimit === 'number' && { timeLimit: data.timeLimit }),
           ...(data.thumbnail && { thumbnail: data.thumbnail }),
+          ...(typeof data.credits === 'number' && { credits: data.credits }), // 追加：単位数の更新
           ...(typeof data.isPublished !== 'undefined' && {
             isPublished: data.isPublished,
             publishedAt: data.isPublished ? new Date() : null

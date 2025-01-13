@@ -49,6 +49,7 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
     rankRequired: initialData?.rankRequired || '',
     timeLimit: initialData?.timeLimit || 0,
     requirementType: initialData?.requirementType || 'AND',
+    credits: initialData?.credits || 1, // 追加：デフォルト1単位
   });
 
   const validateForm = () => {
@@ -260,8 +261,38 @@ export function CourseForm({ initialData, isEdit = false }: CourseFormProps) {
         </div>
       </div>
 
-      {/* 制限時間設定 */}
       <div>
+  <label 
+    className={`block text-sm font-medium mb-2 ${
+      theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+    }`}
+  >
+    単位数（1-4）
+  </label>
+  <input
+    type="number"
+    value={formData.credits}
+    onChange={(e) => {
+      const value = parseInt(e.target.value);
+      if (value >= 1 && value <= 4) {
+        setFormData(prev => ({ ...prev, credits: value }));
+      }
+    }}
+    className={`w-full rounded-lg p-3 ${
+      theme === 'dark' 
+        ? 'bg-gray-700 text-white border-gray-600' 
+        : 'bg-white text-gray-900 border-gray-200'
+    } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+    min="1"
+    max="4"
+    required
+  />
+  <p className={`text-sm mt-1 ${
+    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+  }`}>
+    ※1単位から4単位まで設定可能です
+  </p>
+</div>      <div>
         <label 
           className={`block text-sm font-medium mb-2 ${
             theme === 'dark' ? 'text-gray-200' : 'text-gray-700'

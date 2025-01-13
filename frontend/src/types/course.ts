@@ -122,6 +122,7 @@ export interface BaseCourse {
   levelRequired?: number;
   rankRequired?: string;
   timeLimit?: number;
+  credits?: number;  // 追加：単位数
   isPublished: boolean;
   isArchived: boolean;
   publishedAt?: Date;
@@ -167,6 +168,7 @@ export interface UpdateCourseDTO {
   timeLimit?: number;
   isPublished?: boolean;
   isArchived?: boolean;
+  credits?: number;  // 追加：単位数
 }
 
 export interface ChapterProgressInfo {
@@ -226,6 +228,7 @@ export interface UpdateChapterDTO {
   referenceFiles?: ReferenceFile[];  // 追加
   orderIndex?: number;
   timeLimit?: number;
+  credits?: number;  // 追加：単位数
   waitTime?: number;
   examSettings?: ExamSettings;
   releaseTime?: number;

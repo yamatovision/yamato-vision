@@ -30,6 +30,7 @@ export interface CreateCourseDTO {
   title: string;
   description: string;
   thumbnail?: string;
+  credits?: number;  // 追加：単位数（1-4）
   levelRequired?: number;
   rankRequired?: string;
   requirementType?: 'AND' | 'OR';

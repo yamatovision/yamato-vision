@@ -234,7 +234,9 @@ export default function ShopPage() {
 
   return (
     <div className={`max-w-6xl mx-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-[#F8FAFC]'}`}>
-      <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 mb-6 shadow-sm`}>
+    <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 mb-6 shadow-sm`}>
+      <div className="flex flex-col space-y-3">
+        {/* ユーザー情報行 */}
         <div className="flex items-center space-x-4">
           <div className="text-sm">
             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
@@ -253,7 +255,33 @@ export default function ShopPage() {
             </span>
           </div>
         </div>
+
+        {/* アクティブコース情報行 */}
+        {courses.some(course => course.status === 'active') && (
+          <div className="text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
+            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+              受講中のコース：
+            </span>
+            <span className={`font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} ml-2`}>
+              {courses.find(course => course.status === 'active')?.title}
+            </span>
+          </div>
+        )}
+
+        {/* 現在選択中のコース情報行 */}
+        {courses.some(course => course.isCurrent) && (
+          <div className="text-sm border-t border-gray-200 dark:border-gray-700 pt-3">
+            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+              現在選択中のコース：
+            </span>
+            <span className={`font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} ml-2`}>
+              {courses.find(course => course.isCurrent)?.title}
+            </span>
+          </div>
+        )}
       </div>
+    </div>
+        
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (

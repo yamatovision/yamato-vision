@@ -22,7 +22,7 @@ const StatusRibbon = ({ status }: { status: CourseStatus }) => {
     active: { color: 'bg-green-500/80', text: '受講中' },
     completed: { color: 'bg-purple-500/80', text: '合格' },
     perfect: { color: 'bg-yellow-500/80', text: '秀' },
-    failed: { color: 'bg-red-500/80', text: '不可' }
+    failed: { color: 'bg-red-500/80', text: '不合格' }
   };
 
   return (
@@ -84,16 +84,16 @@ export function CourseCard({
 
   return (
     <div
-      onClick={() => isClickable && onCardClick(id, status)}
-      className={`
-        relative 
-        ${theme === 'dark' ? 'bg-gray-800' : 'bg-white border border-[#DBEAFE]'} 
-        rounded-lg overflow-hidden
-        transition-all duration-200
-        ${isClickable ? 'cursor-pointer hover:shadow-lg transform hover:-translate-y-1' : 'cursor-not-allowed opacity-90'}
-        ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-      `}
-    >
+    onClick={() => isClickable && onCardClick(id, status)}
+    className={`
+      relative 
+      ${theme === 'dark' ? 'bg-gray-800' : 'bg-white border border-[#DBEAFE]'} 
+      rounded-lg overflow-hidden
+      transition-all duration-200
+      ${isClickable ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-90'}
+      ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+    `}
+  >
       <StatusRibbon status={status} />
       {renderThumbnailOrGradient()}
 
