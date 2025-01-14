@@ -510,55 +510,107 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
   }
 
   private calculateGrade(finalScore: number): {
-  status: CourseStatus;
-  grade: string;
-  gradePoint: number;
-} {
-  if (finalScore >= 90) {
-    return { status: 'perfect', grade: '秀', gradePoint: 4.0 };
+    status: CourseStatus;
+    grade: string;
+    gradePoint: number;
+  } {
+    if (finalScore >= 90) {
+      return { status: 'perfect', grade: '秀', gradePoint: 4.0 };
+    }
+    if (finalScore >= 80) {
+      return { status: 'completed', grade: '優', gradePoint: 3.0 };
+    }
+    if (finalScore >= 70) {
+      return { status: 'completed', grade: '良', gradePoint: 2.0 };
+    }
+    if (finalScore >= 60) {
+      return { status: 'completed', grade: '可', gradePoint: 1.0 };
+    }
+    return { status: 'failed', grade: '不可', gradePoint: 0.0 };
   }
-  if (finalScore >= 80) {
-    return { status: 'completed', grade: '優', gradePoint: 3.0 };
-  }
-  if (finalScore >= 70) {
-    return { status: 'completed', grade: '良', gradePoint: 2.0 };
-  }
-  if (finalScore >= 60) {
-    return { status: 'completed', grade: '可', gradePoint: 1.0 };
-  }
-  return { status: 'failed', grade: '不可', gradePoint: 0.0 };
-}
 
-async handleCourseCompletion(userId: string, courseId: string, finalScore: number): Promise<void> {
-  await this.prisma.$transaction(async (tx) => {
-    // 1. 成績評価の計算
-    const { status, grade, gradePoint } = this.calculateGrade(finalScore);
-
-    // 2. コース状態の更新
-    await tx.userCourse.update({
-      where: { 
-        userId_courseId: { userId, courseId } 
-      },
-      data: {
-        status,
-        isActive: false,
-        completedAt: new Date()
-      }
+  async handleCourseCompletion(userId: string, courseId: string, finalScore: number): Promise<void> {
+    console.log('コース完了処理を開始:', {
+      userId,
+      courseId,
+      finalScore
     });
-
-    // 3. 成績履歴の作成
-    await tx.gradeHistory.create({
-      data: {
-        userId,
-        courseId,
+  
+    await this.prisma.$transaction(async (tx) => {
+      // コースの情報を取得
+      const course = await tx.course.findUnique({
+        where: { id: courseId },
+        select: { credits: true }
+      });
+  
+      if (!course) {
+        throw new Error('Course not found');
+      }
+  
+      // デフォルトの単位数を1とし、コースに設定がある場合はそちらを使用
+      const credits = course.credits ?? 1;
+  
+      // 1. 成績評価の計算
+      const { status, grade, gradePoint } = this.calculateGrade(finalScore);
+  
+      console.log('評価結果:', {
+        status,
         grade,
         gradePoint,
-        credits: 1,
-        completedAt: new Date()
-      }
+        credits
+      });
+  
+      // 2. コース状態の更新
+      const updatedCourse = await tx.userCourse.update({
+        where: { 
+          userId_courseId: { userId, courseId } 
+        },
+        data: {
+          status,
+          isActive: false,
+          completedAt: new Date(),
+          isCurrent: false
+        }
+      });
+  
+      // 3. 成績履歴の作成
+      await tx.gradeHistory.create({
+        data: {
+          userId,
+          courseId,
+          grade,
+          gradePoint,
+          credits,          // ← 固定値から動的な値に変更
+          completedAt: new Date()
+        }
+      });
+  
+      // 4. ユーザーの総取得単位数とGPAを更新
+      await this.updateUserGPA(tx, userId);
+  
+      // 5. ステータス変更イベントの発行
+      this.emitStatusChange({
+        type: 'COURSE_COMPLETED',
+        userId,
+        courseId,
+        oldStatus: 'active',
+        newStatus: status,
+        timestamp: new Date(),
+        data: {
+          grade,
+          gradePoint,
+          certificationEligibility: true
+        }
+      });
+  
+      console.log('コース完了処理が完了:', {
+        新ステータス: updatedCourse.status,
+        評価: grade,
+        取得単位: credits,
+        完了日時: updatedCourse.completedAt
+      });
     });
-  });
-}
+  }
 
   private async updateUserGPA(
     tx: Prisma.TransactionClient,

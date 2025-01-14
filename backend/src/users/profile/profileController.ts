@@ -37,42 +37,49 @@ export class ProfileController {
       });
     }
   }
-
-  async updateProfile(req: Request, res: Response): Promise<void> {
-    try {
-      if (!req.user?.id) {
-        res.status(401).json({
-          success: false,
-          message: '認証が必要です'
-        });
-        return;
-      }
-
-      const updateParams: ProfileUpdateParams = {
-        nickname: req.body.nickname,
-        message: req.body.message,
-        snsLinks: req.body.snsLinks,
-        isRankingVisible: req.body.isRankingVisible,
-        isProfileVisible: req.body.isProfileVisible
-      };
-
-      const updatedProfile = await this.profileService.updateProfile(
-        req.user.id,
-        updateParams
-      );
-      
-      res.json({
-        success: true,
-        data: updatedProfile
-      });
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      res.status(500).json({
+// profileController.ts の updateProfile メソッドに以下のログを追加
+async updateProfile(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({
         success: false,
-        message: error instanceof Error ? error.message : 'プロフィールの更新に失敗しました'
+        message: '認証が必要です'
       });
+      return;
     }
+
+    console.log('Update profile request body:', req.body); // リクエストボディのログ
+
+    const updateParams: ProfileUpdateParams = {
+      nickname: req.body.nickname,
+      message: req.body.message,
+      snsLinks: req.body.snsLinks,
+      isRankingVisible: req.body.isRankingVisible,
+      isProfileVisible: req.body.isProfileVisible,
+      careerIdentity: req.body.careerIdentity
+    };
+
+    console.log('Update params:', updateParams); // 更新パラメータのログ
+
+    const updatedProfile = await this.profileService.updateProfile(
+      req.user.id,
+      updateParams
+    );
+    
+    console.log('Updated profile:', updatedProfile); // 更新後のプロフィールのログ
+
+    res.json({
+      success: true,
+      data: updatedProfile
+    });
+  } catch (error) {
+    console.error('Failed to update profile:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'プロフィールの更新に失敗しました'
+    });
   }
+}
 
   async updateAvatar(req: Request, res: Response): Promise<void> {
     try {

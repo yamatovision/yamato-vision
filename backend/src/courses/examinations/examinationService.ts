@@ -5,6 +5,7 @@ import { evaluationService } from '../submissions/evaluationService';
 import { claudeService } from '../submissions/claudeService';
 import { finalExamEvaluationService } from '../submissions/finalExamEvaluationService';
 import { CourseProgressManager } from '../progress/courseProgressManager';
+import { courseStatusManager } from '../progress/courseStatusManager';
 
 
 import {
@@ -288,89 +289,111 @@ export class ExaminationService {
   }
   
   // examinationService.ts に追加
-
-async getExamResult({ userId, courseId, chapterId }: GetExamProgressParams): Promise<ExamResult> {
-  return await this.prisma.$transaction(async (tx) => {
-    // 1. 試験の進捗情報を取得
-    const progress = await tx.userChapterProgress.findUnique({
-      where: {
-        userId_courseId_chapterId: {
+  async getExamResult({ userId, courseId, chapterId }: GetExamProgressParams): Promise<ExamResult> {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. 試験の進捗情報を取得
+      const progress = await tx.userChapterProgress.findUnique({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        },
+        include: {
+          finalExam: true,
+          bestSubmission: true
+        }
+      });
+  
+      if (!progress || !progress.finalExam) {
+        throw new ExamError('試験結果が見つかりません', 'NOT_FOUND');
+      }
+  
+      // 2. チャプター平均点を計算
+      const chapterProgresses = await tx.userChapterProgress.findMany({
+        where: {
           userId,
           courseId,
-          chapterId
+          chapter: {
+            isFinalExam: false
+          },
+          NOT: {
+            score: null
+          }
+        },
+        select: {
+          score: true
         }
-      },
-      include: {
-        finalExam: true,
-        bestSubmission: true
+      });
+  
+      const chapterAverage = chapterProgresses.length > 0
+        ? chapterProgresses.reduce((sum, p) => sum + (p.score || 0), 0) / chapterProgresses.length
+        : 0;
+  
+      // 3. 最終評価点を計算（チャプター平均70% + 試験30%）
+      const examScore = progress.finalExam.totalScore || 0;
+      const finalScore = Math.round((chapterAverage * 0.7) + (examScore * 0.3));
+  
+      // 4. 成績履歴を取得
+      const gradeHistory = await tx.gradeHistory.findFirst({
+        where: {
+          userId,
+          courseId,
+        },
+        orderBy: {
+          completedAt: 'desc'
+        }
+      });
+  
+      if (!gradeHistory) {
+        throw new ExamError('成績情報が見つかりません', 'NOT_FOUND');
       }
-    });
-
-    if (!progress || !progress.finalExam) {
-      throw new ExamError('試験結果が見つかりません', 'NOT_FOUND');
-    }
-
-    // 2. 成績履歴を取得
-    const gradeHistory = await tx.gradeHistory.findFirst({
-      where: {
-        userId,
-        courseId,
-      },
-      orderBy: {
-        completedAt: 'desc'
+  
+      // 5. セクション結果の作成
+      const sectionResults: SectionResult[] = [];
+    
+      if (progress.finalExam.section1Score !== null && progress.finalExam.section1SubmittedAt) {
+        sectionResults.push({
+          sectionId: 'section-1',
+          score: progress.finalExam.section1Score,
+          feedback: progress.finalExam.section1Feedback || '',
+          nextStep: '',
+          submittedAt: progress.finalExam.section1SubmittedAt
+        });
       }
+  
+      if (progress.finalExam.section2Score !== null && progress.finalExam.section2SubmittedAt) {
+        sectionResults.push({
+          sectionId: 'section-2',
+          score: progress.finalExam.section2Score,
+          feedback: progress.finalExam.section2Feedback || '',
+          nextStep: '',
+          submittedAt: progress.finalExam.section2SubmittedAt
+        });
+      }
+  
+      if (progress.finalExam.section3Score !== null && progress.finalExam.section3SubmittedAt) {
+        sectionResults.push({
+          sectionId: 'section-3',
+          score: progress.finalExam.section3Score,
+          feedback: progress.finalExam.section3Feedback || '',
+          nextStep: '',
+          submittedAt: progress.finalExam.section3SubmittedAt
+        });
+      }
+  
+      return {
+        totalScore: examScore,
+        finalScore: finalScore,        // 重み付け後の最終評価点
+        grade: gradeHistory.grade as '秀' | '優' | '良' | '可' | '不可',
+        gradePoint: gradeHistory.gradePoint,
+        feedback: progress.bestFeedback || '',
+        sectionResults, // 修正後の配列を使用
+        evaluatedAt: progress.bestEvaluatedAt || progress.completedAt || new Date()
+      };
     });
-
-    if (!gradeHistory) {
-      throw new ExamError('成績情報が見つかりません', 'NOT_FOUND');
-    }
-
-    // 3. セクション結果の作成
-    const sectionResults: SectionResult[] = [];
-
-    if (progress.finalExam.section1Score !== null && progress.finalExam.section1SubmittedAt) {
-      sectionResults.push({
-        sectionId: 'section-1',
-        score: progress.finalExam.section1Score,
-        feedback: progress.finalExam.section1Feedback || '',
-        nextStep: '',
-        submittedAt: progress.finalExam.section1SubmittedAt
-      });
-    }
-
-    if (progress.finalExam.section2Score !== null && progress.finalExam.section2SubmittedAt) {
-      sectionResults.push({
-        sectionId: 'section-2',
-        score: progress.finalExam.section2Score,
-        feedback: progress.finalExam.section2Feedback || '',
-        nextStep: '',
-        submittedAt: progress.finalExam.section2SubmittedAt
-      });
-    }
-
-    if (progress.finalExam.section3Score !== null && progress.finalExam.section3SubmittedAt) {
-      sectionResults.push({
-        sectionId: 'section-3',
-        score: progress.finalExam.section3Score,
-        feedback: progress.finalExam.section3Feedback || '',
-        nextStep: '',
-        submittedAt: progress.finalExam.section3SubmittedAt
-      });
-    }
-
-    // 4. 結果オブジェクトの作成
-    return {
-      totalScore: progress.finalExam.totalScore || 0,
-      grade: gradeHistory.grade as '秀' | '優' | '良' | '可' | '不可',
-      gradePoint: gradeHistory.gradePoint,
-      feedback: progress.bestFeedback || '',
-      sectionResults,
-      evaluatedAt: progress.bestEvaluatedAt || progress.completedAt || new Date()
-    };
-  });
-}
-
-
+  }
 async submitSection({ userId, chapterId, sectionNumber, content }: SubmitSectionRequest): Promise<ExamSectionResponse | null> {
   console.log('試験セクション提出処理を開始:', { userId, chapterId, sectionNumber });
 
@@ -495,20 +518,18 @@ async submitSection({ userId, chapterId, sectionNumber, content }: SubmitSection
         現在のセクション: sectionNumber + 1, 
         最終セクション: isLastSection 
       });
-
       if (isLastSection) {
         console.log('最終セクションの処理を開始...');
         
-        // 試験の総合点を計算（単純な合計）
+        // 試験の総合点を計算
         const examTotalScore = Object.values(currentSectionScores).reduce(
           (sum: number, score: number) => sum + score, 
           0
         );
-        console.log('試験総合点:', examTotalScore);
-      
-        // 最終成績を計算
+        
+        // 最終評価を計算（チャプター平均70% + 試験30%）
         const finalGrade = await this.calculateFinalGrade(
-          tx,  // トランザクションクライアントを渡す
+          tx,
           userId, 
           progress.courseId, 
           examTotalScore
@@ -520,31 +541,24 @@ async submitSection({ userId, chapterId, sectionNumber, content }: SubmitSection
           評価: finalGrade.grade,
           GP: finalGrade.gradePoint 
         });
-        // 成績履歴を作成
-        console.log('成績履歴を作成中...');
-        await tx.gradeHistory.create({
-          data: {
-            userId,
-            courseId: progress.courseId,
-            grade: finalGrade.grade,
-            gradePoint: finalGrade.gradePoint,
-            credits: 1,
-            completedAt: new Date()
-          }
-        });
+      
+        // CourseStatusManager経由でコース完了処理を実行
+        await courseStatusManager.handleCourseCompletion(
+          userId,
+          progress.courseId,
+          finalGrade.finalScore  // 重み付け済みの最終評価点を渡す
+        );
       
         // FinalExamProgressの最終更新
-        console.log('最終試験データを更新中...');
         await tx.finalExamProgress.update({
           where: { progressId: progress.id },
           data: {
             examCompletedAt: new Date(),
-            totalScore: examTotalScore  // totalScore -> examTotalScore に変更
+            totalScore: examTotalScore
           }
         });
       
         // 進捗状況を完了に更新
-        console.log('進捗状況を完了に更新中...');
         await tx.userChapterProgress.update({
           where: { id: progress.id },
           data: {
@@ -727,8 +741,6 @@ private async calculateFinalGrade(
 }
 
 
-
-
 private async finalizeExam(userId: string, chapterId: string): Promise<ExamResult> {
   const progress = await prisma.userChapterProgress.findUnique({
     where: {
@@ -747,8 +759,14 @@ private async finalizeExam(userId: string, chapterId: string): Promise<ExamResul
   const sections = await this.getExamSections(chapterId);
   const sectionScores = progress.sectionScores as Record<string, number>;
   
-  // currentSectionScores を sectionScores に修正
+  // 試験の総合点を計算
   const totalScore = Object.values(sectionScores).reduce((sum, score) => sum + score, 0);
+
+  // チャプター平均点を計算
+  const chapterAverage = await this.getChapterAverageScore(prisma, userId, progress.courseId);
+  
+  // 最終評価点を計算（チャプター平均70% + 試験30%）
+  const finalScore = Math.round((chapterAverage * 0.7) + (totalScore * 0.3));
 
   const grade = this.getGrade(totalScore);
 
@@ -766,6 +784,7 @@ private async finalizeExam(userId: string, chapterId: string): Promise<ExamResul
 
   return {
     totalScore,
+    finalScore,  // 追加
     grade: grade.label,
     gradePoint: grade.point,
     feedback: await this.generateFinalFeedback(sectionScores, sections),
@@ -779,6 +798,10 @@ private async finalizeExam(userId: string, chapterId: string): Promise<ExamResul
     evaluatedAt: new Date()
   };
 }
+
+
+
+
 
   // 最終フィードバック生成（実際の実装ではAI生成を使用）
   private async generateFinalFeedback(

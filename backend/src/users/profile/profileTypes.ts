@@ -5,6 +5,7 @@ export interface ProfileUpdateParams {
   snsLinks?: Record<string, string>;
   isRankingVisible?: boolean;
   isProfileVisible?: boolean;
+  careerIdentity?: string;    // 追加
 }
 
 export interface ExpStatus {
@@ -26,6 +27,7 @@ export interface ProfileResponse {
   experience: number;
   gems: number;
   message: string | null;
+  careerIdentity: string | null;  // 追加
   expGained?: number;
   levelUpData?: {
     oldLevel: number;

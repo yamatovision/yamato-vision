@@ -7,21 +7,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { courseApi } from '@/lib/api';
 import { useTheme } from '@/contexts/theme';
 import { useToast } from '@/contexts/toast';
+import { ExamResult } from '@/types/api';  // 型をインポート
 
-interface ExamResult {
-  totalScore: number;
-  grade: '秀' | '優' | '良' | '可' | '不可';
-  gradePoint: number;
-  feedback: string;
-  sectionResults: {
-    sectionId: string;
-    score: number;
-    feedback: string;
-    nextStep: string;
-    submittedAt: Date;
-  }[];
-  evaluatedAt: Date;
-}
+
 
 const GRADE_COLORS = {
   '秀': 'text-red-400',
@@ -51,7 +39,7 @@ export default function ExamResultsPage() {
       );
       
       if (response.success) {
-        setResult(response.data);
+        setResult(response.data as ExamResult);  // 型アサーションを追加
       } else {
         showToast('結果の取得に失敗しました', 'error');
       }
@@ -97,20 +85,23 @@ export default function ExamResultsPage() {
           </p>
         </div>
 
-        {/* 総合評価 */}
-        <div className="bg-gray-800 rounded-lg p-8 mb-8 shadow-lg">
-          <div className="text-center">
-            <div className={`text-6xl font-bold mb-4 ${GRADE_COLORS[result.grade]}`}>
-              {result.grade}
-            </div>
-            <div className="text-2xl text-white mb-2">
-              総合得点: {result.totalScore}点
-            </div>
-            <div className="text-gray-400">
-              GPA: {result.gradePoint.toFixed(1)}
-            </div>
-          </div>
-        </div>
+     {/* 総合評価 */}
+<div className="bg-gray-800 rounded-lg p-8 mb-8 shadow-lg">
+  <div className="text-center">
+    <div className={`text-6xl font-bold mb-4 ${GRADE_COLORS[result.grade]}`}>
+      {result.grade}
+    </div>
+    <div className="text-2xl text-white mb-2">
+      最終評価点: {result.finalScore}点
+    </div>
+    <div className="text-xl text-gray-300 mb-2">
+      試験得点: {result.totalScore}点
+    </div>
+    <div className="text-gray-400">
+      GPA: {result.gradePoint.toFixed(1)}
+    </div>
+  </div>
+</div>
 
         {/* セクション別評価 */}
         <div className="space-y-6">
@@ -141,11 +132,6 @@ export default function ExamResultsPage() {
           ))}
         </div>
 
-        {/* 総合フィードバック */}
-        <div className="mt-8 bg-blue-900/30 rounded-lg p-6 border border-blue-800">
-          <h2 className="text-xl font-bold text-white mb-4">総合フィードバック</h2>
-          <p className="text-gray-300 whitespace-pre-line">{result.feedback}</p>
-        </div>
 
         {/* アクションボタン */}
         <div className="mt-8 flex justify-center space-x-4">

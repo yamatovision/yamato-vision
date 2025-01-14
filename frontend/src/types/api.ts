@@ -18,10 +18,18 @@ export interface StartExamResponse {
 }
 
 export interface ExamResult {
-  sectionNumber: number;
-  score: number;
+  totalScore: number;
+  finalScore: number;
+  grade: '秀' | '優' | '良' | '可' | '不可';
+  gradePoint: number;
   feedback: string;
-  submittedAt: string;
-  isComplete?: boolean;
+  sectionResults: {
+    sectionId: string;
+    score: number;
+    feedback: string;
+    nextStep: string;
+    submittedAt: Date;
+  }[];
+  evaluatedAt: Date;
 }
 

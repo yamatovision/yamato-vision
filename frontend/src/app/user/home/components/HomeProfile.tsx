@@ -151,6 +151,28 @@ export function HomeProfile() {
                   <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
                     {userData?.nickname || userData?.name || '名無しさん'}
                   </h1>
+                  {userData?.careerIdentity && (
+                    <div className={`
+                      mt-1 text-sm 
+                      ${rankStyle.tokenText}
+                      flex items-center gap-1
+                    `}>
+                      <svg 
+                        className="w-4 h-4" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                      <span>目標: {userData.careerIdentity}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center space-x-2 flex-shrink-0">
@@ -259,7 +281,8 @@ export function HomeProfile() {
           nickname: userData?.nickname || '',
           avatarUrl: userData?.avatarUrl || '',
           message: userData?.message || '',
-          snsLinks: userData?.snsLinks || {}
+          snsLinks: userData?.snsLinks || {},
+          careerIdentity: userData?.careerIdentity || '',  // 追加
         }}
         onSave={handleSaveProfile}
         onAvatarUpdate={handleAvatarUpdate}

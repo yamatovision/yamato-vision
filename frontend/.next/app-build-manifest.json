@@ -95,6 +95,21 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/level-messages/page.js"
+    ],
+    "/user/courses/[courseId]/chapters/[chapterId]/evaluation/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
+    ],
+    "/user/courses/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/page.js"
+    ],
+    "/admin/users/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/users/page.js"
     ]
   }
 }

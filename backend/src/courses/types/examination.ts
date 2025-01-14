@@ -28,6 +28,7 @@ export interface ExamSectionResponse {
 // 試験結果の定義
 export interface ExamResult {
   totalScore: number;
+  finalScore: number;  // 追加
   grade: '秀' | '優' | '良' | '可' | '不可';
   gradePoint: number;
   feedback: string;

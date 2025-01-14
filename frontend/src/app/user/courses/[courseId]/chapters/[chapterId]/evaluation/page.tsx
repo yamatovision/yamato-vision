@@ -8,6 +8,9 @@ import { ResultView } from '@/app/user/courses/components/TaskSubmission/ResultV
 import { PeerSubmission } from '@/types/submission';  // 正しいインポートパス
 import { toast } from 'react-hot-toast';
 import { courseApi } from '@/lib/api/courses';
+import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
+
+
 
 interface EvaluationPageProps {
   params: {
@@ -184,7 +187,6 @@ useEffect(() => {
             isEvaluationPage={true}
             timeoutStatus={timeoutStatus}
             onRefresh={handleRefreshPeerSubmissions}
-            submissions={submissions}  // submissionsを追加
           />
         </div>
       </div>

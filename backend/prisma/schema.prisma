@@ -21,6 +21,7 @@ model User {
   mongoId          String?                    @unique
   nickname         String?
   snsLinks         Json?
+ careerIdentity   String?  @db.VarChar(50)  // 追加
   isRankingVisible Boolean                    @default(true)
   isProfileVisible Boolean                    @default(true)
   message          String?

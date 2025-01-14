@@ -18,6 +18,7 @@ export interface User {
   rank: string;
   level: number;
   experience: number;
+  careerIdentity?: string;  // 追加
   gems: number;
   avatarUrl?: string;
   message?: string;

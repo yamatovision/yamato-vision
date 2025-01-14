@@ -17,6 +17,7 @@ export class ProfileService {
     email: true,
     name: true,
     nickname: true,
+    careerIdentity: true, // この行を追加
     avatarUrl: true,
     rank: true,
     level: true,
@@ -111,6 +112,7 @@ export class ProfileService {
       experience: user.experience,
       gems: user.gems,
       message: user.message,
+      careerIdentity: user.careerIdentity, // この行を追加
       snsLinks: user.snsLinks as Record<string, string> | null,
       isRankingVisible: user.isRankingVisible,
       isProfileVisible: user.isProfileVisible,
@@ -238,6 +240,7 @@ export class ProfileService {
         data: {
           nickname: params.nickname,
           avatarUrl: params.avatarUrl,
+          careerIdentity: params.careerIdentity,  // 追加
           message: params.message,
           snsLinks: params.snsLinks as any,
           isRankingVisible: params.isRankingVisible,
