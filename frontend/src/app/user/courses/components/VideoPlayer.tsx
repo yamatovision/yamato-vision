@@ -86,16 +86,16 @@ export function VideoPlayer({
             theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
           }`}
         >
-          <mux-player
-            ref={playerRef}
-            stream-type="on-demand"
-            playback-id={videoId}
-            metadata-video-title={`Chapter ${courseId}`}
-            accent-color="#3B82F6"
-            className="w-full aspect-video"
-            poster={`https://image.mux.com/${videoId}/animated.gif?fps=15&width=640`}
-            placeholder={`https://image.mux.com/${videoId}/thumbnail.jpg?time=0`}
-          />
+     <mux-player
+  ref={playerRef}
+  stream-type="on-demand"
+  playback-id={videoId}
+  metadata-video-title={`Chapter ${courseId}`}
+  accent-color="#3B82F6"
+  className="w-full aspect-video"
+  poster={`https://image.mux.com/${videoId}/thumbnail.jpg?time=0`}
+  placeholder={`https://image.mux.com/${videoId}/thumbnail.jpg?time=0`}
+/>
         </div>
 
         {(isCompleted || initialCompleted) && (

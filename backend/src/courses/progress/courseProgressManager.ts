@@ -11,16 +11,17 @@ import {
 
 import { EventEmitter } from 'events';
 
-interface TimeoutResult {
-  currentProgress: UserChapterProgress;
-  nextChapter: Chapter | null;
-}
-
 import { 
   ChapterProgressStatus, 
   CourseStatus,
   ChapterAvailabilityStatus 
 } from '../types/status';
+
+interface TimeoutResult {
+  currentProgress: UserChapterProgress;
+  nextChapter: Chapter | null;
+}
+
 
 type ProgressEventType = {
   STATUS_CHANGED: {
@@ -68,7 +69,7 @@ type ProgressEvent<T extends keyof ProgressEventType> = {
 export class CourseProgressManager {
   private prisma: PrismaClient;
   private eventEmitter: EventEmitter;
-  private readonly MILLISECONDS_PER_HOUR = 60 * 60 * 1000; // 1時間のミリ秒
+  private readonly MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
   private readonly MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
   constructor() {
@@ -355,6 +356,15 @@ this.emit({
   }
   
 
+
+
+
+
+
+
+
+
+
   async handleTimeout(userId: string, courseId: string, chapterId?: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -363,130 +373,205 @@ this.emit({
         if (!timeoutStatus.isTimedOut) {
           return null;
         }
-  
+
+        // コースレベルのタイムアウト
         if (!chapterId) {
-          // コースレベルのタイムアウト処理
-          const updatedCourse = await tx.userCourse.update({
-            where: {
-              userId_courseId: { userId, courseId }
-            },
-            data: {
-              status: 'failed',
-              isActive: false,
-              isTimedOut: true,
-              timeOutAt: timeoutStatus.timeOutAt
-            }
-          });
-  
-          this.emit({
-            type: 'TIMEOUT_OCCURRED',
-            userId,
-            courseId,
-            data: {
-              level: 'course',
-              timeOutAt: timeoutStatus.timeOutAt ?? new Date()
-            }
-          });
-  
-          return updatedCourse;
+          return await this.handleCourseTimeout(tx, userId, courseId, timeoutStatus.timeOutAt);
         }
-  
-        // チャプターレベルのタイムアウト処理
-        const updatedProgress = await tx.userChapterProgress.update({
-          where: {
-            userId_courseId_chapterId: { userId, courseId, chapterId }
-          },
-          data: {
-            status: 'COMPLETED',
-            score: 0,
-            isTimedOut: true,
-            timeOutAt: timeoutStatus.timeOutAt,
-            completedAt: new Date()
-          }
-        });
-  
-        // 現在のチャプターの情報を取得
-        const currentChapter = await tx.chapter.findUnique({
+
+        // チャプターの取得と存在チェック
+        const chapter = await tx.chapter.findUnique({
           where: { id: chapterId }
         });
-  
-        if (!currentChapter) {
-          throw new Error('Current chapter not found');
+
+        if (!chapter) {
+          throw new Error('Chapter not found');
         }
-  
-        // 次のチャプターを直接取得
-        const nextChapter = await tx.chapter.findFirst({
-          where: {
-            courseId: currentChapter.courseId,
-            orderIndex: {
-              gt: currentChapter.orderIndex
-            }
-          },
-          orderBy: {
-            orderIndex: 'asc'
-          }
-        });
-  
-        if (nextChapter) {
-          // 次のチャプターの進捗レコードを作成（upsertを使用）
-          await tx.userChapterProgress.upsert({
-            where: {
-              userId_courseId_chapterId: {
-                userId,
-                courseId,
-                chapterId: nextChapter.id
-              }
-            },
-            create: {
-              userId,
-              courseId,
-              chapterId: nextChapter.id,
-              status: 'NOT_STARTED',
-              startedAt: new Date(),
-              lessonWatchRate: 0
-            },
-            update: {
-              status: 'NOT_STARTED',
-              startedAt: new Date(),
-              lessonWatchRate: 0
-            }
-          });
-        }
-  
-        // タイムアウトイベントの発行
-        this.emit({
-          type: 'TIMEOUT_OCCURRED',
-          userId,
-          courseId,
-          chapterId,
-          data: {
-            level: 'chapter',
-            timeOutAt: timeoutStatus.timeOutAt ?? new Date()
-          }
-        });
-  
-        // チャプター完了イベントの発行
-        this.emit({
-          type: 'CHAPTER_COMPLETED',
-          userId,
-          courseId,
-          chapterId,
-          data: {
-            timeoutOccurred: true,
-            score: 0
-          }
-        });
-  
-        return {
-          currentProgress: updatedProgress,
-          nextChapter
-        };
+
+        // 最終試験かどうかで処理を分岐
+        return chapter.isFinalExam
+          ? await this.handleFinalExamTimeout(tx, userId, courseId, chapterId, timeoutStatus.timeOutAt)
+          : await this.handleChapterTimeout(tx, userId, courseId, chapterId, timeoutStatus.timeOutAt);
       });
     } catch (error) {
       console.error('Error in handleTimeout:', error);
       throw error;
     }
   }
+
+  // コースタイムアウトの処理
+  private async handleCourseTimeout(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    courseId: string,
+    timeOutAt: Date | undefined
+  ) {
+    const updatedCourse = await tx.userCourse.update({
+      where: {
+        userId_courseId: { userId, courseId }
+      },
+      data: {
+        status: 'failed',
+        isTimedOut: true,
+        timeOutAt
+      }
+    });
+
+    this.emit({
+      type: 'TIMEOUT_OCCURRED',
+      userId,
+      courseId,
+      data: {
+        level: 'course',
+        timeOutAt: timeOutAt ?? new Date()
+      }
+    });
+
+    return updatedCourse;
+  }
+
+  // 最終試験タイムアウトの処理
+  private async handleFinalExamTimeout(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    courseId: string,
+    chapterId: string,
+    timeOutAt: Date | undefined
+  ) {
+    const examProgress = await tx.userChapterProgress.findUnique({
+      where: {
+        userId_courseId_chapterId: { userId, courseId, chapterId }
+      },
+      include: {
+        finalExam: true
+      }
+    });
+
+    if (!examProgress) {
+      throw new Error('Exam progress not found');
+    }
+
+    // スコア計算
+    const totalScore = this.calculateFinalExamScore(examProgress.finalExam);
+
+    // 並行して更新処理を実行
+    const [updatedProgress, updatedExam] = await Promise.all([
+      // チャプター進捗の更新
+      tx.userChapterProgress.update({
+        where: { id: examProgress.id },
+        data: {
+          status: 'COMPLETED',
+          score: totalScore,
+          isTimedOut: true,
+          timeOutAt,
+          completedAt: timeOutAt
+        }
+      }),
+      // 試験データの更新
+      examProgress.finalExam && tx.finalExamProgress.update({
+        where: { id: examProgress.finalExam.id },
+        data: {
+          examCompletedAt: timeOutAt,
+          totalScore
+        }
+      })
+    ]);
+
+    // タイムアウトイベントの発行
+    this.emit({
+      type: 'TIMEOUT_OCCURRED',
+      userId,
+      courseId,
+      chapterId,
+      data: {
+        level: 'chapter',
+        timeOutAt: timeOutAt ?? new Date()
+      }
+    });
+
+    return {
+      currentProgress: updatedProgress,
+      nextChapter: null // 最終試験なので次のチャプターはない
+    };
+  }
+
+  // 通常チャプタータイムアウトの処理
+  private async handleChapterTimeout(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    courseId: string,
+    chapterId: string,
+    timeOutAt: Date | undefined
+  ) {
+    const updatedProgress = await tx.userChapterProgress.update({
+      where: {
+        userId_courseId_chapterId: { userId, courseId, chapterId }
+      },
+      data: {
+        status: 'COMPLETED',
+        score: 0,
+        isTimedOut: true,
+        timeOutAt,
+        completedAt: new Date()
+      }
+    });
+
+    // 次のチャプターを取得
+    const chapter = await tx.chapter.findUnique({
+      where: { id: chapterId },
+      select: { orderIndex: true }
+    });
+
+    const nextChapter = chapter && await tx.chapter.findFirst({
+      where: {
+        courseId,
+        orderIndex: { gt: chapter.orderIndex }
+      },
+      orderBy: { orderIndex: 'asc' }
+    });
+
+    // タイムアウトイベントの発行
+    this.emit({
+      type: 'TIMEOUT_OCCURRED',
+      userId,
+      courseId,
+      chapterId,
+      data: {
+        level: 'chapter',
+        timeOutAt: timeOutAt ?? new Date()
+      }
+    });
+
+    return {
+      currentProgress: updatedProgress,
+      nextChapter
+    };
+  }
+  private calculateFinalExamScore(finalExam: any | null): number {
+    if (!finalExam) return 0;
+
+    const sections = [
+      finalExam.section1Score,
+      finalExam.section2Score,
+      finalExam.section3Score
+    ];
+
+    return sections
+      .filter(score => score !== null)
+      .reduce((sum, score) => sum + score, 0);
+  }
+
+
+
+
+
+
+
+
+
+  
+
+  
 
 
 
@@ -529,7 +614,7 @@ async isChapterAvailable(
     }
 
     // 3. コースのアクティブ状態チェック
-    if (!userCourse.isActive) {
+    if (userCourse.status !== 'active') {
       return {
         isAvailable: false,
         status: 'COURSE_INACTIVE',
@@ -586,6 +671,14 @@ async isChapterAvailable(
     throw error;
   }
 }
+
+
+
+
+
+
+
+
 async handleSubmissionComplete(
   tx: Prisma.TransactionClient,
   params: {
@@ -730,18 +823,16 @@ async restartCourse(userId: string, courseId: string) {
       await tx.userCourse.updateMany({
         where: {
           userId,
-          isActive: true,
+          status: 'active',
           NOT: {
             courseId
           }
         },
         data: {
-          isActive: false,
           status: 'completed',
           completedAt: new Date()
         }
       });
-
       // 4. 全ての進捗データを削除
       await tx.userChapterProgress.deleteMany({
         where: {
@@ -757,7 +848,6 @@ async restartCourse(userId: string, courseId: string) {
         },
         data: {
           status: 'active',
-          isActive: true,
           startedAt: new Date(),
           completedAt: null,
           isTimedOut: false,
@@ -1011,7 +1101,7 @@ public async handleCourseStateChange(params: {
           where: {
             courseId,
             userId: { in: params.affectedUserIds },
-            isActive: true
+            status: 'active'
           },
           data: {
             timeOutAt: changes.timeLimit 
@@ -1068,7 +1158,6 @@ public async handleCourseCompletion(
       data: {
         status: finalStatus,
         completedAt: new Date(),
-        isActive: false
       }
     });
 
@@ -1263,5 +1352,6 @@ public async checkTimeoutStatus(
   };
 }
 }
+
 
 

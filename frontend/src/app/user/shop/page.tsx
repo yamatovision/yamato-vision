@@ -177,7 +177,7 @@ export default function ShopPage() {
           const selectResult = await courseApi.selectCourse(selectedCourse.id);
           if (selectResult.success) {
             toast.success('コースを選択しました');
-            router.push(`/user/courses/${selectedCourse.id}`);
+            router.push('/user/home');  // 正確なホームパスに修正
           }
           break;
 
@@ -189,7 +189,7 @@ export default function ShopPage() {
           const activateResult = await courseApi.activateCourse(selectedCourse.id);
           if (activateResult.success) {
             toast.success('コースを開始しました');
-            router.push(`/user/courses/${selectedCourse.id}`);
+            router.push('/user/home');  // 正確なホームパスに修正
           }
           break;
 

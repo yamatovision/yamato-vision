@@ -130,15 +130,13 @@ if (result.data && result.data.nextChapter) {
   </div>
 )}
 
-{chapter.content?.type === 'audio' && chapter.content.url && (
-  <div className="mb-6">
-    <AudioPlayer
-      url={chapter.content.url || ''}  // デフォルト値を設定
-      courseId={params.courseId}
-      chapterId={params.chapterId}
-      transcription={chapter.content.transcription}
-    />
-  </div>
+{chapter.content?.type === 'audio' && chapter.content?.videoId && (
+  <AudioPlayer
+    videoId={chapter.content.videoId}
+    courseId={params.courseId}
+    chapterId={params.chapterId}
+    transcription={chapter.content.transcription}
+  />
 )}
 
         {/* タスク部分 */}

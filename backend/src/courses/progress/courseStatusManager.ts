@@ -349,7 +349,7 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
     const timeoutStatus = await this.checkTimeout(userId, courseId);
     if (timeoutStatus.isTimedOut) return false;
 
-    return course.isActive || ['completed', 'perfect'].includes(course.status);
+    return course.status === 'active' || ['completed', 'perfect'].includes(course.status);
   }
 
 
@@ -451,7 +451,6 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
         },
         data: {
           status: 'available',
-          isActive: false,
           startedAt: null,
           completedAt: null,
           timeOutAt: null,
@@ -488,7 +487,6 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
         },
         data: {
           status: 'failed',
-          isActive: false,
           isTimedOut: true,
           timeOutAt: new Date(),
           certificationEligibility: false
@@ -567,7 +565,6 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
         },
         data: {
           status,
-          isActive: false,
           completedAt: new Date(),
           isCurrent: false
         }

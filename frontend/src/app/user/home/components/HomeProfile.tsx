@@ -39,11 +39,14 @@ export function HomeProfile() {
     }
   };
 
+
+  /* 成績証明書表示用のハンドラー（将来実装用）
   const handleTranscriptClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     // TODO: 成績証明書表示処理
     console.log('成績証明書を表示');
   };
+  */
 
   useEffect(() => {
     if (!userData) return;
@@ -223,7 +226,7 @@ export function HomeProfile() {
               </div>
             </div>
 
-            {/* 学業情報（GPA、取得単位、成績証明書） */}
+            {/* 学業情報（GPA、取得単位、成績証明書） 
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
                 <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
@@ -270,6 +273,7 @@ export function HomeProfile() {
                 </svg>
               </div>
             </div>
+            */}
           </div>
         </div>
       </div>

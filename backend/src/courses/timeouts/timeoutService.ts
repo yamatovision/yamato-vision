@@ -79,7 +79,6 @@ export class TimeoutService {
           isTimedOut: true,
           timeOutAt: now,
           status: 'FAILED',
-          isActive: false,
           certificationEligibility: false
         }
       });

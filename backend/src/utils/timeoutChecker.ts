@@ -13,7 +13,7 @@ export class TimeoutChecker {
       // アクティブなコースを取得
       const activeCourses = await prisma.userCourse.findMany({
         where: {
-          isActive: true,
+          status: 'active',
           isTimedOut: false,
           startedAt: { not: null }
         },

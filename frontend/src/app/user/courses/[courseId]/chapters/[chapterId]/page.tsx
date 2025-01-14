@@ -212,14 +212,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
           />
         )}
 
-        {chapter.content?.type === 'audio' && chapter.content.url && (
-          <AudioPlayer
-            url={chapter.content.url}
-            courseId={params.courseId}
-            chapterId={params.chapterId}
-            transcription={chapter.content.transcription}
-          />
-        )}
+{chapter.content?.type === 'audio' && chapter.content.videoId && (
+  <AudioPlayer
+    videoId={chapter.content.videoId}
+    courseId={params.courseId}
+    chapterId={params.chapterId}
+    transcription={chapter.content.transcription}
+  />
+)}
 
         {(chapter.taskContent || chapter.task) && (
           <div className={`mt-8 ${

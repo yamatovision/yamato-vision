@@ -73,8 +73,8 @@ export class AdminChapterService {
   private formatChapterContent(content: ChapterContent | undefined): Prisma.InputJsonValue {
     if (!content) return {};
     return {
-      type: content.type,
-      videoId: content.videoId,
+      type: content.type,          // 'video' | 'audio'
+      videoId: content.videoId,    // Muxのasset ID（ビデオ・オーディオ共通）
       transcription: content.transcription || ''
     };
   }

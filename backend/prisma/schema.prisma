@@ -172,7 +172,6 @@ model UserCourse {
   startedAt                DateTime?
   completedAt              DateTime?
   status                   String    @default("RESTRICTED")
-  isActive                 Boolean   @default(false)
   isTimedOut               Boolean   @default(false)
   timeOutAt                DateTime?
   certificationEligibility Boolean   @default(true)

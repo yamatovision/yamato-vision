@@ -34,10 +34,9 @@ export class UserCourseService {
     const activeUsers = await this.prisma.userCourse.findMany({
       where: {
         courseId,
-        isActive: true,
         status: 'active'
       },
-      select: {
+      include: {
         user: {
           select: {
             id: true,
@@ -112,12 +111,19 @@ export class UserCourseService {
       }
     });
   }
-
   async getAvailableCourses(userId: string): Promise<CourseWithStatus[]> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { level: true, rank: true }
-    });
+    const [user, userCourses] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { level: true, rank: true }
+      }),
+      this.prisma.userCourse.findMany({
+        where: { userId }
+      })
+    ]);
+  
+    // statusのみで判定
+    const hasActiveCourse = userCourses.some(uc => uc.status === 'active');
   
     const courses = await this.prisma.course.findMany({
       where: {
@@ -131,19 +137,33 @@ export class UserCourseService {
       }
     });
   
-    const userCourses = await this.prisma.userCourse.findMany({
-      where: { userId }
-    });
+    if (!hasActiveCourse) {
+      // blocked状態のコースをavailableに戻す
+      await this.prisma.userCourse.updateMany({
+        where: {
+          userId,
+          status: 'blocked'
+        },
+        data: { status: 'available' }
+      });
+      
+      // ユーザーコース情報を再取得
+      userCourses.splice(0, userCourses.length, 
+        ...(await this.prisma.userCourse.findMany({ where: { userId } }))
+      );
+    }
   
     return courses.map(course => {
       const userCourse = userCourses.find(uc => uc.courseId === course.id);
-      const status = this.convertToStatusType(userCourse?.status || this.determineInitialStatus(user, course));
+      const status = this.convertToStatusType(
+        userCourse?.status || this.determineInitialStatus(user, course)
+      );
       
       return {
         ...course,
         status,
         isCurrent: userCourse?.isCurrent || false
-      } as CourseWithStatus;  // 明示的な型アサーション
+      } as CourseWithStatus;
     });
   }
   

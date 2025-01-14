@@ -201,58 +201,60 @@ export function ChapterForm({
 
         {/* メディアセクション */}
         <section className={`p-6 rounded-lg ${
-          theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
-        }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
-            theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-          }`}>
-            メディアコンテンツ
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-              }`}>
-                コンテンツタイプ *
-              </label>
-              <select
-                value={formData.content.type}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    content: {
-                      type: e.target.value as 'video' | 'audio',
-                      videoId: '',
-                      transcription: ''
-                    }
-                  }));
-                }}
-                className={`w-full rounded-lg p-3 ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 text-white border-gray-600'
-                    : 'bg-white text-gray-900 border-gray-200'
-                } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
-              >
-                <option value="video">動画</option>
-                <option value="audio">音声</option>
-              </select>
-            </div>
+  theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+}`}>
+  <h3 className={`text-lg font-medium mb-4 ${
+    theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+  }`}>
+    {formData.content.type === 'audio' ? '音声' : '動画'}コンテンツ
+  </h3>
+  <div className="space-y-4">
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${
+        theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+      }`}>
+        コンテンツタイプ *
+      </label>
+      <select
+        value={formData.content.type}
+        onChange={(e) => {
+          setFormData(prev => ({
+            ...prev,
+            content: {
+              type: e.target.value as 'video' | 'audio',
+              videoId: '',  // タイプ変更時にリセット
+              transcription: ''
+            }
+          }));
+        }}
+        className={`w-full rounded-lg p-3 ${
+          theme === 'dark'
+            ? 'bg-gray-700 text-white border-gray-600'
+            : 'bg-white text-gray-900 border-gray-200'
+        } border focus:ring-2 focus:ring-blue-500 focus:outline-none`}
+      >
+        <option value="video">動画</option>
+        <option value="audio">音声</option>
+      </select>
+    </div>
 
-            <MediaUpload
-              type={formData.content.type}
-              currentVideoId={formData.content.videoId}
-              onUpload={({ videoId }) => setFormData(prev => ({
-                ...prev,
-                content: {
-                  ...prev.content,
-                  videoId
-                }
-              }))}
-              courseId={courseId}
-              chapterId={initialData?.id || ''}
-            />
-          </div>
-        </section>
+    <MediaUpload
+      type={formData.content.type}
+      currentVideoId={formData.content.videoId}
+      onUpload={({ videoId }) => setFormData(prev => ({
+        ...prev,
+        content: {
+          ...prev.content,
+          videoId
+        }
+      }))}
+      courseId={courseId}
+      chapterId={initialData?.id || ''}
+    />
+  </div>
+</section>
+
+
 
         {/* 課題セクション */}
         <section className={`p-6 rounded-lg ${

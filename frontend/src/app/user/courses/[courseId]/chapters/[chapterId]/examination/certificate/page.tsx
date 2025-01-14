@@ -160,7 +160,7 @@ export default function CertificatePage() {
             </p>
             <div className="mt-12 text-right">
               <p className="text-gray-900 font-bold">大和ViSiON大學校</p>
-              <p className="text-gray-900">学長 山田 太郎</p>
+              <p className="text-gray-900">大學長 白石達也</p>
             </div>
             <div className="mt-8 text-gray-500 text-sm">
               証明書番号: {certificateData.certificateId}

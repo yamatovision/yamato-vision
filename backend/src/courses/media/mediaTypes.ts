@@ -1,62 +1,62 @@
 // backend/src/courses/media/mediaTypes.ts
-export interface BunnyVideoResponse {
-  videoLibraryId: number;
-  guid: string;
+
+// Muxアセット関連の型定義
+export interface MuxAsset {
+  id: string;
+  playback_id: string;
+  created_at: string;
+  status: string;
+  duration: number;
+  max_stored_resolution?: string;
+  max_stored_frame_rate?: number;
+  aspect_ratio?: string;
+  resolution_tier?: string;
   title: string;
-  dateUploaded: string;
-  views: number;
-  isPublic: boolean;
-  length: number;
-  status: number;
-  framerate: number;
-  width: number;
-  height: number;
-  availableResolutions: string;
-  thumbnailCount: number;
-  encodeProgress: number;
-  storageSize: number;
-  captions: any[];
-  hasMP4Fallback: boolean;
-  collectionId: string | null;
-  thumbnailFileName: string;
-  averageWatchTime: number;
-  totalWatchTime: number;
-  category: string | null;
-  chapters: any[];
-  moments: any[];
-  metaTags: any[];
-  metadata: {
-    clip_id: string;
-    video_id: string;
-    upload_timestamp: string;
+  is_audio: boolean;
+}
+
+// Mux APIレスポンスの型定義
+export interface MuxApiResponse {
+  data: {
+    id: string;
+    playback_ids?: Array<{ id: string }>;
+    created_at: string;
+    status: string;
+    duration: number;
+    is_audio?: boolean;
+    metadata?: {
+      title?: string
+    }
+    max_stored_frame_rate?: number;
+    max_stored_resolution?: string;
+    aspect_ratio?: string;
+    resolution_tier?: string;
+  }[];
+}
+
+// レスポンス型の定義
+export interface FormattedMuxResponse {
+  data: MuxAsset[];
+}
+
+// アップロードレスポンスの型定義
+export interface UploadResponse {
+  id: string;
+  playbackId: string;
+  url: string;
+}
+
+// Mux API レスポンスの型定義
+export interface MuxUploadResponse {
+  data: {
+    url: string;
   };
 }
 
-export interface CreateVideoResponse extends BunnyVideoResponse {
-  httpUploadUrl: string;
-}
-
-export interface UploadUrlResponse {
-  id: string;
-  uploadUrl: string;
-  cdnUrl: string;  // CDN URLを追加
-}
-
-// データベースとの連携のための型
-export interface MediaProgress {
-  id: string;
-  userId: string;
-  chapterId: string;
-  position: number;
-  deviceId?: string;  // null の代わりに undefined を使用
-  updatedAt: Date;
-  createdAt: Date;
-}
-
-// Content type in Chapter model
-export interface ChapterContent {
-  type: 'video' | 'audio';
-  url: string;
-  transcription?: string;
-  bunnyVideoId?: string; // Bunny.netのGUID保存用
+export interface MuxAssetResponse {
+  data: {
+    id: string;
+    playback_ids?: Array<{ id: string }>;
+    status: string;
+  };
 }

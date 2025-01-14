@@ -287,6 +287,94 @@ export class ExaminationService {
       };
     });
   }
+// examinationService.ts の修正版
+async handleExamTimeout(
+  tx: Prisma.TransactionClient,
+  params: {
+    userId: string;
+    courseId: string;
+    chapterId: string;
+    timeOutAt: Date;
+  }
+): Promise<void> {
+  const { userId, courseId, chapterId, timeOutAt } = params;
+
+  // 1. 現在の試験進捗を取得
+  const examProgress = await tx.userChapterProgress.findUnique({
+    where: {
+      userId_courseId_chapterId: {
+        userId,
+        courseId,
+        chapterId
+      }
+    },
+    include: {
+      finalExam: true
+    }
+  });
+
+  if (!examProgress) {
+    throw new ExamError('試験進捗が見つかりません', 'NOT_FOUND');
+  }
+
+  // 2. 最終スコアの計算
+  const totalScore = this.calculateTimeoutScore(examProgress.finalExam);
+
+  // 3. 試験進捗の更新
+  await tx.userChapterProgress.update({
+    where: {
+      id: examProgress.id
+    },
+    data: {
+      status: 'COMPLETED',
+      score: totalScore,
+      isTimedOut: true,
+      timeOutAt,
+      completedAt: timeOutAt
+    }
+  });
+
+  // 4. 最終試験進捗の更新
+  if (examProgress.finalExam) {
+    await tx.finalExamProgress.update({
+      where: {
+        id: examProgress.finalExam.id
+      },
+      data: {
+        examCompletedAt: timeOutAt,
+        totalScore,
+        // isTimedOutを削除（スキーマに定義されていないフィールド）
+      }
+    });
+  }
+
+  // 5. コース完了処理を実行
+  // handleCourseCompletionの引数を3つに修正
+  await courseStatusManager.handleCourseCompletion(
+    userId,
+    courseId,
+    totalScore  // 第3引数まで
+  );
+}
+
+private calculateTimeoutScore(finalExam: any): number {
+  if (!finalExam) return 0;
+
+  let totalScore = 0;
+
+  // 完了しているセクションのスコアを合算
+  if (finalExam.section1Score !== null) {
+    totalScore += finalExam.section1Score;
+  }
+  if (finalExam.section2Score !== null) {
+    totalScore += finalExam.section2Score;
+  }
+  if (finalExam.section3Score !== null) {
+    totalScore += finalExam.section3Score;
+  }
+
+  return totalScore;
+}
   
   // examinationService.ts に追加
   async getExamResult({ userId, courseId, chapterId }: GetExamProgressParams): Promise<ExamResult> {
@@ -567,7 +655,8 @@ async submitSection({ userId, chapterId, sectionNumber, content }: SubmitSection
             bestSubmissionId: submission.id,
             bestTaskContent: content,
             bestFeedback: evaluationResult.evaluation.feedback,
-            sectionScores: currentSectionScores
+            sectionScores: currentSectionScores,
+            score: examTotalScore  // この行を追加
           }
         });
       }

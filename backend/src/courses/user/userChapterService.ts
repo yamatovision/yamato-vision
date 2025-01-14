@@ -979,7 +979,7 @@ export class UserChapterService extends EventEmitter {
       }
     });
   
-    if (!userCourse || !userCourse.isActive) {
+    if (!userCourse || userCourse.status !== 'active') {
       throw new Error('Active course enrollment not found');
     }
   
@@ -1113,7 +1113,7 @@ export class UserChapterService extends EventEmitter {
         course: {
           include: {
             users: {
-              where: { isActive: true }
+              where: { status: 'active' }
             }
           }
         }
