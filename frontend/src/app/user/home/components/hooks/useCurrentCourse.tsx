@@ -1,32 +1,89 @@
 // src/app/user/home/components/hooks/useCurrentCourse.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { courseApi } from '@/lib/api/courses';
 import { CourseData } from '@/types/course';
 import { ChapterProgressStatus } from '@/types/status';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
-// フックで使用する状態の型定義
+// フックで使用する状態の型定義　
 interface UseCurrentCourseState {
   courseData: CourseData | null;
   loading: boolean;
 }
 
+interface ButtonState {
+  mainText: string;
+  showNewChapterButton: boolean;
+  nextUnstartedChapter?: {
+    id: string;
+    title: string;
+    orderIndex: number;
+  };
+}
+
+
+
 // 戻り値の型定義
 interface UseCurrentCourseReturn {
   courseData: CourseData | null;
   loading: boolean;
+  buttonState: ButtonState;
   determineChapterProgress: (chapter: any) => ChapterProgressStatus;
   handleContinueLearning: () => Promise<void>;
-  parseChapterContent: (chapter: any) => any | null;
+  parseChapterContent: (any) => any | null;
   refreshCourse: () => Promise<void>;
 }
-
 export const useCurrentCourse = (): UseCurrentCourseReturn => {
   const [courseData, setCourseData] = useState<CourseData | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  const getButtonState = useCallback((): ButtonState => {
+    if (!courseData?.course?.chapters?.length) {
+      return {
+        mainText: 'このコースを学習する',
+        showNewChapterButton: false
+      };
+    }
+    const currentChapter = courseData.course.chapters[0];
+    const chapters = courseData.course.chapters;
+
+    // 未着手チャプターを探す（現在のチャプターより後ろのチャプターから）
+    const nextUnstartedChapter = chapters.find(chapter => 
+      chapter.orderIndex > currentChapter.orderIndex && 
+      chapter.status === 'NOT_STARTED'
+    );
+
+    // 現在のチャプターが完了している場合
+    if (currentChapter.status === 'COMPLETED') {
+      return {
+        mainText: 'このコースを学習する',
+        showNewChapterButton: Boolean(nextUnstartedChapter),
+        nextUnstartedChapter: nextUnstartedChapter ? {
+          id: nextUnstartedChapter.id,
+          title: nextUnstartedChapter.title,
+          orderIndex: nextUnstartedChapter.orderIndex
+        } : undefined
+      };
+    }
+
+    // その他の場合
+    return {
+      mainText: 'このコースを学習する',
+      showNewChapterButton: false
+    };
+  }, [courseData]);
+
+
+
+
+
+
+
+
+
 
   // タイムアウトをチェックする関数
   const checkTimeRemaining = (timeRemaining?: { 
@@ -62,39 +119,40 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
     }
   };
 
-  // チャプターのコンテンツをパース
-  // useCurrentCourse.tsxの修正
-// useCurrentCourse.tsxのparseChapterContent関数を修正
-const parseChapterContent = (chapter: any) => {
-  console.log('【parseChapterContent Input】', chapter); // デバッグ用
-  const currentProgress = chapter.progress || {};  // progressが存在しない場合は空オブジェクトを使用
-
-  return {
-    id: chapter.id,
-    courseId: chapter.courseId,
-    title: chapter.title,
-    subtitle: chapter.subtitle,
-    orderIndex: chapter.orderIndex,
-    timeLimit: chapter.timeLimit,
-    isVisible: chapter.isVisible,
-    isPerfectOnly: chapter.isPerfectOnly,
-    isFinalExam: chapter.isFinalExam,
-    content: {
-      type: chapter.content?.type || 'video',
-      videoId: chapter.content?.videoId || '',
-      transcription: chapter.content?.transcription,
-      id: chapter.content?.id
-    },
-    lessonWatchRate: chapter.lessonWatchRate || 0,
-    progress: {
+  const parseChapterContent = (chapter: Chapter): ChapterContent | null => {
+    if (!chapter) return null;
+    const currentProgress = chapter.progress || {};
+  
+    return {
+      id: chapter.id,
+      title: chapter.title,
+      subtitle: chapter.subtitle,
+      orderIndex: chapter.orderIndex,
       status: chapter.status || 'NOT_STARTED',
-      startedAt: chapter.startedAt || null,
-      timeOutAt: chapter.timeOutAt || null,
-      isTimedOut: chapter.isTimedOut || false,
-      score: chapter.progress?.score  // ここを修正！ progressオブジェクトから取得
-    }
+      evaluationStatus: chapter.evaluationStatus,
+      score: chapter.score,
+      timeOutAt: chapter.timeOutAt,
+      releaseTime: chapter.releaseTime,
+      thumbnailUrl: chapter.thumbnailUrl,
+      lessonWatchRate: chapter.lessonWatchRate || 0,
+      isLocked: chapter.isLocked || false,
+      canAccess: chapter.canAccess || true,
+      nextUnlockTime: chapter.nextUnlockTime,
+      isFinalExam: chapter.isFinalExam || false,
+      content: chapter.content ? {
+        type: chapter.content.type || 'video',
+        videoId: chapter.content.videoId,
+        thumbnailUrl: chapter.content.thumbnailUrl
+      } : undefined,
+      examSettings: chapter.examSettings ? {
+        sections: chapter.examSettings.sections || [],
+        thumbnailUrl: chapter.examSettings.thumbnailUrl,
+        maxPoints: chapter.examSettings.maxPoints,
+        timeLimit: chapter.examSettings.timeLimit,
+        type: 'exam'
+      } : undefined
+    };
   };
-};
 
 const loadCurrentCourse = async () => {
   try {
@@ -179,39 +237,35 @@ const loadCurrentCourse = async () => {
   }
 };
 
-
-
-  // 学習を継続する処理
-  const handleContinueLearning = async () => {
-    if (!courseData) return;
-    
-    try {
-      // タイムアウトチェック
-      if (checkTimeRemaining(courseData.course.timeRemaining)) {
-        await loadCurrentCourse(); // 最新データを取得
-        return; // タイムアウト時は遷移せずに更新のみ
-      }
-
-      const response = await courseApi.getCurrentChapter(courseData.courseId);
-
-      if (response.success && response.data) {
-        const chapterId = response.data.chapterId;
-        if (!chapterId) {
-          throw new Error('Chapter ID not found in response');
-        }
-
-        // チャプター遷移前にコースデータを更新
-        await loadCurrentCourse();
-        
-        router.push(`/user/courses/${courseData.courseId}/chapters/${chapterId}`);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      console.error('Error in handleContinueLearning:', error);
-      toast.error('チャプターへの移動に失敗しました');
+const handleContinueLearning = async (targetChapterId?: string) => {
+  if (!courseData) return;
+  
+  try {
+    // タイムアウトチェック
+    if (checkTimeRemaining(courseData.course.timeRemaining)) {
+      await loadCurrentCourse();
+      return;
     }
-  };
+
+    const response = await courseApi.getCurrentChapter(courseData.courseId);
+
+    if (response.success && response.data) {
+      const chapterId = targetChapterId || response.data.chapterId;
+      if (!chapterId) {
+        throw new Error('Chapter ID not found');
+      }
+
+      await loadCurrentCourse();
+      router.push(`/user/courses/${courseData.courseId}/chapters/${chapterId}`);
+    } else {
+      throw new Error('Invalid response format');
+    }
+  } catch (error) {
+    console.error('Error in handleContinueLearning:', error);
+    toast.error('チャプターへの移動に失敗しました');
+  }
+};
+
 
   // 初回ロード時にデータを取得
   useEffect(() => {
@@ -239,14 +293,16 @@ const loadCurrentCourse = async () => {
     }
   }, [courseData?.course.timeRemaining]);
 
-  return {
-    courseData,
-    loading,
-    determineChapterProgress,
-    handleContinueLearning,
-    parseChapterContent,
-    refreshCourse: loadCurrentCourse
-  };
+ 
+return {
+  courseData,
+  loading,
+  buttonState: getButtonState(),
+  determineChapterProgress,
+  handleContinueLearning,
+  parseChapterContent,
+  refreshCourse: loadCurrentCourse
+};
 };
 
 // 単純にエクスポート

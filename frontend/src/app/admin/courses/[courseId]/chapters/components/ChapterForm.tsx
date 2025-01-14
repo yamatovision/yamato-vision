@@ -9,6 +9,8 @@ import { MediaUpload } from './MediaUpload';
 import { ChapterTimeSettings } from './ChapterTimeSettings';
 import { TaskForm } from './TaskForm';
 import { Chapter, CreateChapterDTO, TaskContent, ReferenceFile } from '@/types/course';
+import { ThumbnailUpload } from './ThumbnailUpload';
+
 
 interface ChapterFormData {
   title: string;
@@ -17,6 +19,7 @@ interface ChapterFormData {
     type: 'video' | 'audio';
     videoId: string;
     transcription: string;
+    thumbnailUrl?: string; // 追加
   };
   taskContent: {
     description: string;
@@ -56,7 +59,8 @@ export function ChapterForm({
     content: {
       type: initialData?.content?.type || 'video',
       videoId: initialData?.content?.videoId || '',
-      transcription: initialData?.content?.transcription || ''
+      transcription: initialData?.content?.transcription || '',
+      thumbnailUrl: initialData?.content?.thumbnailUrl || '', // 追加
     },
     taskContent: {
       description: initialData?.taskContent?.description || ''
@@ -90,53 +94,64 @@ export function ChapterForm({
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submission data:', formData); // 追加
 
-    if (!validateForm()) {
-      return;
-    }
-    
-    setIsSubmitting(true);
-  
-    try {
-      const submitData: CreateChapterDTO = {
-        title: formData.title,
-        subtitle: formData.subtitle,
-        content: {
-          type: formData.content.type,
-          videoId: formData.content.videoId,
-          transcription: formData.content.transcription
-        },
-        taskContent: {
-          description: formData.taskContent.description
-        },
-        referenceFiles: formData.referenceFiles,
-        timeLimit: formData.timeLimit,
-        releaseTime: formData.releaseTime,
-        orderIndex: formData.orderIndex,
-        isVisible: true,
-        task: formData.task
-      };
-      console.log('Submit data:', submitData); // 追加
 
+
+
+
+
+
+// ChapterForm.tsx
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
   
-      if (initialData) {
-        await courseApi.updateChapter(courseId, initialData.id, submitData);
-      } else {
-        await courseApi.createChapter(courseId, submitData);
-      }
+  // デバッグログを追加
+  console.log('Submitting form with content:', formData.content);
   
-      toast.success('チャプターを保存しました');
-      onSuccess();
-    } catch (error) {
-      console.error('送信エラー:', error);
-      toast.error('チャプターの保存に失敗しました');
-    } finally {
-      setIsSubmitting(false);
+  if (!validateForm()) return;
+  
+  setIsSubmitting(true);
+  
+  try {
+    const submitData: CreateChapterDTO = {
+      title: formData.title,
+      subtitle: formData.subtitle,
+      content: {
+        type: formData.content.type,
+        videoId: formData.content.videoId,
+        transcription: formData.content.transcription,
+        thumbnailUrl: formData.content.thumbnailUrl // 確実に含める
+      },
+      taskContent: {
+        description: formData.taskContent.description
+      },
+      referenceFiles: formData.referenceFiles,
+      timeLimit: formData.timeLimit,
+      releaseTime: formData.releaseTime,
+      orderIndex: formData.orderIndex,
+      isVisible: true,
+      task: formData.task
+    };
+
+    // 送信直前のデータを確認
+    console.log('Final submit data:', submitData);
+
+    if (initialData) {
+      await courseApi.updateChapter(courseId, initialData.id, submitData);
+    } else {
+      await courseApi.createChapter(courseId, submitData);
     }
-  };
+
+    toast.success('チャプターを保存しました');
+    onSuccess();
+  } catch (error) {
+    console.error('送信エラー:', error);
+    toast.error('チャプターの保存に失敗しました');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="space-y-8">
@@ -200,7 +215,8 @@ export function ChapterForm({
         </section>
 
         {/* メディアセクション */}
-        <section className={`p-6 rounded-lg ${
+       {/* メディアセクション */}
+<section className={`p-6 rounded-lg ${
   theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
 }`}>
   <h3 className={`text-lg font-medium mb-4 ${
@@ -222,8 +238,9 @@ export function ChapterForm({
             ...prev,
             content: {
               type: e.target.value as 'video' | 'audio',
-              videoId: '',  // タイプ変更時にリセット
-              transcription: ''
+              videoId: '',
+              transcription: '',
+              thumbnailUrl: '' // タイプ変更時にリセット
             }
           }));
         }}
@@ -251,8 +268,42 @@ export function ChapterForm({
       courseId={courseId}
       chapterId={initialData?.id || ''}
     />
+
+    {/* ここにサムネイルアップロードを追加 */}
+    {formData.content.type === 'audio' && (
+      <div className="mt-6">
+        <h4 className={`text-sm font-medium mb-3 ${
+          theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+        }`}>
+          音声コンテンツのサムネイル
+        </h4>
+        <ThumbnailUpload
+          currentUrl={formData.content.thumbnailUrl}
+          onUpload={(url) => {
+            setFormData(prev => ({
+              ...prev,
+              content: {
+                ...prev.content,
+                thumbnailUrl: url
+              }
+            }));
+          }}
+          folder="audio-thumbnails"
+        />
+        {formData.content.thumbnailUrl && (
+          <p className="mt-2 text-sm text-gray-500">
+            ※ サムネイルは音声コンテンツの視覚的な表現として使用されます
+          </p>
+        )}
+      </div>
+    )}
   </div>
-</section>
+
+
+  
+</section>{/* メディアセクション */}
+
+
 
 
 

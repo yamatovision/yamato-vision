@@ -126,7 +126,7 @@ export class UserChapterService extends EventEmitter {
           courseId
         },
         orderBy: {
-          updatedAt: 'desc'
+          updatedAt: 'desc'  // 最後にアクセスした順で取得
         },
         select: {
           id: true,
@@ -172,12 +172,7 @@ export class UserChapterService extends EventEmitter {
         }
       }
   
-      // 4. perfect/failedの場合でも最後にアクセスしたチャプターを返す
-      if (userCourse.status === 'perfect' || userCourse.status === 'failed') {
-        return lastProgress;
-      }
-  
-      // 5. タイムアウト時の次チャプター取得ロジックは維持
+      // 4. タイムアウト時の次チャプター取得ロジックは維持
       if (lastProgress?.isTimedOut) {
         const nextChapter = await tx.chapter.findFirst({
           where: {
@@ -219,13 +214,57 @@ export class UserChapterService extends EventEmitter {
         }
       }
   
-      // 6. 既存の進捗を返す
+      // 5. 既存の進捗を返す
       return lastProgress;
     });
   }
-
-
-
+  async trackChapterAccess(userId: string, courseId: string, chapterId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      // 現在の進捗を取得
+      const currentProgress = await tx.userChapterProgress.findUnique({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        }
+      });
+  
+      // 進捗の更新
+      const updatedProgress = await tx.userChapterProgress.upsert({
+        where: {
+          userId_courseId_chapterId: {
+            userId,
+            courseId,
+            chapterId
+          }
+        },
+        create: {
+          userId,
+          courseId,
+          chapterId,
+          status: 'NOT_STARTED',
+          startedAt: new Date(),
+          lessonWatchRate: 0,
+          updatedAt: new Date()
+        },
+        update: {
+          updatedAt: new Date()
+        }
+      });
+  
+      console.log('【チャプターアクセス】更新:', {
+        チャプターID: chapterId,
+        前回のアクセス: currentProgress?.updatedAt 
+          ? new Date(currentProgress.updatedAt).toLocaleString('ja-JP') 
+          : 'なし',
+        今回のアクセス: new Date(updatedProgress.updatedAt).toLocaleString('ja-JP')
+      });
+  
+      return updatedProgress;
+    });
+  }
   async getChaptersProgress(userId: string, courseId: string): Promise<ChapterProgressResponse[]> {
     const chapters = await this.prisma.chapter.findMany({
       where: {
@@ -272,6 +311,8 @@ export class UserChapterService extends EventEmitter {
         subtitle: chapter.subtitle ?? undefined,
         orderIndex: chapter.orderIndex,
         content: chapter.content, // contentプロパティを追加
+        isFinalExam: chapter.isFinalExam,  // 追加
+        examSettings: chapter.isFinalExam ? chapter.examSettings : undefined,  // 追加
         status: (progress?.status as ChapterProgressStatus) || 'NOT_STARTED',
         evaluationStatus: this.determineEvaluationStatus(progress?.score ?? undefined),
         score: progress?.score ?? undefined,

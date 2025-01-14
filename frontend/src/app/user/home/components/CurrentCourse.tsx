@@ -72,37 +72,29 @@ export function CurrentCourse() {
       />
 
 {currentChapter && parsedChapter && (
-  <>
-    {console.log('【ProgressStages Props Debug】', {
-      status: determineChapterProgress(currentChapter),
-      watchRate: parsedChapter.lessonWatchRate,
-      progress: parsedChapter.progress,
-      currentChapterScore: currentChapter.score,  // デバッグ用
-      rawChapter: currentChapter,
-    })}
-    <ProgressStages
-      lessonWatchRate={parsedChapter.lessonWatchRate}
-      status={determineChapterProgress(currentChapter)}
-      score={currentChapter.score} // rawChapterから直接scoreを取得
-    />
-  </>
+  <ProgressStages
+    lessonWatchRate={parsedChapter.lessonWatchRate || 0}
+    status={determineChapterProgress(currentChapter)}
+    score={parsedChapter.score}
+  />
 )}
 
+
       {/* チャプタープレビュー */}
-   {currentChapter && parsedChapter && (
-    <ChapterPreview
-      chapter={{
-        ...parsedChapter,
-        timeLimit: parsedChapter.timeLimit
-      }}
-      progress={{
-        status: determineChapterProgress(currentChapter),
-        startedAt: parsedChapter.progress?.startedAt || null,  // ここを修正
-        completedAt: parsedChapter.progress?.completedAt || null,
-        timeOutAt: courseData.course.timeRemaining?.timeOutAt
-      }}
-    />
-  )}
+      {currentChapter && parsedChapter && (
+  <ChapterPreview
+    chapter={{
+      ...parsedChapter,
+      timeLimit: parsedChapter.timeLimit
+    }}
+    progress={{
+      status: determineChapterProgress(currentChapter),
+      startedAt: parsedChapter.progress?.startedAt || null,
+      completedAt: parsedChapter.progress?.completedAt || null,
+      timeOutAt: courseData.course.timeRemaining?.timeOutAt
+    }}
+  />
+)}
 
 
       {/* 続きから学習するボタン */}

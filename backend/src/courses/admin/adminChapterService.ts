@@ -19,9 +19,9 @@ interface ExamSection {
     evaluationCriteria: string;
   };
 }
-
 interface ExamSettings {
-  sections: ExamSection[];
+  sections: any[];
+  thumbnailUrl?: string;
 }
 
 interface CreateExamChapterDTO {
@@ -29,7 +29,10 @@ interface CreateExamChapterDTO {
   subtitle?: string;
   timeLimit: number;
   releaseTime: number;
-  examSettings: ExamSettings;
+  examSettings: {
+    sections: ExamSection[];
+    thumbnailUrl?: string; // 追加
+  };
 }
 
 interface UpdateExamChapterDTO {
@@ -37,7 +40,7 @@ interface UpdateExamChapterDTO {
   subtitle?: string;
   timeLimit: number;
   releaseTime: number;
-  examSettings: ExamSettings;
+  examSettings: ExamSettings;  // thumbnailUrlを含む
 }
 
 
@@ -46,6 +49,20 @@ export class AdminChapterService {
   private prisma: PrismaClient;
   private progressManager: CourseProgressManager;
 
+  private formatExamSettingsForDb(settings: ExamSettings): Prisma.InputJsonValue {
+    return {
+      sections: settings.sections.map(section => ({
+        title: section.title,
+        task: {
+          materials: section.task.materials,
+          task: section.task.task,
+          evaluationCriteria: section.task.evaluationCriteria
+        }
+      })),
+      ...(settings.thumbnailUrl ? { thumbnailUrl: settings.thumbnailUrl } : {})
+    } as Prisma.InputJsonValue;
+  }
+  
 
   private async reorderChapters(tx: Prisma.TransactionClient, courseId: string): Promise<void> {
     const chapters = await tx.chapter.findMany({
@@ -75,7 +92,8 @@ export class AdminChapterService {
     return {
       type: content.type,          // 'video' | 'audio'
       videoId: content.videoId,    // Muxのasset ID（ビデオ・オーディオ共通）
-      transcription: content.transcription || ''
+      transcription: content.transcription || '',
+      thumbnailUrl: content.thumbnailUrl || null  // 空文字列ではなくnullを使用
     };
   }
   
@@ -117,6 +135,7 @@ export class AdminChapterService {
         }
       }
   
+      
       // チャプターの作成
       const chapter = await tx.chapter.create({
         data: {
@@ -183,6 +202,7 @@ export class AdminChapterService {
   }
   
   async updateChapter(chapterId: string, data: UpdateChapterDTO): Promise<ChapterWithTask> {
+    
     const chapter = await this.prisma.chapter.findUnique({
       where: { id: chapterId },
       include: { 
@@ -382,6 +402,10 @@ export class AdminChapterService {
           break;
         }
       }
+      const examContent = {
+        type: 'exam',
+        thumbnailUrl: data.examSettings.thumbnailUrl || '/images/exam-default.jpg'
+      };
   
       // チャプターの作成
       const chapter = await tx.chapter.create({
@@ -389,9 +413,8 @@ export class AdminChapterService {
           courseId,
           title: data.title,
           subtitle: data.subtitle || '',
-          content: {} as Prisma.InputJsonValue,
-          // InputJsonValueの型エラーを修正
-          examSettings: JSON.parse(JSON.stringify(data.examSettings)) as Prisma.InputJsonValue,
+          content: examContent as Prisma.InputJsonValue, // contentをexam typeで設定
+          examSettings: this.formatExamSettingsForDb(data.examSettings),
           isFinalExam: true,
           timeLimit: data.timeLimit,
           releaseTime: data.releaseTime,
@@ -522,7 +545,7 @@ export class AdminChapterService {
         data: {
           title: data.title,
           subtitle: data.subtitle,
-          examSettings: JSON.parse(JSON.stringify(data.examSettings)) as Prisma.InputJsonValue,
+          examSettings: this.formatExamSettingsForDb(data.examSettings),
           timeLimit: data.timeLimit,
           releaseTime: data.releaseTime,
         },
@@ -559,40 +582,85 @@ export class AdminChapterService {
   
     return updatedChapter as ChapterWithTask;
   }
+  
+  
 
-  async getChapters(courseId: string): Promise<ChapterWithTask[]> {
-    const chapters = await this.prisma.chapter.findMany({
-      where: { courseId },
-      include: {
-        task: {
-          select: {
-            id: true,
-            materials: true,
-            task: true,
-            evaluationCriteria: true,
-            maxPoints: true,
-            systemMessage: true,
-          }
+// adminChapterService.ts
+async getChapters(courseId: string): Promise<ChapterWithTask[]> {
+  console.log('\n🔍 GetChapters Called:', { courseId });
+
+  const chapters = await this.prisma.chapter.findMany({
+    where: { courseId },
+    include: {
+      task: {
+        select: {
+          id: true,
+          courseId: true,
+          title: true,
+          createdAt: true,
+          updatedAt: true,
+          materials: true,
+          task: true,
+          evaluationCriteria: true,
+          maxPoints: true,
+          systemMessage: true,
         }
-      },
-      orderBy: {
-        orderIndex: 'asc'
       }
-    });
+    },
+    orderBy: {
+      orderIndex: 'asc'
+    }
+  });
 
-    return chapters.map(chapter => ({
+  console.log('\n📦 Raw Chapter Data:', {
+    totalChapters: chapters.length,
+    examChapter: chapters.find(ch => ch.isFinalExam)
+  });
+
+  const formattedChapters = chapters.map(chapter => {
+    if (chapter.isFinalExam) {
+      console.log('\n🎯 Processing Final Exam Chapter:', {
+        id: chapter.id,
+        isFinalExam: chapter.isFinalExam,
+        rawExamSettings: chapter.examSettings,
+        rawContent: chapter.content
+      });
+    }
+
+    let formattedExamSettings = null;
+    if (chapter.isFinalExam && chapter.examSettings) {
+      const parsedSettings = typeof chapter.examSettings === 'string'
+        ? JSON.parse(chapter.examSettings)
+        : chapter.examSettings;
+
+      console.log('\n✨ Parsed Exam Settings:', {
+        parsed: parsedSettings,
+        type: typeof parsedSettings,
+        hasSettings: !!parsedSettings
+      });
+
+      formattedExamSettings = {
+        sections: parsedSettings.sections || [],
+        thumbnailUrl: parsedSettings.thumbnailUrl || null
+      };
+
+      console.log('\n🔄 Formatted Exam Settings:', formattedExamSettings);
+    }
+
+    return {
       ...chapter,
       content: typeof chapter.content === 'string'
         ? JSON.parse(chapter.content as string)
         : chapter.content,
-      taskContent: typeof chapter.taskContent === 'string'
-        ? JSON.parse(chapter.taskContent as string)
-        : chapter.taskContent || null,
-      referenceFiles: typeof chapter.referenceFiles === 'string'
-        ? JSON.parse(chapter.referenceFiles as string)
-        : chapter.referenceFiles || null,
-    })) as ChapterWithTask[];
-  }
+      examSettings: formattedExamSettings,
+      isFinalExam: chapter.isFinalExam
+    };
+  });
+
+  return formattedChapters;
+}
+
+
 
   async deleteChapter(chapterId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {

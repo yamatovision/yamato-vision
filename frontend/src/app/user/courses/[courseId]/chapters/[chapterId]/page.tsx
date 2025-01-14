@@ -131,7 +131,11 @@ export default function ChapterPage({ params }: ChapterPageProps) {
 
     initializeChapter();
   }, [params.courseId, params.chapterId]);
-
+  useEffect(() => {
+    if (params.courseId && params.chapterId) {
+      courseApi.trackChapterAccess(params.courseId, params.chapterId);
+    }
+  }, [params.courseId, params.chapterId]);
 
   if (loading) {
     return (

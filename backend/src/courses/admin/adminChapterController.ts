@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
 import { AdminChapterService } from './adminChapterService';
+interface ChapterContentData {
+  type: 'video' | 'audio';
+  videoId: string;
+  transcription?: string;
+  thumbnailUrl?: string;
+}
 
 export class AdminChapterController {
   private chapterService: AdminChapterService;
@@ -82,8 +88,17 @@ createExamChapter = async (req: Request, res: Response): Promise<Response> => {
   // 通常チャプター更新
   updateChapter = async (req: Request, res: Response): Promise<Response> => {
     try {
+      console.log('update chapter with content:', {
+        type: req.body.content?.type,
+        thumbnailUrl: req.body.content?.thumbnailUrl
+      });
       const { chapterId } = req.params;
       const chapter = await this.chapterService.updateChapter(chapterId, req.body);
+
+      console.log('update chapter content:', {
+        type: (chapter.content as unknown as ChapterContentData)?.type,
+        thumbnailUrl: (chapter.content as unknown as ChapterContentData)?.thumbnailUrl
+      });
       return res.json({
         success: true,
         data: chapter

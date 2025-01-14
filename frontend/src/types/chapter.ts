@@ -58,14 +58,32 @@ export interface ChapterPreviewData {
   isLocked: boolean;
   canAccess: boolean;
   nextUnlockTime?: Date;
-  isFinalExam: boolean;  // 追加
+  isFinalExam: boolean;
+  // 以下を追加
+  content?: {
+    type: 'video' | 'audio';
+    videoId?: string;
+    thumbnailUrl?: string;
+  };
+  examSettings?: {
+    sections: any[];
+    thumbnailUrl?: string;
+  };
 }
 
 // 学習継続用の現在のチャプター情報の型定義
 export interface CurrentChapterData {
-  chapterId: string;
+  id: string;
+  userId: string;
   courseId: string;
-  nextUrl: string;
+  chapterId: string;
+  status: ChapterProgressStatus;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  score?: number;
+  lessonWatchRate: number;
+  isTimedOut: boolean;
+  timeOutAt: Date | null;
   chapter: {
     id: string;
     title: string;
@@ -74,6 +92,6 @@ export interface CurrentChapterData {
     orderIndex: number;
     timeLimit?: number;
     task?: ChapterTask;
-    isFinalExam?: boolean;  // 追加
+    isFinalExam?: boolean;
   };
 }

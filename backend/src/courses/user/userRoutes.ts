@@ -27,6 +27,8 @@ router.post('/:courseId/activate', userCourseController.activateCourse);
 router.post('/:courseId/format', userCourseController.formatCourse);
 router.post('/:courseId/purchase', userCourseController.purchaseCourse);
 router.post('/:courseId/start', userCourseController.startCourse);
+router.post('/:courseId/chapters/:chapterId/access', userChapterController.trackChapterAccess);
+
 
 // チャプター関連のルート
 router.get('/:courseId/chapters/current', userChapterController.getCurrentChapter);

@@ -6,12 +6,13 @@ import {
 
 // Prismaの基本型との統合
 type PrismaJsonValue = string | number | boolean | null | { [key: string]: PrismaJsonValue } | PrismaJsonValue[];
-
-export type ChapterWithTask = Omit<PrismaChapter, 'content'> & {
+// ChapterWithTask 型を修正
+export type ChapterWithTask = Omit<PrismaChapter, 'content' | 'examSettings'> & {
   content: PrismaJsonValue;
+  examSettings: ExamSettings | null;  // 明示的に ExamSettings 型を指定
   task: (Omit<PrismaTask, 'evaluationCriteria' | 'task'> & {
     evaluationCriteria: string | null;
-    task: string | null;  // このフィールドを明示的に追加
+    task: string | null;
   }) | null;
   userProgress?: UserChapterProgress[];
 };
@@ -43,12 +44,38 @@ interface Task extends PrismaTask {
   evaluationCriteria: string | null;  // この行を追加
 }
 
-// メディアコンテンツの定義
-export interface ChapterContent {
-  type: 'video' | 'audio';
+// chapter.ts に追加
+export interface VideoContent {
+  type: 'video';
   videoId: string;
   transcription?: string;
 }
+
+export interface AudioContent {
+  type: 'audio';
+  videoId: string;
+  thumbnailUrl?: string;
+  transcription?: string;
+}
+
+export interface ExamContent {
+  type: 'exam';
+  thumbnailUrl?: string;
+  sections?: ExamSection[];
+}
+
+
+// メディアコンテンツの定義
+export interface ChapterContent {
+  type: 'video' | 'audio' | 'exam';  // examを追加
+  videoId?: string;  // optionalに変更
+  transcription?: string;
+  thumbnailUrl?: string;
+  sections?: ExamSection[];  // 試験用に追加
+}
+export const isExamType = (content: ChapterContent): boolean => {
+  return content.type === 'exam';
+};
 
 export interface ExamTaskSection {
   materials: string;
@@ -63,6 +90,8 @@ export interface ExamSection {
 
 export interface ExamSettings {
   sections: ExamSection[];
+  thumbnailUrl?: string; // 追加
+
 }
 // DTOs
 export interface CreateChapterDTO {

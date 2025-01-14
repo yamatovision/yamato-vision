@@ -20,6 +20,7 @@ interface ThumbnailImageProps {
   url?: string;
   title: string;
   isLocked: boolean;
+  chapter: ChapterPreviewData;  // 既存の型を使用
 }
 
 const getThumbnailUrl = (videoId: string) => {
@@ -33,76 +34,130 @@ export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverv
   const router = useRouter();
   const [chapters, setChapters] = useState<ChapterPreviewData[]>([]);
   const [loading, setLoading] = useState(true);
-
-
-  const ThumbnailImage = ({ url, title, isLocked }: ThumbnailImageProps) => {
-    const [imageError, setImageError] = useState(false);
-    const [imageLoading, setImageLoading] = useState(true);
+ 
   
-    // チャプターデータをコンソールで確認
-    console.log('Thumbnail Data:', { url, title, isLocked });
+    const ThumbnailImage = ({ title, isLocked, chapter }: ThumbnailImageProps) => {
+      const [imageError, setImageError] = useState(false);
+      const [imageLoading, setImageLoading] = useState(true);
+    
+      const getThumbnailUrl = useCallback(() => {
+        console.log('【サムネイル取得処理 詳細】', {
+          チャプターID: chapter.id,
+          最終試験フラグ: chapter.isFinalExam,
+          コンテンツ: chapter.content,
+          既存サムネイル: chapter.thumbnailUrl,
+          試験設定: chapter.examSettings,
+          試験設定のサムネイル: chapter.examSettings?.thumbnailUrl
+        });
+    
+        // isFinalExamフラグによる判定
+        if (chapter.isFinalExam) {
+          // examSettingsのthumbnailUrlを最優先
+          if (chapter.examSettings?.thumbnailUrl) {
+            return chapter.examSettings.thumbnailUrl;
+          }
+          // 以下は既存の実装
+          if (chapter.content?.thumbnailUrl) {
+            return chapter.content.thumbnailUrl;
+          }
+          if (chapter.thumbnailUrl && !chapter.thumbnailUrl.startsWith('undefined/')) {
+            return chapter.thumbnailUrl;
+          }
+        }
+    
+        // 通常のビデオコンテンツ
+        if (chapter.content?.type === 'video' && chapter.content.videoId) {
+          return `https://image.mux.com/${chapter.content.videoId}/thumbnail.jpg`;
+        }
+    
+        // 音声コンテンツ
+        if (chapter.content?.type === 'audio' && chapter.content.thumbnailUrl) {
+          return chapter.content.thumbnailUrl;
+        }
+    
+        return null;
+      }, [chapter]);
+    
+      const thumbnailUrl = getThumbnailUrl();
   
+    
     return (
       <div className="relative w-full h-full">
         {imageLoading && (
           <div className="absolute inset-0 bg-gray-700 animate-pulse rounded" />
         )}
-        <img
-          src={`https://image.mux.com/${url}/thumbnail.png`}
-          alt={title}
-          className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
-            imageLoading ? 'opacity-0' : 'opacity-100'
-          }`}
-          onLoad={() => setImageLoading(false)}
-          onError={() => {
-            setImageError(true);
-            setImageLoading(false);
-          }}
-        />
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={title}
+            className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
+              imageLoading ? 'opacity-0' : 'opacity-100'
+            }`}
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
+              setImageError(true);
+              setImageLoading(false);
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
+            <span className="text-2xl">
+              {chapter.isFinalExam ? '📝' : chapter.content?.type === 'audio' ? '🎵' : '🎥'}
+            </span>
+          </div>
+        )}
         {isLocked && (
           <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
             <span className="text-xl text-white">🔒</span>
           </div>
         )}
-        {imageError && (
-          <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
-            <span className="text-2xl">📝</span>
+        {chapter.isFinalExam && (
+          <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs">
+            最終試験
           </div>
         )}
       </div>
     );
   };
 
-
-useEffect(() => {
-  const fetchChaptersProgress = async () => {
-    try {
-      setLoading(true);
-      const response = await courseApi.getChaptersProgress(courseData.courseId);
-      console.log('完全なデータ構造:', {
-        fullResponse: response,
-        firstChapterComplete: response.data?.[0],
-        properties: response.data?.[0] ? Object.keys(response.data[0]) : []
-      });
-      if (response.success && response.data) {
-        setChapters(response.data);
-      } else {
-        console.error('Failed to fetch chapters progress:', response.error);
+  useEffect(() => {
+    const fetchChaptersProgress = async () => {
+      try {
+        setLoading(true);
+        const response = await courseApi.getChaptersProgress(courseData.courseId);
+  
+        if (response.success && response.data) {
+          // 単純に response.data をそのまま使用
+          console.log('【デバッグ】最終試験チャプター:', 
+            response.data.find(ch => ch.isFinalExam)?.examSettings
+          );
+  
+          setChapters(response.data);
+        }
+      } catch (error) {
+        console.error('チャプター情報の取得に失敗:', error);
         toast.error('チャプター情報の取得に失敗しました');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching chapters progress:', error);
-      toast.error('チャプター情報の取得に失敗しました');
-    } finally {
-      setLoading(false);
+    };
+  
+    if (isOpen && courseData?.courseId) {
+      fetchChaptersProgress();
     }
-  };
+  }, [isOpen, courseData?.courseId]);
 
-  if (isOpen && courseData?.courseId) {
-    fetchChaptersProgress();
-  }
-}, [isOpen, courseData?.courseId]);
-// ... 前回のコードに続いて
+
+
+
+
+
+
+
+
+
+
+
 
 // チャプターへの遷移処理
 const handleChapterClick = async (chapter: ChapterPreviewData) => {
@@ -117,11 +172,19 @@ const formatRemainingTime = (chapter: ChapterPreviewData): string => {
   if (chapter.nextUnlockTime) {
     const now = new Date();
     const unlockTime = new Date(chapter.nextUnlockTime);
-    const diffHours = Math.ceil((unlockTime.getTime() - now.getTime()) / (1000 * 60 * 60));
+    const diffMs = unlockTime.getTime() - now.getTime();
+    
+    // 既に解放時間を過ぎている場合
+    if (diffMs <= 0) {
+      return 'アクセス可能';
+    }
+
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
     
     if (diffHours > 24) {
-      const days = Math.ceil(diffHours / 24);
-      return `あと${days}日でアクセス可能`;
+      const days = Math.floor(diffHours / 24);
+      const remainingHours = diffHours % 24;
+      return `あと${days}日${remainingHours > 0 ? ` ${remainingHours}時間` : ''}でアクセス可能`;
     }
     return `あと${diffHours}時間でアクセス可能`;
   }
@@ -270,10 +333,15 @@ return (
                         <div className="flex items-start space-x-4">
                           {/* サムネイル */}
                           <div className="w-24 h-16 bg-gray-600 rounded flex items-center justify-center flex-shrink-0">
+
+                            
+
+                            
                           <ThumbnailImage 
-  url={chapter.content?.videoId || ''}  // ChapterPreviewと同じ参照方法に修正
+  url={chapter.content?.videoId || ''}
   title={chapter.title}
   isLocked={chapter.isLocked}
+  chapter={chapter}
 />
       </div>
                           <div className="flex-1">

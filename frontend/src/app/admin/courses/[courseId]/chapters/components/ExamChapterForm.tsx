@@ -6,6 +6,8 @@ import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { ChapterTimeSettings } from './ChapterTimeSettings';
 import { Chapter, CreateChapterDTO, ReferenceFile } from '@/types/course';
+import { ThumbnailUpload } from './ThumbnailUpload';
+
 
 interface ExamSection {
   number: 1 | 2 | 3;
@@ -26,6 +28,7 @@ interface ExamChapterFormData {
   referenceFiles: ReferenceFile[];
   examSettings: {
     sections: ExamSection[];
+    thumbnailUrl?: string; // 追加
   };
 }
 
@@ -81,7 +84,8 @@ export function ExamChapterForm({
             evaluationCriteria: initialData?.examSettings?.sections[2]?.task.evaluationCriteria || ''
           }
         }
-      ]
+      ],
+      thumbnailUrl: initialData?.examSettings?.thumbnailUrl || '', // ここに追加
     }
   });
 
@@ -163,12 +167,16 @@ export function ExamChapterForm({
     console.log('バリデーション成功');
     return true;
   };
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('送信開始', {
       モード: initialData ? '編集' : '新規作成',
       フォームデータ: formData
     });
+
+
   
     setIsSubmitting(true);
     try {
@@ -179,7 +187,8 @@ export function ExamChapterForm({
         releaseTime: formData.releaseTime,
         isFinalExam: true,
         examSettings: {
-          sections: formData.examSettings.sections
+          sections: formData.examSettings.sections,
+          thumbnailUrl: formData.examSettings.thumbnailUrl  // ここを追加
         }
       };
   
@@ -261,6 +270,35 @@ export function ExamChapterForm({
               />
             </div>
           </div>
+
+          <div className="mt-6">
+    <div className="border-t border-gray-700 pt-6">
+      <h4 className={`text-sm font-medium mb-3 ${
+        theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+      }`}>
+        試験用サムネイル画像
+      </h4>
+      <ThumbnailUpload
+        currentUrl={formData.examSettings.thumbnailUrl}
+        onUpload={(url) => {
+          setFormData(prev => ({
+            ...prev,
+            examSettings: {
+              ...prev.examSettings,
+              thumbnailUrl: url
+            }
+          }));
+        }}
+        folder="exam-thumbnails"
+      />
+      <p className="mt-2 text-sm text-gray-500">
+        ※ このサムネイルは試験の概要ページや一覧で表示されます
+      </p>
+    </div>
+  </div>
+
+
+
 
           <div className="mt-6">
             <ChapterTimeSettings

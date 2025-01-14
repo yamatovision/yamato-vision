@@ -1,7 +1,7 @@
 'use client';
 
 import { useTheme } from '@/contexts/theme';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';  // useCallbackを追加
 import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 import { ChapterProgressStatus } from '@/types/status'; 
 import { getMuxVideoMetadata } from '@/lib/api/mux';
@@ -26,7 +26,6 @@ interface ChapterContent {
   transcription?: string;
   id?: string;
 }
-
 interface ChapterPreviewProps {
   chapter: {
     id: string;
@@ -44,9 +43,105 @@ interface ChapterPreviewProps {
     isVisible?: boolean;
     isPerfectOnly?: boolean;
     isFinalExam?: boolean;
+    examSettings?: {  // 追加
+      sections: any[];
+      thumbnailUrl?: string;
+    };
+    thumbnailUrl?: string;  // 追加
   };
   progress?: ChapterProgress | null;
 }
+interface ThumbnailImageProps {
+  url?: string;
+  title: string;
+  isLocked: boolean;
+  chapter: ChapterPreviewProps['chapter'];  // 既存のpropsの型を使用
+}
+
+const ThumbnailImage = ({ title, isLocked, chapter }: {
+  title: string;
+  isLocked: boolean;
+  chapter: ChapterPreviewProps['chapter'];
+}) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  const getThumbnailUrl = useCallback(() => {
+    console.log('【サムネイル取得処理】', {
+      チャプターID: chapter.id,
+      最終試験フラグ: chapter.isFinalExam,
+      コンテンツ: chapter.content,
+      既存サムネイル: chapter.thumbnailUrl
+    });
+
+    // isFinalExamフラグによる判定
+    if (chapter.isFinalExam) {
+      // examSettingsのthumbnailUrlを最優先
+      if (chapter.examSettings?.thumbnailUrl) {
+        return chapter.examSettings.thumbnailUrl;
+      }
+      // 以下は既存の実装
+      if (chapter.content?.thumbnailUrl) {
+        return chapter.content.thumbnailUrl;
+      }
+      if (chapter.thumbnailUrl && !chapter.thumbnailUrl.startsWith('undefined/')) {
+        return chapter.thumbnailUrl;
+      }
+    }
+
+    // 通常のビデオコンテンツ
+    if (chapter.content?.type === 'video' && chapter.content.videoId) {
+      return `https://image.mux.com/${chapter.content.videoId}/thumbnail.jpg`;
+    }
+
+    // 音声コンテンツ
+    if (chapter.content?.type === 'audio' && chapter.content.thumbnailUrl) {
+      return chapter.content.thumbnailUrl;
+    }
+
+    return null;
+  }, [chapter]);
+
+  const thumbnailUrl = getThumbnailUrl();
+
+  return (
+    <div className="relative w-full h-full">
+      {imageLoading && (
+        <div className="absolute inset-0 bg-gray-700 animate-pulse rounded" />
+      )}
+      {thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt={title}
+          className={`w-full h-full object-cover rounded transition-opacity duration-300 ${
+            imageLoading ? 'opacity-0' : 'opacity-100'
+          }`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            setImageError(true);
+            setImageLoading(false);
+          }}
+        />
+      ) : (
+        <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
+          <span className="text-2xl">
+            {chapter.isFinalExam ? '📝' : chapter.content?.type === 'audio' ? '🎵' : '🎥'}
+          </span>
+        </div>
+      )}
+      {isLocked && (
+        <div className="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
+          <span className="text-xl text-white">🔒</span>
+        </div>
+      )}
+      {chapter.isFinalExam && (
+        <div className="absolute top-2 right-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs">
+          最終試験
+        </div>
+      )}
+    </div>
+  );
+};
 
 const getMuxThumbnail = (videoId: string | undefined): string | undefined => {
   if (!videoId) return undefined;
@@ -170,49 +265,14 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
       <div className="flex space-x-4 mb-4">
         {/* サムネイル部分 */}
         <div className="w-48 h-32 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0 relative">
-          {chapter.content?.videoId ? (
-            <>
-              {!imageError ? (
-                <div className="relative w-full h-full">
-                  {imageLoading && (
-                    <div className="absolute inset-0 bg-gray-700 animate-pulse" />
-                  )}
-                  <img
-                    src={getMuxThumbnail(chapter.content.videoId)}
-                    alt={chapter.title}
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${
-                      imageLoading ? 'opacity-0' : 'opacity-100'
-                    }`}
-                    loading="lazy"
-                    onLoad={() => setImageLoading(false)}
-                    onError={() => {
-                      setImageError(true);
-                      setImageLoading(false);
-                    }}
-                  />
-                  {videoMetadata?.duration && (
-                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                      {formatDuration(videoMetadata.duration)}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                  <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-              <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </div>
-          )}
-        </div>
+        <ThumbnailImage
+          title={chapter.title}
+          isLocked={false}
+          chapter={chapter}
+        />
+      </div>
 
+        
         {/* チャプター詳細 */}
         <div className="flex-1">
           <h3 className={`font-bold text-lg mb-2 ${

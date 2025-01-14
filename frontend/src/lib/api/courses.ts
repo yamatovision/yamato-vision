@@ -675,14 +675,20 @@ getExamCertificate: async (courseId: string, chapterId: string): Promise<APIResp
           credentials: 'include'
         }
       );
-
+  
       if (!response.ok) {
         throw new Error('Failed to fetch chapters progress');
       }
-
+  
       const data = await response.json();
-      console.log('【APIレスポンス】getChaptersProgress:', data);
-
+      
+      // データ構造の詳細なログ
+      console.log('【ChapterProgress詳細】', {
+        '最終試験チャプター': data.data.find(ch => ch.isFinalExam),
+        'チャプターデータサンプル': data.data[0],
+        '全データ構造': JSON.stringify(data.data, null, 2)
+      });
+  
       return {
         success: true,
         data: data.data
@@ -697,6 +703,34 @@ getExamCertificate: async (courseId: string, chapterId: string): Promise<APIResp
     }
   },
 
+  // courses.ts に追加
+trackChapterAccess: async (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
+  try {
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/access`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to track chapter access');
+    }
+
+    return {
+      success: true,
+      data: null
+    };
+  } catch (error) {
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
   getCurrentChapter: async (courseId: string): Promise<APIResponse<CurrentChapterData>> => {
     try {
       // リクエスト前のデバッグ情報

@@ -23,6 +23,7 @@ export interface ExamSection {
 
 export interface ExamSettings {
   sections: ExamSection[];
+  thumbnailUrl?: string; // 追加
 }
 
 
@@ -87,7 +88,9 @@ export interface ChapterContent {
   url?: string;
   transcription?: string;
   id?: string;
+  thumbnailUrl?: string; // 追加
 }
+
 
 // コースのステータス定義
 export type CourseStatus = 

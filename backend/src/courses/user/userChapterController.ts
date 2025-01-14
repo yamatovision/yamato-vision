@@ -86,6 +86,37 @@ export class UserChapterController {
     }
   };
 
+  trackChapterAccess = async (req: Request, res: Response) => {
+    try {
+      const { courseId, chapterId } = req.params;
+      const userId = req.user?.id;
+  
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized' 
+        });
+      }
+  
+      const result = await this.chapterService.trackChapterAccess(
+        userId,
+        courseId,
+        chapterId
+      );
+  
+      return res.json({
+        success: true,
+        data: result
+      });
+  
+    } catch (error) {
+      console.error('Error tracking chapter access:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to track chapter access'
+      });
+    }
+  };
   updateWatchProgress = async (req: Request, res: Response) => {
     try {
       const { courseId, chapterId } = req.params;
