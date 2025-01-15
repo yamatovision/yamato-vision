@@ -285,12 +285,12 @@ export default function ShopPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-          <CourseCard
-            key={course.id}
-            {...course}
-            onCardClick={handleCardClick}
-          />
-        ))}
+        <CourseCard
+        key={course.id}
+        course={course}  // オブジェクトとして渡す
+        onCardClick={handleCardClick}
+      />
+    ))}
       </div>
 
       {showModal && selectedCourse && (

@@ -1,4 +1,6 @@
 import api from './auth';
+import { ExamSectionResponse } from '@/types/examination';
+
 import { APIResponse } from '@/types/api';
 import { handleApiError } from './errorHandler';
 import { 
@@ -17,6 +19,7 @@ import {
   CreateChapterDTO,
   CurrentCourseState,
   CourseStatus,
+  FinalExamChapterDTO
 } from '@/types/course';
 
 // インターフェース定義
@@ -343,18 +346,15 @@ export const courseApi = {
       };
     }
   },
-
-  // セクション提出
   submitExamSection: async (
     courseId: string,
     chapterId: string,
-    sectionId: string,
+    sectionNumber: string,
     content: string
-  ): Promise<APIResponse<ExamResult | null>> => {
+  ): Promise<APIResponse<ExamSectionResponse>> => {
     try {
       const response = await fetch(
-`${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/sections/${sectionId}/submit`,
-
+        `${FRONTEND_API_BASE}/courses/user/${courseId}/chapters/${chapterId}/exam/sections/${sectionNumber}/submit`,
         {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -362,16 +362,15 @@ export const courseApi = {
           body: JSON.stringify({ content })
         }
       );
-
+  
       if (!response.ok) {
         throw new Error('Failed to submit exam section');
       }
-
+  
       const data = await response.json();
       return {
         success: true,
-        data: data.data,
-        isComplete: data.isComplete
+        data: data.data
       };
     } catch (error) {
       return {
@@ -384,7 +383,7 @@ export const courseApi = {
 
 
 // 最終試験チャプター作成
-createExamChapter: async (courseId: string, data: CreateExamChapterDTO): Promise<APIResponse<Chapter>> => {
+createExamChapter: async (courseId: string, data: FinalExamChapterDTO): Promise<APIResponse<Chapter>> => {
   try {
     console.log('createExamChapter - リクエスト情報:', {
       URL: `${FRONTEND_API_BASE}/admin/courses/${courseId}/exam-chapters`,
@@ -439,7 +438,7 @@ createExamChapter: async (courseId: string, data: CreateExamChapterDTO): Promise
 updateExamChapter: async (
   courseId: string, 
   chapterId: string, 
-  data: UpdateExamChapterDTO
+  data: FinalExamChapterDTO
 ): Promise<APIResponse<Chapter>> => {
   try {
     const response = await fetch(
@@ -684,7 +683,7 @@ getExamCertificate: async (courseId: string, chapterId: string): Promise<APIResp
       
       // データ構造の詳細なログ
       console.log('【ChapterProgress詳細】', {
-        '最終試験チャプター': data.data.find(ch => ch.isFinalExam),
+　　　　　'最終試験チャプター': data.data.find((ch: Chapter) => ch.isFinalExam),
         'チャプターデータサンプル': data.data[0],
         '全データ構造': JSON.stringify(data.data, null, 2)
       });

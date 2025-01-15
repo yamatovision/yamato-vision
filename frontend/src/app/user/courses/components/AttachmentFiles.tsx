@@ -1,12 +1,13 @@
 'use client';
 
 import { useTheme } from '@/contexts/theme';
-import { AttachmentFile } from '@/types/course';
+import { ReferenceFile } from '@/types/course';  // AttachmentFileをReferenceFileに変更
 
-interface AttachmentFilesProps {
-  files: AttachmentFile[];
-}
 
+  interface AttachmentFilesProps {
+    files: ReferenceFile[];  // 型を変更
+  }
+  
 export function AttachmentFiles({ files }: AttachmentFilesProps) {
   const { theme } = useTheme();
 

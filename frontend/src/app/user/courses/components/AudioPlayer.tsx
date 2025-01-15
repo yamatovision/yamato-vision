@@ -178,7 +178,7 @@ export function AudioPlayer({
                 if (isPlaying) {
                   playerRef.current.pause();
                 } else {
-                  playerRef.current.play().catch(error => {
+                  playerRef.current.play().catch((error: Error) => {
                     console.error('Playback error:', error);
                   });
                 }
@@ -246,7 +246,7 @@ export function AudioPlayer({
                   onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                   className="h-24"
                   style={{ 
-                    writingMode: 'bt-lr', 
+                    writingMode: 'vertical-rl' as const,
                     WebkitAppearance: 'slider-vertical',
                     cursor: 'pointer'
                   }}

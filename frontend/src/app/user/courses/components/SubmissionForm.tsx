@@ -11,6 +11,8 @@ interface SubmissionFormProps {
   task: Task;
   courseId: string;
   chapterId: string;
+  onSubmit: (submission: string) => Promise<void>;  // 追加
+
 }
 
 export function SubmissionForm({ task, courseId, chapterId }: SubmissionFormProps) {

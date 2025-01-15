@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/theme';
 import { Chapter, UserChapterProgress } from '@/types/course';
 import { courseApi } from '@/lib/api/courses';
+import { ChapterProgressStatus } from '@/types/status';
+
 import { toast } from 'react-hot-toast';
+import { ChapterWithUserProgress } from '@/types/chapter';  // パスを変更
 import { VideoPlayer } from '@/app/user/courses/components/VideoPlayer';
 import { AudioPlayer } from '@/app/user/courses/components/AudioPlayer';
 import { TimeRemaining } from '@/app/user/courses/components/TimeRemaining';
@@ -15,6 +18,13 @@ import { PeerSubmissions } from '@/app/user/courses/components/PeerSubmissions';
 import { SubmissionState } from '@/types/submission';
 import Script from 'next/script';
 
+interface ChapterPageProgress {
+  status: ChapterProgressStatus;
+  lessonWatchRate: number;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
 interface ChapterPageProps {
   params: { 
     courseId: string; 
@@ -22,12 +32,13 @@ interface ChapterPageProps {
   };
 }
 
+
 export default function ChapterPage({ params }: ChapterPageProps) {
   const router = useRouter();
   const [submissions, setSubmissions] = useState([]); 
-
+  const [pageProgress, setPageProgress] = useState<ChapterPageProgress | null>(null);
   const { theme } = useTheme();
-  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [chapter, setChapter] = useState<ChapterWithUserProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<UserChapterProgress | null>(null);
   const [submissionState, setSubmissionState] = useState<SubmissionState>({
@@ -85,13 +96,11 @@ export default function ChapterPage({ params }: ChapterPageProps) {
       toast.error('他の受講生の提出を更新できませんでした');
     }
   };
-
   useEffect(() => {
-    // page.tsx の initializeChapter 関数内
     const initializeChapter = async () => {
       try {
         setLoading(true);
-
+  
         try {
           await courseApi.handleFirstAccess(
             params.courseId,
@@ -100,23 +109,43 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         } catch (error) {
           console.error('First access handling error:', error);
         }
-
+  
         const chapterResponse = await courseApi.getChapter(
           params.courseId,
           params.chapterId
         );
-
+  
         if (chapterResponse.success && chapterResponse.data) {
+          const chapterData = chapterResponse.data;
+          
           // 試験モードの場合はリダイレクト
-          if (chapterResponse.data.isFinalExam) {
+          if (chapterData.isFinalExam) {
             router.push(`/user/courses/${params.courseId}/chapters/${params.chapterId}/examination`);
             return;
           }
 
-          setChapter(chapterResponse.data);
-          if (chapterResponse.data.userProgress?.[0]) {
-            setProgress(chapterResponse.data.userProgress[0]);
-          }
+          const chapterWithProgress: ChapterWithUserProgress = {
+            ...chapterData,
+            progress: {
+              startedAt: chapterData.progress?.startedAt ?? null,
+              completedAt: chapterData.progress?.completedAt ?? null,
+              lessonWatchRate: chapterData.lessonWatchRate ?? 0,
+              score: chapterData.score
+            }
+          };
+  
+          // ここでchapterDataをそのまま設定（型変換を削除）
+          setChapter(chapterWithProgress);  // 変換したデータを設定
+          
+          // 新しい型で進捗情報を設定
+         if (chapterData.progress) {
+    setPageProgress({
+      status: chapterData.status,
+      lessonWatchRate: chapterData.lessonWatchRate,
+      startedAt: chapterData.progress.startedAt,
+      completedAt: chapterData.progress.completedAt
+    });
+  }
           await handleRefreshPeerSubmissions();
         } else {
           toast.error('チャプターの読み込みに失敗しました');
@@ -128,8 +157,14 @@ export default function ChapterPage({ params }: ChapterPageProps) {
         setLoading(false);
       }
     };
-
+  
     initializeChapter();
+  }, [params.courseId, params.chapterId]);
+  
+  useEffect(() => {
+    if (params.courseId && params.chapterId) {
+      courseApi.trackChapterAccess(params.courseId, params.chapterId);
+    }
   }, [params.courseId, params.chapterId]);
   useEffect(() => {
     if (params.courseId && params.chapterId) {
@@ -261,7 +296,6 @@ export default function ChapterPage({ params }: ChapterPageProps) {
                 isEvaluationPage={false}
                 timeoutStatus={submissionState.timeoutStatus}
                 onRefresh={handleRefreshPeerSubmissions}
-                submissions={submissions}  // 追加
               />
             </div>
           </div>

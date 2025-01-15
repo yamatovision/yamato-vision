@@ -9,6 +9,8 @@ import { MediaUpload } from './MediaUpload';
 import { ChapterTimeSettings } from './ChapterTimeSettings';
 import { TaskForm } from './TaskForm';
 import { Chapter, CreateChapterDTO, TaskContent, ReferenceFile } from '@/types/course';
+import { ExtendedChapter } from '@/types/chapter';
+
 import { ThumbnailUpload } from './ThumbnailUpload';
 
 
@@ -16,7 +18,7 @@ interface ChapterFormData {
   title: string;
   subtitle: string;
   content: {
-    type: 'video' | 'audio';
+    type: 'video' | 'audio';  // exam を除外
     videoId: string;
     transcription: string;
     thumbnailUrl?: string; // 追加
@@ -38,7 +40,7 @@ interface ChapterFormData {
 }
 
 interface ChapterFormProps {
-  initialData?: Chapter;
+  initialData?: ExtendedChapter;  // Chapter から ExtendedChapter に変更
   courseId: string;
   onCancel: () => void;
   onSuccess: () => void;
@@ -57,10 +59,12 @@ export function ChapterForm({
     title: initialData?.title || '',
     subtitle: initialData?.subtitle || '',
     content: {
-      type: initialData?.content?.type || 'video',
+      type: (initialData?.content?.type === 'video' || initialData?.content?.type === 'audio') 
+        ? initialData.content.type 
+        : 'video',  // デフォルトは video
       videoId: initialData?.content?.videoId || '',
       transcription: initialData?.content?.transcription || '',
-      thumbnailUrl: initialData?.content?.thumbnailUrl || '', // 追加
+      thumbnailUrl: initialData?.content?.thumbnailUrl || ''
     },
     taskContent: {
       description: initialData?.taskContent?.description || ''

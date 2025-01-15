@@ -10,6 +10,15 @@ import { useToast } from '@/contexts/toast';
 import { ExamSectionResult } from '@/types/chapter';
 import { APIResponse } from '@/types/api'; // 追加が必要
 
+interface ExamSectionSubmissionResponse {
+  sectionId: string;
+  score: number;
+  feedback: string;
+  nextStep: string;
+  submittedAt: string;
+  isComplete: boolean;
+}
+
 
 const AUTOSAVE_INTERVAL = 30000; // 30秒
 const MIN_ANSWER_LENGTH = 1; // 最小回答文字数
@@ -84,6 +93,8 @@ export default function ExaminationPage() {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
+
+
   const [examState, setExamState] = useState<ExamState>({
     currentSection: 0,
     answers: {},
@@ -110,13 +121,17 @@ useEffect(() => {
       
       if (progressResponse.success && progressResponse.data) {
         const examData = progressResponse.data;
+
         setExamState(prev => ({
           ...prev,
           startedAt: new Date(examData.startedAt),
           timeLimit: examData.timeLimit,
           currentSection: examData.currentSection,
           sections: examData.sections,
-          sectionResults: examData.sectionResults || []
+          sectionResults: examData.sectionResults?.map(result => ({
+            ...result,
+            sectionNumber: parseInt(result.sectionId) || 0
+          })) || []
         }));
         setLoading(false);
         return;

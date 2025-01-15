@@ -1,29 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { Task } from '@/types/course';
+import { ChapterTask } from '@/types/chapter';  // Task から ChapterTask に変更
 
 interface TaskFormProps {
-  initialData?: Task;
-  onSubmit: (taskData: Task) => void;
+  initialData?: ChapterTask;
+  onSubmit: (taskData: ChapterTask) => void;
   disabled?: boolean;
 }
 
 export function TaskForm({ initialData, onSubmit, disabled = false }: TaskFormProps) {
   const { theme } = useTheme();
   
-  const extractContent = (systemMessage: string | undefined, tag: string): string => {
-    if (!systemMessage) return '';
-    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, 's');
-    const match = systemMessage.match(regex);
-    return match ? match[1].trim() : '';
-  };
-
-  const [formData, setFormData] = useState<Omit<Task, 'id' | 'systemMessage'>>({
+  const [formData, setFormData] = useState<ChapterTask>({
+    title: initialData?.title || '',
     materials: initialData?.materials || '',
     task: initialData?.task || '',
     evaluationCriteria: initialData?.evaluationCriteria || '',
-    maxPoints: 100, // 固定値として設定
+    maxPoints: 100,
   });
 
   useEffect(() => {
@@ -37,7 +31,7 @@ export function TaskForm({ initialData, onSubmit, disabled = false }: TaskFormPr
     });
   }, [initialData]);
 
-  const handleChange = (field: keyof Omit<Task, 'id' | 'systemMessage' | 'maxPoints'>, value: string) => {
+  const handleChange = (field: keyof Omit<ChapterTask, 'maxPoints'>, value: string) => {
     console.log('TaskForm - HandleChange:', {
       field,
       value,
@@ -50,21 +44,11 @@ export function TaskForm({ initialData, onSubmit, disabled = false }: TaskFormPr
     };
     setFormData(newFormData);
 
-    const systemMessage = `<materials>
-${newFormData.materials}
-</materials>
-<task>
-${newFormData.task}
-</task>
-<evaluation_criteria>
-${newFormData.evaluationCriteria}
-</evaluation_criteria>`;
-
+    // systemMessage 生成を削除し、純粋なフォームデータのみを送信
     onSubmit({
       ...newFormData,
-      maxPoints: 100, // 常に100として送信
-      systemMessage,
-    } as Task);
+      maxPoints: 100,
+    });
   };
 
   return (

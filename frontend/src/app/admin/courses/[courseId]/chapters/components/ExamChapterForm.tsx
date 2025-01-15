@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/theme';
 import { courseApi } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { ChapterTimeSettings } from './ChapterTimeSettings';
-import { Chapter, CreateChapterDTO, ReferenceFile } from '@/types/course';
+import { Chapter, CreateChapterDTO, FinalExamChapterDTO,ReferenceFile } from '@/types/course';
 import { ThumbnailUpload } from './ThumbnailUpload';
 
 
@@ -25,7 +25,6 @@ interface ExamChapterFormData {
   timeLimit: number;
   releaseTime: number;
   orderIndex: number;
-  referenceFiles: ReferenceFile[];
   examSettings: {
     sections: ExamSection[];
     thumbnailUrl?: string; // 追加
@@ -54,7 +53,6 @@ export function ExamChapterForm({
     timeLimit: initialData?.timeLimit ? initialData.timeLimit : 48,
     releaseTime: initialData?.releaseTime || 0,
     orderIndex: initialData?.orderIndex || 0,
-    referenceFiles: initialData?.referenceFiles || [],
     examSettings: {
       sections: [
         {
@@ -177,44 +175,46 @@ export function ExamChapterForm({
     });
 
 
-  
     setIsSubmitting(true);
-    try {
-      const examData = {
-        title: formData.title,
-        subtitle: formData.subtitle,
-        timeLimit: formData.timeLimit,
-        releaseTime: formData.releaseTime,
-        isFinalExam: true,
-        examSettings: {
-          sections: formData.examSettings.sections,
-          thumbnailUrl: formData.examSettings.thumbnailUrl  // ここを追加
-        }
-      };
-  
-      console.log('API呼び出し直前', {
-        モード: initialData ? '編集' : '新規作成',
-        データ: examData
-      });
-  
-      if (initialData) {
-        await courseApi.updateExamChapter(courseId, initialData.id, examData);
-      } else {
-        await courseApi.createExamChapter(courseId, examData);
+  try {
+    const finalExamData: FinalExamChapterDTO = {
+      title: formData.title,
+      subtitle: formData.subtitle,
+      timeLimit: formData.timeLimit,
+      releaseTime: formData.releaseTime,
+      isFinalExam: true,
+      examSettings: {
+        sections: formData.examSettings.sections,
+        thumbnailUrl: formData.examSettings.thumbnailUrl,
+        maxPoints: 100,  // セクションの合計点数
+        timeLimit: formData.timeLimit,  // 試験の制限時間
+        type: 'exam'     // 試験タイプを指定
       }
-  
-      toast.success('最終試験を保存しました');
-      onSuccess();
-    } catch (error) {
-      console.error('送信エラー:', {
-        モード: initialData ? '編集' : '新規作成',
-        エラー: error
-      });
-      toast.error('最終試験の保存に失敗しました');
-    } finally {
-      setIsSubmitting(false);
+    };
+     
+    console.log('API呼び出し直前', {
+      モード: initialData ? '編集' : '新規作成',
+      データ: finalExamData
+    });
+
+    if (initialData) {
+      await courseApi.updateExamChapter(courseId, initialData.id, finalExamData);
+    } else {
+      await courseApi.createExamChapter(courseId, finalExamData);
     }
-  };
+
+    toast.success('最終試験を保存しました');
+    onSuccess();
+  } catch (error) {
+    console.error('送信エラー:', {
+      モード: initialData ? '編集' : '新規作成',
+      エラー: error
+    });
+    toast.error('最終試験の保存に失敗しました');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 
 

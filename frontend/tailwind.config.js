@@ -128,5 +128,22 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/typography'),
+    function({ addComponents, theme }) {
+      addComponents({
+        '.rich-text-editor': {
+          position: 'relative',
+          '&[contenteditable="true"]': {
+            '&:empty:before': {
+              content: 'attr(data-placeholder)',
+              color: theme('colors.secondary.400'),
+              position: 'absolute',
+              pointerEvents: 'none',
+              left: theme('spacing.4'),
+              top: theme('spacing.4'),
+            }
+          }
+        }
+      });
+    }
   ],
 };

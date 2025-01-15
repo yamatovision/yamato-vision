@@ -317,8 +317,8 @@ export function ChapterList({
                             />
 
                             <ToggleButton
-                              onClick={() => handlePerfectModeToggle(chapter.id, chapter.isPerfectOnly)}
-                              isActive={chapter.isPerfectOnly}
+                              onClick={() => handlePerfectModeToggle(chapter.id, chapter.isPerfectOnly || false)}
+                              isActive={chapter.isPerfectOnly || false}
                               loading={isUpdating === chapter.id}
                               title={chapter.isPerfectOnly ? 'Perfect専用を解除' : 'Perfect専用に設定'}
                               activeIcon={

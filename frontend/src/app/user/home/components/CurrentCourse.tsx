@@ -1,7 +1,7 @@
 'use client';
 
 import { useTheme } from '@/contexts/theme';
-import { useCurrentCourse } from './hooks/useCurrentCourse';
+import { useCurrentCourse, isReleaseTimeValid } from './hooks/useCurrentCourse';
 import { CourseHeader } from './CurrentCourse/CourseHeader';
 import { ProgressStages } from './CurrentCourse/ProgressStages';
 import { ChapterPreview } from './CurrentCourse/ChapterPreview';
@@ -75,7 +75,7 @@ export function CurrentCourse() {
   <ProgressStages
     lessonWatchRate={parsedChapter.lessonWatchRate || 0}
     status={determineChapterProgress(currentChapter)}
-    score={parsedChapter.score}
+    score={parsedChapter.submission?.score}  // .scoreを.submission.scoreに変更
   />
 )}
 
@@ -84,8 +84,10 @@ export function CurrentCourse() {
       {currentChapter && parsedChapter && (
   <ChapterPreview
     chapter={{
-      ...parsedChapter,
-      timeLimit: parsedChapter.timeLimit
+      ...currentChapter,  // parsedChapterではなくcurrentChapterを使用
+      content: currentChapter.content,
+      lessonWatchRate: currentChapter.lessonWatchRate,
+      submission: currentChapter.submission
     }}
     progress={{
       status: determineChapterProgress(currentChapter),
@@ -96,19 +98,39 @@ export function CurrentCourse() {
   />
 )}
 
-
       {/* 続きから学習するボタン */}
       <button 
-        onClick={handleContinueLearning}
-        className={`w-full mt-4 ${
-          theme === 'dark' 
-            ? 'bg-blue-600 hover:bg-blue-700' 
-            : 'bg-blue-400 hover:bg-blue-500'
-        } text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg`}
-      >
-        続きから学習する
-      </button>
+  onClick={() => handleContinueLearning()}  // アロー関数で包む
+  className={`w-full mt-4 ${
+    theme === 'dark' 
+      ? 'bg-blue-600 hover:bg-blue-700' 
+      : 'bg-blue-400 hover:bg-blue-500'
+  } text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg`}
+>
+  このコースを学習する
+</button>
 
+{/* 次のチャプターボタン */}
+{(() => {
+  const currentChapter = courseData.course.chapters[0];
+  const nextChapter = courseData.course.chapters.find(
+    chapter => chapter.orderIndex === currentChapter.orderIndex + 1
+  );
+
+  if (nextChapter && 
+      (!nextChapter.releaseTime || isReleaseTimeValid(nextChapter.releaseTime, courseData.startedAt)) && 
+      determineChapterProgress(nextChapter) === 'NOT_STARTED') {
+    return (
+      <button 
+        onClick={(e) => handleContinueLearning(nextChapter.id)}  // イベントパラメータを追加
+        className="w-full mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg"
+      >
+        次のチャプターに進む
+      </button>
+    );
+  }
+  return null;
+})()}
       {/* コース概要モーダル */}
       {courseData && (
         <CourseOverviewModal

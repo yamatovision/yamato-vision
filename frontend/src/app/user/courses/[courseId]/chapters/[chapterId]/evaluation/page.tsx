@@ -87,32 +87,34 @@ useEffect(() => {
     return;
   }
 
-  const evaluateSubmission = async () => {
-    try {
-      const response = await courseApi.submitTask(
-        params.courseId,
-        params.chapterId,
-        { submission: savedSubmission }
-      );
+ // evaluation/page.tsx の該当部分を修正
+const evaluateSubmission = async () => {
+  try {
+    const response = await courseApi.submitTask(
+      params.courseId,
+      params.chapterId,
+      { submission: savedSubmission }
+    );
 
-      if (response.success && response.data) {
-        setResult({
-          score: response.data.submission.points,
-          feedback: response.data.submission.feedback || '',
-          nextStep: response.data.submission.nextStep || ''
-        });
-        setStatus('completed');
-        
-        // 評価完了後にピア提出を取得
-        handleRefreshPeerSubmissions();
-      }
-    } catch (error) {
-      setStatus('error');
-      toast.error('評価中にエラーが発生しました');
-    } finally {
-      sessionStorage.removeItem(submissionKey);
+    if (response.success && response.data) {
+      // 評価結果の構造に合わせて修正
+      setResult({
+        score: response.data.evaluation.total_score,
+        feedback: response.data.evaluation.feedback,
+        nextStep: response.data.evaluation.next_step || ''
+      });
+      setStatus('completed');
+      
+      // 評価完了後にピア提出を取得
+      handleRefreshPeerSubmissions();
     }
-  };
+  } catch (error) {
+    setStatus('error');
+    toast.error('評価中にエラーが発生しました');
+  } finally {
+    sessionStorage.removeItem(submissionKey);
+  }
+};
 
   evaluateSubmission();
 

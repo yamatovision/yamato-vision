@@ -15,11 +15,10 @@ export interface SubmissionResponse {
       id: string;
       points: number;
       feedback: string;
-      nextStep: string;  // 必須フィールドとして定義
+      nextStep?: string;  // 必須フィールドとして定義
     };
   };
 }
-
 
 
 // これを追加

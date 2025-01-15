@@ -165,14 +165,14 @@ export function RichTextEditor({
         </div>
 
         <div
-          ref={editorRef}
-          contentEditable
-          onInput={handleInput}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          className="min-h-[300px] p-4 bg-secondary-800 text-secondary-100 focus:outline-none"
-          placeholder={placeholder}
-        />
+  ref={editorRef}
+  contentEditable
+  onInput={handleInput}
+  onFocus={() => setIsFocused(true)}
+  onBlur={() => setIsFocused(false)}
+  className="min-h-[300px] p-4 bg-secondary-800 text-secondary-100 focus:outline-none rich-text-editor"
+  data-placeholder={placeholder}
+/>
       </div>
 
       <input

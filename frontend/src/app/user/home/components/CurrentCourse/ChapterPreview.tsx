@@ -21,9 +21,10 @@ interface VideoMetadata {
 }
 
 interface ChapterContent {
-  type: 'video' | 'audio';
-  videoId: string;
+  type: 'video' | 'audio' | 'exam';  // 'exam' を追加
+  videoId?: string;
   transcription?: string;
+  thumbnailUrl?: string;  // この行を追加
   id?: string;
 }
 interface ChapterPreviewProps {
