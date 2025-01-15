@@ -1,4 +1,4 @@
-DATABASE_URL="postgresql://postgres:IpINzNGcoRWxToGpStQzNtukHTzZreRQ@junction.proxy.rlwy.net:19585/railway"
+DATABASE_URL="postgresql://postgres:Mikoto123@35.200.114.166:5432/postgres"
 PORT=3001
 FRONTEND_URL=http://localhost:3000
 MONGODB_URI="mongodb+srv://lisence:FhpQAu5UPwjm0L1J@motherprompt-cluster.np3xp.mongodb.net/motherprompt?retryWrites=true&w=majority&appName=MotherPrompt-Cluster"
