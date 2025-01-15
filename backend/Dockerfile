@@ -10,21 +10,17 @@ WORKDIR /app
 # package.jsonとpackage-lock.jsonをコピー
 COPY package*.json ./
 
-# prismaディレクトリをコピー
-COPY prisma ./prisma/
-
 # 依存関係のインストール
 RUN npm install
+
+# すべてのソースコードをコピー
+COPY . .
 
 # Prismaの生成
 RUN npx prisma generate
 
-# ソースコードをコピー
-COPY src ./src
-COPY tsconfig.json .
-
-# TypeScriptのビルド
-RUN npm run build
+# TypeScriptのビルド（詳細なログ出力を追加）
+RUN npx tsc --listFiles
 
 # ポートの設定
 EXPOSE 3001
