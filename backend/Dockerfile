@@ -19,8 +19,11 @@ COPY . .
 # Prismaの生成
 RUN npx prisma generate
 
-# TypeScriptのビルド（詳細なログ出力を追加）
-RUN npx tsc --listFiles
+# TypeScriptの型チェック
+RUN npx tsc --noEmit
+
+# TypeScriptのビルド
+RUN npm run build
 
 # ポートの設定
 EXPOSE 3001
