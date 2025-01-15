@@ -59,7 +59,11 @@ const initializeCronJobs = () => {
 
 // CORS設定
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: [
+    'https://yamato-vision-git-main-yamatovisions-projects.vercel.app',
+    'https://yamato-vision-plab54spe-yamatovisions-projects.vercel.app',
+    'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
