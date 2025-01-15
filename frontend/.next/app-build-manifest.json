@@ -36,15 +36,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/page.js"
     ],
-    "/admin/courses/[courseId]/chapters/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/[courseId]/chapters/page.js"
-    ],
     "/admin/courses/[courseId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/[courseId]/page.js"
+    ],
+    "/admin/courses/[courseId]/chapters/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/courses/[courseId]/chapters/page.js"
     ],
     "/user/courses/[courseId]/chapters/[chapterId]/page": [
       "static/chunks/webpack.js",
