@@ -19,10 +19,7 @@ COPY . .
 # Prismaの生成
 RUN npx prisma generate
 
-# TypeScriptの型チェック
-RUN npx tsc --noEmit
-
-# TypeScriptのビルド
+# TypeScriptのビルドと型チェック（--noEmitを削除）
 RUN npm run build
 
 # ポートの設定
