@@ -1,11 +1,17 @@
 # ベースイメージ
 FROM node:18-slim
 
+# OpenSSLのインストール
+RUN apt-get update -y && apt-get install -y openssl
+
 # 作業ディレクトリの設定
 WORKDIR /app
 
 # package.jsonとpackage-lock.jsonをコピー
 COPY package*.json ./
+
+# prismaディレクトリをコピー
+COPY prisma ./prisma/
 
 # 依存関係のインストール
 RUN npm install
@@ -14,13 +20,14 @@ RUN npm install
 RUN npx prisma generate
 
 # ソースコードをコピー
-COPY . .
+COPY src ./src
+COPY tsconfig.json .
 
 # TypeScriptのビルド
 RUN npm run build
 
 # ポートの設定
-EXPOSE 3000
+EXPOSE 3001
 
 # アプリケーションの起動
 CMD ["npm", "start"]
