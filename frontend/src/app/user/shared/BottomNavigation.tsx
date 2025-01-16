@@ -29,12 +29,7 @@ export function BottomNavigation() {
   const navItems = [
     { icon: '🏠', href: '/user/home', label: 'ホーム', isExternal: false },
     { icon: '🛍️', href: '/user/shop', label: 'ショップ', isExternal: false },
-    { 
-      icon: '💫', 
-      href: 'https://yamatovision-blue-lamp.web.app/chat', 
-      label: 'ブルーランプ', 
-      isExternal: true 
-    }
+   
   ];
 
   const baseClasses = theme === 'dark' 

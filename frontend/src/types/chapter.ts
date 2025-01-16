@@ -153,12 +153,12 @@ export interface ChapterPreviewData {
   evaluationStatus?: ChapterEvaluationStatus;
   score?: number;
   timeOutAt?: Date | null;
-  releaseTime?: Date | null;
+  releaseTime?: number;  // 同様にnumber型に
   thumbnailUrl?: string;
   lessonWatchRate: number;
   isLocked: boolean;
   canAccess: boolean;
-  nextUnlockTime?: Date;
+  nextUnlockTime?: number;  // 同様にnumber型に
   isFinalExam: boolean;
   content?: ChapterContent;  // ChapterContent型を使用
   examSettings?: ExamSettings;  // ExamSettings型を使用

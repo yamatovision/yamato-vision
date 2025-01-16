@@ -189,6 +189,7 @@ export interface CourseData {
       isPerfectOnly?: boolean;
       isFinalExam?: boolean;
       releaseTime?: number;
+      nextUnlockTime?: number;  // 追加: Unix timestamp として定義
       content: ChapterContent;
       lessonWatchRate: number;
       submission?: {

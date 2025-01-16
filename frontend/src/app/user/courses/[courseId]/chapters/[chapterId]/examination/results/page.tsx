@@ -145,7 +145,7 @@ export default function ExamResultsPage() {
             成績証明書をダウンロード
           </button>
           <button
-            onClick={() => router.push(`/user/courses/${params.courseId}`)}
+            onClick={() => router.push(`/user/home`)}
             className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
           >
             コースに戻る

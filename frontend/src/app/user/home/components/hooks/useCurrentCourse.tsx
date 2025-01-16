@@ -32,11 +32,11 @@ interface NavigationChapter {
   content?: ChapterContent; // 追加
   subtitle?: string;        // 追加
   timeOutAt?: Date | null;  // 追加
-  releaseTime?: Date | null;// 追加
+  releaseTime?: number;  // Date | null から number に変更
   thumbnailUrl?: string;    // 追加
   score?: number;           // 追加
   evaluationStatus?: ChapterEvaluationStatus; // 追加
-  nextUnlockTime?: Date;    // 追加
+  nextUnlockTime?: number;  // Date から number に変更
   examSettings?: ExamSettings; // 追加
 }
 
@@ -46,6 +46,31 @@ interface NavigationState {
   canNavigatePrev: boolean;
   canNavigateNext: boolean;
 }
+interface SwitchableChapter {
+  id: string;
+  courseId: string;
+  title: string;
+  subtitle?: string;  // optional に変更
+  orderIndex: number;
+  timeLimit: number;  // 追加
+  isVisible: boolean; // 追加
+  content: ChapterContent;
+  status: ChapterProgressStatus;
+  lessonWatchRate: number;
+  isLocked: boolean;
+  canAccess: boolean;
+  isFinalExam: boolean;
+  isPerfectOnly?: boolean;  // 追加
+  timeOutAt?: string;
+  releaseTime?: number;
+  thumbnailUrl?: string;
+  score?: number;
+  evaluationStatus?: ChapterEvaluationStatus;
+  nextUnlockTime?: number;
+  examSettings?: ExamSettings;
+  userProgress?: Array<{ isCurrent?: boolean | null }>;  // 追加
+}
+
 
 interface UseCurrentCourseState {
   courseData: CourseData | null;
@@ -82,7 +107,16 @@ interface UseCurrentCourseReturn {
   ) => ChapterDisplayState;
 }
 
+const getFormattedNextUnlockTime = (timestamp: number): Date => {
+  return new Date(timestamp * 1000); // Unix timestamp を Date に変換
+};
+const convertTimestampToDate = (timestamp: number): Date => {
+  return new Date(timestamp * 1000);
+};
 
+const convertDateToTimestamp = (date: Date): number => {
+  return Math.floor(date.getTime() / 1000);
+};
 const formatReleaseTime = (date: Date | string): string => {
   const releaseDate = new Date(date);
   const now = new Date();
@@ -147,12 +181,15 @@ const getChapterDisplayState = (
 
 
   // 3. 時間待ち判定
-  if (chapter.nextUnlockTime && new Date() < new Date(chapter.nextUnlockTime)) {
-    return {
-      canShowPreview: true,
-      message: formatReleaseTime(chapter.nextUnlockTime),
-      showTimer: true
-    };
+  if (chapter.nextUnlockTime) {
+    const unlockDate = convertTimestampToDate(chapter.nextUnlockTime);
+    if (new Date() < unlockDate) {
+      return {
+        canShowPreview: true,
+        message: formatReleaseTime(unlockDate),
+        showTimer: true
+      };
+    }
   }
 
   // 4. チャプター状態による表示判定
@@ -217,18 +254,21 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
   const chapterStatus = determineChapterProgress(currentChapter);
 
   // 解放待ち状態のチェック
-  if (currentChapter.nextUnlockTime && new Date() < new Date(currentChapter.nextUnlockTime)) {
-    return {
-      mainText: 'このチャプターを学習する',
-      showButton: false,
-      isWaitingForRelease: true,
-      releaseTimeMessage: formatReleaseTime(currentChapter.nextUnlockTime),
-      nextChapter: {
-        id: currentChapter.id,
-        title: currentChapter.title,
-        orderIndex: currentChapter.orderIndex
-      }
-    };
+  if (currentChapter.nextUnlockTime) {
+    const unlockDate = convertTimestampToDate(currentChapter.nextUnlockTime);
+    if (new Date() < unlockDate) {
+      return {
+        mainText: 'このチャプターを学習する',
+        showButton: false,
+        isWaitingForRelease: true,
+        releaseTimeMessage: formatReleaseTime(unlockDate),
+        nextChapter: {
+          id: currentChapter.id,
+          title: currentChapter.title,
+          orderIndex: currentChapter.orderIndex
+        }
+      };
+    }
   }
 
   // 通常状態
@@ -250,86 +290,158 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
     } : undefined
   };
 }, [courseData, determineChapterProgress]);
-  const updateNavigationState = useCallback(async (currentChapter: CourseData['course']['chapters'][0]) => {
-    if (!courseData?.course?.chapters) return;
-  
-    const response = await courseApi.getChaptersProgress(courseData.courseId);
-    if (!response.success || !response.data) return;
-  
-    const chapters = response.data;
-    const currentIndex = chapters.findIndex(ch => ch.id === currentChapter.id);
-    
-    const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
-    const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
-  
-    const canNavigatePrev = !!prevChapter;
-    const canNavigateNext = !!nextChapter && currentChapter.status === 'COMPLETED';
-  
-    setNavigationState({
-      prevChapter: prevChapter ? {
-        ...prevChapter, // ChapterPreviewDataの全プロパティを展開
-        status: prevChapter.status,
-        isLocked: prevChapter.isLocked,
-        canAccess: prevChapter.canAccess
-      } : null,
-      nextChapter: nextChapter ? {
-        ...nextChapter, // ChapterPreviewDataの全プロパティを展開
-        status: nextChapter.status,
-        isLocked: nextChapter.isLocked,
-        canAccess: nextChapter.canAccess
-      } : null,
-      canNavigatePrev,
-      canNavigateNext
-    });
-  }, [courseData]);
-  const switchToChapter = async (newChapter: ChapterPreviewData) => {
-    if (!courseData) return;
-  
-    // アクセス制御のチェック
+const updateNavigationState = useCallback(async (currentChapter: CourseData['course']['chapters'][0]) => {
+  if (!courseData?.course?.chapters) return;
 
-    try {
-      setLoading(true);
-      const response = await courseApi.getChaptersProgress(courseData.courseId);
-      
-      if (!response.success || !response.data) {
-        throw new Error('チャプター情報の取得に失敗しました');
-      }
+  const response = await courseApi.getChaptersProgress(courseData.courseId);
+  if (!response.success || !response.data) return;
+
+  const chapters = response.data;
+  const currentIndex = chapters.findIndex(ch => ch.id === currentChapter.id);
   
-      // 最新のチャプター情報を取得
-      const latestChapterInfo = response.data.find(ch => ch.id === newChapter.id);
-      if (!latestChapterInfo) {
-        throw new Error('チャプター情報が見つかりません');
-      }
-  
-      // 前のチャプターが完了していない場合はアクセス不可
-      const prevChapter = response.data.find(ch => ch.orderIndex === latestChapterInfo.orderIndex - 1);
-      if (prevChapter && prevChapter.status !== 'COMPLETED' && !latestChapterInfo.canAccess) {
-        toast.error('前のチャプターを完了させてください');
-        return;
-      }
-  
-      const updatedChapter = {
-        ...latestChapterInfo,
-        courseId: courseData.courseId
-      };
-  
-      const updatedCourseData: CourseData = {
-        ...courseData,
-        course: {
-          ...courseData.course,
-          chapters: [updatedChapter]
-        }
-      };
-      
-      setCourseData(updatedCourseData);
-      await updateNavigationState(updatedCourseData.course.chapters[0]);
-  
-    } catch (error) {
-      toast.error('チャプターの切り替えに失敗しました');
-    } finally {
-      setLoading(false);
-    }
+  const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+  const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
+
+  const canNavigatePrev = !!prevChapter;
+  const canNavigateNext = !!nextChapter && currentChapter.status === 'COMPLETED';
+
+  const createNavigationChapter = (chapter: ChapterPreviewData | null): NavigationChapter | null => {
+    if (!chapter) return null;
+    
+    return {
+      id: chapter.id,
+      title: chapter.title,
+      subtitle: chapter.subtitle,
+      orderIndex: chapter.orderIndex,
+      status: chapter.status,
+      isLocked: chapter.isLocked,
+      canAccess: chapter.canAccess,
+      lessonWatchRate: chapter.lessonWatchRate,
+      isFinalExam: chapter.isFinalExam,
+      content: chapter.content,
+      timeOutAt: chapter.timeOutAt,
+      releaseTime: chapter.releaseTime,
+      thumbnailUrl: chapter.thumbnailUrl,
+      score: chapter.score,
+      evaluationStatus: chapter.evaluationStatus,
+      nextUnlockTime: chapter.nextUnlockTime,
+      examSettings: chapter.examSettings
+    };
   };
+
+  setNavigationState({
+    prevChapter: createNavigationChapter(prevChapter),
+    nextChapter: createNavigationChapter(nextChapter),
+    canNavigatePrev,
+    canNavigateNext
+  });
+}, [courseData]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+const switchToChapter = async (newChapter: ChapterPreviewData) => {
+  if (!courseData) return;
+
+  try {
+    setLoading(true);
+    const response = await courseApi.getChaptersProgress(courseData.courseId);
+    
+    if (!response.success || !response.data) {
+      throw new Error('チャプター情報の取得に失敗しました');
+    }
+
+    const latestChapterInfo = response.data.find(ch => ch.id === newChapter.id);
+    if (!latestChapterInfo) {
+      throw new Error('チャプター情報が見つかりません');
+    }
+
+    const prevChapter = response.data.find(ch => ch.orderIndex === latestChapterInfo.orderIndex - 1);
+    if (prevChapter && prevChapter.status !== 'COMPLETED' && !latestChapterInfo.canAccess) {
+      toast.error('前のチャプターを完了させてください');
+      return;
+    }
+
+    // デフォルトのChapterContent
+    const defaultContent: ChapterContent = {
+      type: 'video',
+      videoId: '',
+    };
+
+    // timeOutAtの変換処理
+    const timeOutAtString = latestChapterInfo.timeOutAt 
+      ? new Date(latestChapterInfo.timeOutAt).toISOString()
+      : undefined;
+
+    const updatedChapter: SwitchableChapter = {
+      id: latestChapterInfo.id,
+      courseId: courseData.courseId,
+      title: latestChapterInfo.title,
+      subtitle: latestChapterInfo.subtitle,
+      orderIndex: latestChapterInfo.orderIndex,
+      timeLimit: 0, // デフォルト値
+      isVisible: true, // デフォルト値
+      content: latestChapterInfo.content || defaultContent, // デフォルトコンテンツを使用
+      status: latestChapterInfo.status,
+      lessonWatchRate: latestChapterInfo.lessonWatchRate,
+      isLocked: latestChapterInfo.isLocked,
+      canAccess: latestChapterInfo.canAccess,
+      isFinalExam: latestChapterInfo.isFinalExam || false,
+      timeOutAt: timeOutAtString,  // 変換済みの値を使用
+      releaseTime: latestChapterInfo.releaseTime,
+      thumbnailUrl: latestChapterInfo.thumbnailUrl,
+      score: latestChapterInfo.score,
+      evaluationStatus: latestChapterInfo.evaluationStatus,
+      nextUnlockTime: latestChapterInfo.nextUnlockTime,
+      examSettings: latestChapterInfo.examSettings
+    };
+
+    const updatedCourseData: CourseData = {
+      ...courseData,
+      course: {
+        ...courseData.course,
+        chapters: [updatedChapter as CourseData['course']['chapters'][0]]
+      }
+    };
+    
+    setCourseData(updatedCourseData);
+    await updateNavigationState(updatedCourseData.course.chapters[0]);
+
+  } catch (error) {
+    toast.error('チャプターの切り替えに失敗しました');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // タイムアウトをチェックする関数
   const checkTimeRemaining = (timeRemaining?: { 
@@ -429,9 +541,11 @@ if (chapterResponse.success && chapterResponse.data) {
       isVisible: currentChapter.isVisible,
       content: currentChapter.content,
       isLocked: false,
-      canAccess: true
-    };
-
+      canAccess: true,
+      nextUnlockTime: currentChapter.nextUnlockTime // すでにnumber型として受け取る
+      ? convertDateToTimestamp(new Date(currentChapter.nextUnlockTime)) 
+      : undefined
+  };
     // マージしたチャプターで更新
     formattedData.course.chapters = [mergedChapter];
     await updateNavigationState(mergedChapter);
@@ -490,13 +604,13 @@ useEffect(() => {
 useEffect(() => {
   if (!courseData?.course?.chapters?.[0]?.nextUnlockTime) return;
 
-  const nextUnlockTime = new Date(courseData.course.chapters[0].nextUnlockTime);
+  const unlockDate = convertTimestampToDate(courseData.course.chapters[0].nextUnlockTime);
   const now = new Date();
   
-  if (now < nextUnlockTime) {
+  if (now < unlockDate) {
     const timeout = setTimeout(() => {
       loadCurrentCourse();
-    }, nextUnlockTime.getTime() - now.getTime());
+    }, unlockDate.getTime() - now.getTime());
     
     return () => clearTimeout(timeout);
   }

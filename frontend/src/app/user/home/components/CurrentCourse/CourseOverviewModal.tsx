@@ -30,7 +30,8 @@ const getThumbnailUrl = (videoId: string) => {
   return `https://image.mux.com/${videoId}/thumbnail.png`;
 };
 
-export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverviewModalProps) {
+export function CourseOverviewModal({ isOpen, onClose, courseData,  switchToChapter  // 追加
+}: CourseOverviewModalProps) {
   const { theme } = useTheme();
   const router = useRouter();
   const [chapters, setChapters] = useState<ChapterPreviewData[]>([]);

@@ -117,7 +117,7 @@ export function ProgressStages({ lessonWatchRate, status, score }: ProgressStage
       };
     }
 
-    if (score >= 95) {
+    if (score >= 90) {
       return {
         icon: '👑',
         bgColor: isDark 
@@ -131,7 +131,7 @@ export function ProgressStages({ lessonWatchRate, status, score }: ProgressStage
       };
     }
 
-    if (score >= 85) {
+    if (score >= 80) {
       return {
         icon: '⭐',
         bgColor: isDark 
@@ -145,7 +145,7 @@ export function ProgressStages({ lessonWatchRate, status, score }: ProgressStage
       };
     }
 
-    if (score >= 70) {
+    if (score >= 60) {
       return {
         icon: '✓',
         bgColor: isDark 
