@@ -1153,6 +1153,17 @@ public async handleCourseCompletion(
   courseId: string
 ): Promise<void> {
   try {
+    await tx.userChapterProgress.updateMany({
+      where: {
+        userId,
+        courseId,
+        isTimedOut: false  // 未タイムアウトのものを対象
+      },
+      data: {
+        isTimedOut: true,
+        timeOutAt: new Date()
+      }
+    });
     // 1. すべてのチャプター評価を取得
     const chapterEvaluations = await tx.userChapterProgress.findMany({
       where: {
