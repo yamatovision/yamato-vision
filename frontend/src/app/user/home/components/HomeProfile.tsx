@@ -6,9 +6,13 @@ import { useProfile } from '@/lib/hooks/useProfile';
 import { getRankStyle } from '@/lib/utils/rankStyles';
 import { useNotification } from '@/contexts/notification';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+
 
 export function HomeProfile() {
   const { theme } = useTheme();
+  const router = useRouter();
   const { showExperienceGain, showLevelUp } = useNotification();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { userData, loading, error, updateProfile, updateAvatar } = useProfile();
@@ -21,6 +25,11 @@ export function HomeProfile() {
   const handleProfileClick = () => {
     setIsEditModalOpen(true);
   };
+  const handleTranscriptClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push('/user/transcript');
+  };
+
 
   const handleSaveProfile = async (data: any) => {
     try {
@@ -250,7 +259,7 @@ export function HomeProfile() {
               </div>
             </div>
 
-            {/* 学業情報（GPA、取得単位、成績証明書） 
+            {/* 学業情報（GPA、取得単位、成績証明書）       */}
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
                 <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
@@ -297,7 +306,7 @@ export function HomeProfile() {
                 </svg>
               </div>
             </div>
-            */}
+      
           </div>
         </div>
       </div>

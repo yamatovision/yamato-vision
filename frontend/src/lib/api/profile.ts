@@ -1,3 +1,5 @@
+// frontend/src/lib/api/profile.ts
+
 import api from './auth';
 
 interface ProfileResponse {
@@ -28,6 +30,7 @@ export const profileAPI = {
       throw new Error('プロフィールの更新に失敗しました');
     }
   },
+
   async updateAvatar(base64Image: string): Promise<ProfileResponse> {
     try {
       const response = await api.patch('/users/profile/avatar', {
@@ -36,6 +39,15 @@ export const profileAPI = {
       return response.data;
     } catch (error) {
       throw new Error('アバターの更新に失敗しました');
+    }
+  },
+
+  async getTranscript(): Promise<ProfileResponse> {
+    try {
+      const response = await api.get('/users/profile/transcript');
+      return response.data;
+    } catch (error) {
+      throw new Error('成績証明書の取得に失敗しました');
     }
   }
 };

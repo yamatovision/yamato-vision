@@ -24,6 +24,7 @@ export class ProfileService {
     experience: true,
     gems: true,
     studentId: true,     // 追加：学籍番号フィールド
+    enrollmentYear: true,  // 追加
     message: true,
     snsLinks: true,
     isRankingVisible: true,
@@ -47,6 +48,23 @@ export class ProfileService {
         weeklyLimit: true,
         purchasedTokens: true,
         unprocessedTokens: true
+      }
+    },
+    gpa: true,
+    totalCredits: true,
+    gradeHistory: {
+      select: {
+        id: true,
+        courseId: true,
+        grade: true,
+        gradePoint: true,
+        credits: true,
+        completedAt: true,
+        course: {
+          select: {
+            title: true,
+          }
+        }
       }
     }
   } as const;
@@ -112,6 +130,7 @@ export class ProfileService {
       level: user.level,
       experience: user.experience,
       studentId: user.studentId,     // 追加：学籍番号フィールド
+      enrollmentYear: user.enrollmentYear,  // 追加
       gems: user.gems,
       message: user.message,
       careerIdentity: user.careerIdentity, // この行を追加
@@ -131,7 +150,20 @@ export class ProfileService {
         purchasedTokens: user.tokenTracking.purchasedTokens,
         unprocessedTokens: user.tokenTracking.unprocessedTokens
       } : null,
-      expStatus: this.calculateExpStatus(user.experience, user.level)
+      expStatus: this.calculateExpStatus(user.experience, user.level),
+      gpa: user.gpa,
+      totalCredits: user.totalCredits,
+      gradeHistory: user.gradeHistory?.map((gh: any) => ({
+        id: gh.id,
+        courseId: gh.courseId,
+        grade: gh.grade,
+        gradePoint: gh.gradePoint,
+        credits: gh.credits,
+        completedAt: gh.completedAt,
+        course: {
+          title: gh.course.title
+        }
+      })) || [],
     };
 
     if (additional) {
@@ -142,6 +174,55 @@ export class ProfileService {
     }
 
     return baseResponse;
+  }
+
+  async getTranscriptData(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        studentId: true,
+        name: true,
+        nickname: true,
+        enrollmentYear: true,
+        gpa: true,
+        totalCredits: true,
+        gradeHistory: {
+          select: {
+            id: true,
+            courseId: true,
+            grade: true,
+            gradePoint: true,
+            credits: true,
+            completedAt: true,
+            course: {
+              select: {
+                title: true,
+              }
+            }
+          },
+          orderBy: {
+            completedAt: 'desc'
+          }
+        }
+      }
+    });
+  
+    if (!user) {
+      throw new Error('ユーザーが見つかりません');
+    }
+  
+    return {
+      studentInfo: {
+        studentId: user.studentId,
+        name: user.name || user.nickname,
+        enrollmentYear: user.enrollmentYear
+      },
+      academicRecord: {
+        gpa: user.gpa,
+        totalCredits: user.totalCredits,
+        gradeHistory: user.gradeHistory
+      }
+    };
   }
 
   async getProfile(userId: string): Promise<ProfileResponse> {

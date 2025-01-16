@@ -10,6 +10,17 @@ export interface Badge {
   title: string;
   iconUrl: string;
 }
+export interface GradeHistoryItem {
+  id: string;
+  courseId: string;
+  grade: string;
+  gradePoint: number;
+  credits: number;
+  completedAt: string;
+  course: {
+    title: string;
+  }
+}
 
 export interface User {
   id: string;
@@ -20,6 +31,7 @@ export interface User {
   experience: number;
   careerIdentity?: string;  // 追加
   studentId?: string;  // 追加: 学籍番号
+  enrollmentYear?: number;  // 追加: 入学年度
   gems: number;
   avatarUrl?: string;
   message?: string;
@@ -36,6 +48,9 @@ export interface User {
   };
   badges: Badge[];
   tokens?: UserTokens;
+  gpa?: number;
+  totalCredits: number;
+  gradeHistory?: GradeHistoryItem[];
 }
 
 // APIレスポンス用の型も定義

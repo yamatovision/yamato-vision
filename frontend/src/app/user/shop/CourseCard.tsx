@@ -1,82 +1,117 @@
 'use client';
 
-import Link from 'next/link';
-import { Course } from '@/types/course';
-import { CourseStatus } from '@/types/status'; // status.tsから正しくインポート
+import { useTheme } from '@/contexts/theme';
+import { Course, CourseStatus } from '@/types/course';
 
 interface CourseCardProps {
   course: Course;
-  onCardClick: (courseId: string, status: CourseStatus) => void;
+  onCardClick: (id: string, status: CourseStatus) => void;
 }
 
-export function CourseCard({ course, onCardClick }: CourseCardProps) {
-  const handleClick = () => {
-    onCardClick(course.id, course.status);
+const StatusRibbon = ({ status }: { status: CourseStatus }) => {
+  const statusConfig = {
+    restricted: { color: 'bg-gray-500/80', text: '階級外' },
+    blocked: { color: 'bg-red-500/80', text: 'ブロック中' },
+    available: { color: 'bg-blue-500/80', text: '受講可' },
+    active: { color: 'bg-green-500/80', text: '受講中' },
+    completed: { color: 'bg-purple-500/80', text: '合格' },
+    perfect: { color: 'bg-yellow-500/80', text: '秀' },
+    failed: { color: 'bg-red-500/80', text: '不合格' }
   };
 
   return (
-    <div 
-      className="relative bg-gray-900 rounded-lg overflow-hidden group cursor-pointer"
-      onClick={handleClick}
+    <div className={`
+      absolute -right-12 top-6 
+      w-40 text-center
+      transform rotate-45
+      ${statusConfig[status].color}
+      text-white text-sm font-medium
+      py-1 px-10
+      shadow-md
+      z-10
+    `}>
+      {statusConfig[status].text}
+    </div>
+  );
+};
+
+export function CourseCard({ course, onCardClick }: CourseCardProps) {
+  const { theme } = useTheme();
+
+  const getGradientStyle = () => {
+    if (course.status === 'perfect') {
+      return 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600';
+    }
+    return course.gradient;
+  };
+
+  const renderThumbnailOrGradient = () => {
+    if (course.thumbnail) {
+      return (
+        <div className="relative h-40 w-full">
+          <img
+            src={course.thumbnail}
+            alt={course.title}
+            className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-20 rounded-t-lg" />
+        </div>
+      );
+    }
+    return (
+      <div className={`h-40 ${getGradientStyle()} rounded-t-lg`} />
+    );
+  };
+
+  const isClickable = !['restricted', 'blocked'].includes(course.status);
+
+  return (
+    <div
+      onClick={() => isClickable && onCardClick(course.id, course.status)}
+      className={`
+        relative 
+        ${theme === 'dark' ? 'bg-gray-800' : 'bg-white border border-[#DBEAFE]'} 
+        rounded-lg overflow-hidden
+        transition-all duration-200
+        ${isClickable ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-90'}
+        ${course.isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+      `}
     >
-      {/* サムネイル画像 */}
-      <div className="relative h-48 overflow-hidden">
-        <img
-          src={course.thumbnail || '/default-course-thumbnail.jpg'}
-          alt={course.title}
-          className="w-full h-full object-cover"
-        />
-        {/* オーバーレイメニュー */}
-        <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
-          <Link
-            href={`/admin/courses/${course.id}`}
-            className="px-4 py-2 bg-white bg-opacity-90 text-gray-900 rounded-md hover:bg-opacity-100 transition-all z-10"
-          >
-            コース管理
-          </Link>
-          <Link
-            href={`/admin/courses/${course.id}/chapters`}
-            className="px-4 py-2 bg-blue-500 bg-opacity-90 text-white rounded-md hover:bg-opacity-100 transition-all z-10"
-          >
-            チャプター管理
-          </Link>
-        </div>
-      </div>
+      <StatusRibbon status={course.status} />
+      {renderThumbnailOrGradient()}
 
-      {/* コース情報 */}
       <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-semibold text-white">
-            {course.title}
-          </h3>
-          <span className={`px-2 py-1 text-xs rounded-full ${
-            course.isPublished 
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}>
-            {course.isPublished ? '公開中' : '下書き'}
-          </span>
-        </div>
+        <h3 className={`font-bold text-lg mb-2 ${
+          theme === 'dark' ? 'text-white' : 'text-[#1E40AF]'
+        }`}>
+          {course.title}
+        </h3>
+        <p className={`text-sm ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+        }`}>
+          {course.description}
+        </p>
 
-        {/* 受講条件と情報 */}
-        <div className="space-y-2 text-gray-300 text-sm">
-          <p className="flex justify-between">
-            <span>チャプター数</span>
-            <span>{course.chapters?.length || 0}</span>
-          </p>
-          <p className="flex justify-between">
-            <span>更新日</span>
-            <span>{new Date(course.updatedAt).toLocaleDateString()}</span>
-          </p>
-        </div>
+        {(course.levelRequired || course.rankRequired) && (
+          <div className="mt-4 flex items-center space-x-2">
+            {course.levelRequired && (
+              <span className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                Lv.{course.levelRequired}
+              </span>
+            )}
+            {course.levelRequired && course.rankRequired && (
+              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                ・
+              </span>
+            )}
+            {course.rankRequired && (
+              <span className={`text-sm ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                {course.rankRequired}階級
+              </span>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* カード全体をクリッカブルに */}
-      <Link
-        href={`/admin/courses/${course.id}`}
-        className="absolute inset-0"
-        aria-label={`${course.title}の詳細を表示`}
-      />
     </div>
   );
 }

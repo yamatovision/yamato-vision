@@ -29,6 +29,7 @@ export interface ProfileResponse {
   message: string | null;
   careerIdentity: string | null;  // 追加
   studentId: string | null;  // 追加：学籍番号フィールド
+  enrollmentYear?: number;
   expGained?: number;
   levelUpData?: {
     oldLevel: number;
@@ -53,6 +54,19 @@ export interface ProfileResponse {
     unprocessedTokens: number;
   } | null;
   expStatus: ExpStatus;  // 追加
+  gpa: number | null;
+  totalCredits: number;
+  gradeHistory: {
+    id: string;
+    courseId: string;
+    grade: string;
+    gradePoint: number;
+    credits: number;
+    completedAt: string;
+    course: {
+      title: string;
+    }
+  }[];
 }
 
 export interface ProfileListResponse {

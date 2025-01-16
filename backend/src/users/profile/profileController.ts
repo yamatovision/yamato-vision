@@ -9,6 +9,32 @@ export class ProfileController {
     this.profileService = new ProfileService();
   }
 
+
+  async getTranscript(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user?.id) {
+        res.status(401).json({
+          success: false,
+          message: '認証が必要です'
+        });
+        return;
+      }
+
+      const transcriptData = await this.profileService.getTranscriptData(req.user.id);
+      res.json({
+        success: true,
+        data: transcriptData
+      });
+    } catch (error) {
+      console.error('Failed to get transcript:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : '成績証明書の取得に失敗しました'
+      });
+    }
+  }
+
+
   async getProfile(req: Request, res: Response): Promise<void> {
     try {
       console.log('Request user object:', req.user);

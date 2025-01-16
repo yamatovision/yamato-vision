@@ -83,5 +83,10 @@ router.patch(
   authMiddleware,
   profileController.updateAvatar.bind(profileController)
 );
+router.get(
+  '/transcript',
+  authMiddleware,
+  profileController.getTranscript.bind(profileController)
+);
 
 export default router;
