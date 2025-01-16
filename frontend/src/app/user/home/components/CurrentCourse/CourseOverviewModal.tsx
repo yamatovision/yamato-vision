@@ -5,7 +5,7 @@ import { Fragment, useEffect, useState, useCallback } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 import { CourseData } from '@/types/course';
-import { ChapterPreviewData } from '@/types/chapter';
+import { ChapterPreviewData } from '@/types/chapter';  // 追加
 import { courseApi } from '@/lib/api/courses';
 import { toast } from 'react-hot-toast';
 
@@ -13,6 +13,7 @@ interface CourseOverviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   courseData: CourseData;
+  switchToChapter: (chapter: ChapterPreviewData) => Promise<void>;  // 追加
 }
 
 // ThumbnailImageコンポーネントの型定義
@@ -160,13 +161,26 @@ export function CourseOverviewModal({ isOpen, onClose, courseData }: CourseOverv
 
 
 // チャプターへの遷移処理
-const handleChapterClick = async (chapter: ChapterPreviewData) => {
-  if (!chapter.canAccess) return;
-  
-  router.push(`/user/courses/${courseData.courseId}/chapters/${chapter.id}`);
-  onClose();
-};
+ const handleChapterClick = async (chapter: ChapterPreviewData) => {
+    if (!chapter.canAccess) {
+      toast.error('このチャプターにはまだアクセスできません');
+      return;
+    }
 
+    // 前のチャプターが完了しているかチェック
+    const prevChapters = chapters
+      .filter(ch => ch.orderIndex < chapter.orderIndex)
+      .sort((a, b) => b.orderIndex - a.orderIndex);
+
+    const previousChapter = prevChapters[0];
+    if (previousChapter && previousChapter.status !== 'COMPLETED') {
+      toast.error('前のチャプターを完了させてください');
+      return;
+    }
+
+    await switchToChapter(chapter);
+    onClose();
+  };
 // 残り時間のフォーマット
 const formatRemainingTime = (chapter: ChapterPreviewData): string => {
   if (chapter.nextUnlockTime) {

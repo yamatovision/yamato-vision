@@ -1,19 +1,14 @@
 import { User } from '@prisma/client';
 
 export type ExperienceSource = 'TOKEN' | 'TASK' | 'ACHIEVEMENT' | 'CREDITS_EARNED';
-
 export interface ExperienceGainEvent {
   userId: string;
   amount: number;
-  source: ExperienceSource;
+  source: 'submission' | 'token' | string;  // ソースタイプを追加
   metadata?: {
-    tokenAmount?: number;
-    taskId?: string;
+    chapterId?: string;
     score?: number;
-    // 単位取得用に追加
-    courseId?: string;
-    credits?: number;
-    grade?: string;
+    [key: string]: any;  // その他のメタデータも許可
   };
 }
 
@@ -32,6 +27,8 @@ export interface ExperienceServiceResult {
   data?: ExperienceCalcResult;
   error?: string;
 }
+
+
 
 export interface ExperienceStatusResponse {
   currentExp: number;

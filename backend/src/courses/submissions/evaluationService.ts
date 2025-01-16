@@ -40,32 +40,40 @@ export class EvaluationService {
 }`;
   }
 
-  async evaluateSubmission(params: {
-    materials: string;
-    task: string;
-    evaluationCriteria: string;
-    submission: string;
-    userId?: string;  // オプショナルパラメータとして追加
-  }) {
-    try {
-      let systemMessage = EvaluationService.generateSystemMessage();
+ async evaluateSubmission(params: {
+  materials: string;
+  task: string;
+  evaluationCriteria: string;
+  submission: string;
+  userId?: string;
+}) {
+  try {
+    console.log('【評価パラメータ確認】', {
+      userId: params.userId,
+      submissionLength: params.submission.length
+    });
 
-      // ユーザーIDが提供された場合、キャリアアイデンティティを取得
-      if (params.userId) {
-        try {
-          const user = await prisma.user.findUnique({
-            where: { id: params.userId },
-            select: { careerIdentity: true }
-          });
-          if (user?.careerIdentity) {
-            systemMessage = EvaluationService.generateSystemMessage(user.careerIdentity);
-          }
-        } catch (error) {
-          console.warn('Failed to fetch career identity:', error);
-          // エラーが発生してもデフォルトのメッセージで続行
-        }
+    let systemMessage = EvaluationService.generateSystemMessage();
+
+    if (params.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { careerIdentity: true }
+      });
+
+      console.log('【ユーザー情報取得】', {
+        userId: params.userId,
+        careerIdentity: user?.careerIdentity
+      });
+
+      if (user?.careerIdentity) {
+        systemMessage = EvaluationService.generateSystemMessage(user.careerIdentity);
+        console.log('【カスタムメッセージ生成】', {
+          careerIdentity: user.careerIdentity,
+          messagePreview: systemMessage.substring(0, 100) + '...'
+        });
       }
-
+    }
       const messages = [
         {
           role: "user" as const,

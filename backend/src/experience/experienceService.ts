@@ -17,6 +17,76 @@ export class ExperienceService {
     this.levelMessageService = new LevelMessageService();
   }
 
+  // experienceService.ts に追加するメソッド
+  async addSubmissionExperience(params: {
+    userId: string;
+    score: number;
+    previousBestScore?: number | null;
+    chapterId: string;
+  }): Promise<ExperienceServiceResult> {
+    try {
+      // スコア更新判定
+      if (params.previousBestScore !== undefined && 
+          params.previousBestScore !== null && 
+          params.score <= params.previousBestScore) {
+        
+        // ユーザーの現在の状態を取得
+        const user = await this.prisma.user.findUnique({
+          where: { id: params.userId }
+        });
+  
+        if (!user) {
+          throw new Error('User not found');
+        }
+  
+        // スコア更新なしの場合でも、現在の状態を含めた完全なレスポンスを返す
+        return {
+          success: true,
+          data: {
+            oldExp: user.experience,
+            newExp: user.experience,
+            oldLevel: user.level,
+            newLevel: user.level,
+            gainedExp: 0,
+            isLevelUp: false,
+            levelUpMessage: null
+          }
+        };
+      }
+
+    // 経験値計算（パーフェクトボーナス含む）
+    const experienceToAdd = params.score === 100 
+      ? params.score * 10  // パーフェクトスコアは10倍
+      : params.score;      // 通常スコアは等倍
+
+    console.log(`【経験値付与】チャプター完了: +${experienceToAdd}EXP（スコア: ${params.score}点）`);
+
+    // 経験値の付与
+    const result = await this.addExperience({
+      userId: params.userId,
+      amount: experienceToAdd,
+      source: 'submission',
+      metadata: {
+        chapterId: params.chapterId,
+        score: params.score
+      }
+    });
+
+    if (result.data?.isLevelUp) {
+      console.log(`【レベルアップ】 ${result.data.oldLevel} → ${result.data.newLevel}`);
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('経験値付与エラー:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
   async addExperience(event: ExperienceGainEvent): Promise<ExperienceServiceResult> {
     try {
       const user = await this.prisma.user.findUnique({

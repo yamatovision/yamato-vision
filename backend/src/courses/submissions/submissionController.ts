@@ -7,6 +7,7 @@ import { evaluationService } from './evaluationService';
 import { AuthRequest } from '../../auth/authMiddleware';
 import { PrismaClient } from '@prisma/client';
 import { CourseProgressManager } from '../progress/courseProgressManager';
+import { ExperienceService } from '../../experience/experienceService';
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,17 @@ const extractContent = (text: string | null, tag: string): string => {
 
 
 export class SubmissionController {
+
+
+  private courseProgressManager: CourseProgressManager;
+  private experienceService: ExperienceService;  // プロパティを追加
+
+  constructor() {
+    this.courseProgressManager = new CourseProgressManager();
+    this.experienceService = new ExperienceService();  // 初期化を追加
+
+  }
+
   async createSubmission(req: AuthRequest, res: Response) {
     try {
       if (!req.user || !req.user.id) {
@@ -61,11 +73,23 @@ export class SubmissionController {
       const taskContent = extractContent(task.systemMessage, 'task');
       const evaluationCriteria = extractContent(task.systemMessage, 'evaluation_criteria');
   
+      console.log('【ユーザー情報確認】', {
+        userId: req.user?.id,
+        authHeader: req.headers.authorization ? 'exists' : 'missing'
+      });
+
       const evaluationResult = await evaluationService.evaluateSubmission({
         materials,
         task: taskContent,
         evaluationCriteria,
-        submission: req.body.submission
+        submission: req.body.submission,
+        userId: req.user?.id  // この部分を修正
+      
+      });
+
+      console.log('【評価リクエスト】', {
+        userId: req.user?.id,
+        submissionLength: req.body.submission.length
       });
   
       const submissionData: CreateSubmissionDTO = {
@@ -111,11 +135,6 @@ export class SubmissionController {
   }
 
   
-  private courseProgressManager: CourseProgressManager;
-
-  constructor() {
-    this.courseProgressManager = new CourseProgressManager();
-  }
 
 
 
@@ -186,7 +205,8 @@ async submitAndEvaluate(req: AuthRequest, res: Response) {
       materials: task.materials || '',
       task: task.task || '',
       evaluationCriteria: task.evaluationCriteria || '',
-      submission: req.body.submission
+      submission: req.body.submission,
+      userId: req.user.id  // この行を追加
     });
 
     console.log('【評価結果】', {
@@ -292,14 +312,16 @@ console.log('【進捗更新前】', {
         }
       });
 
-      console.log('【進捗更新後】', {
-        更新結果: {
-          id: progress.id,
-          bestTaskContent: progress.bestTaskContent,  // 実際に保存された内容
-          score: progress.score,
-          提出内容の長さ: progress.bestTaskContent?.length || 0
-        }
-      });
+      if (isNewBestScore) {
+        this.experienceService.addSubmissionExperience({
+          userId: req.user.id,
+          score: evaluationResult.evaluation.total_score,
+          previousBestScore: currentProgress?.score,
+          chapterId: chapterId
+        }).catch(error => {
+          console.error('経験値付与処理でエラーが発生しました:', error);
+        });
+      }
 
       return { submission, progress, isNewBestScore };
     }, {

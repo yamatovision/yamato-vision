@@ -1,10 +1,12 @@
 'use client';
 
 import { useTheme } from '@/contexts/theme';
-import { useEffect, useState, useCallback } from 'react';  // useCallbackを追加
+import { useEffect, useState, useCallback, useMemo } from 'react';  // useMemo を追加
 import { ActiveUsers } from '@/app/user/shared/ActiveUsers';
 import { ChapterProgressStatus } from '@/types/status'; 
 import { getMuxVideoMetadata } from '@/lib/api/mux';
+import { useCurrentCourse } from '../hooks/useCurrentCourse';  // 追加
+
 
 // 既存のインターフェースはそのまま維持
 interface ChapterProgress {
@@ -13,6 +15,12 @@ interface ChapterProgress {
   completedAt?: string | null;
   timeOutAt?: string | null;
   lessonWatchRate?: number;
+}
+
+interface ChapterDisplayState {
+  canShowPreview: boolean;
+  message: string | null;
+  showTimer: boolean;
 }
 
 interface VideoMetadata {
@@ -155,6 +163,34 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const { courseData, getChapterDisplayState } = useCurrentCourse();  // 修正Z
+  const displayState = useMemo((): ChapterDisplayState => {
+    if (!courseData) return {
+      canShowPreview: true,
+      message: null,
+      showTimer: false
+    };
+  
+    const chapterWithStatus = {
+      ...chapter,
+      status: progress?.status || 'NOT_STARTED',
+      isLocked: false,
+      canAccess: true,
+      isFinalExam: chapter.isFinalExam || false,
+      examSettings: chapter.examSettings ? {
+        ...chapter.examSettings,
+        maxPoints: 100,  // デフォルト値
+        timeLimit: chapter.timeLimit,  // 既存のtimeLimitを使用
+        type: 'exam' as const  // 明示的な型指定
+      } : undefined
+    };
+  
+    return getChapterDisplayState(
+      chapterWithStatus,
+      courseData.status,
+      null
+    );
+  }, [chapter, courseData, getChapterDisplayState, progress]);
 
   // フォーマット関数
   const formatTime = (seconds: number): string => {
@@ -197,16 +233,10 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
     return Math.max(0, endTime - currentTime) / 1000;
   };
 
-  // タイマー更新のuseEffect
-  useEffect(() => {
-    // 完了済みの場合はタイマーを動作させない
-    if (progress?.status === 'COMPLETED' || progress?.completedAt) {
-      setRemainingTime(null);
-      return;
-    }
 
-    // 開始していない場合もタイマーを動作させない
-    if (!progress?.startedAt || progress.status === 'NOT_STARTED') {
+  useEffect(() => {
+    // コース完了状態またはプレビュー非表示の場合はタイマー不要
+    if (!displayState.showTimer) {
       setRemainingTime(null);
       return;
     }
@@ -215,12 +245,6 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
       const remaining = calculateRemainingTime();
       if (remaining !== null) {
         setRemainingTime(remaining);
-        
-        // タイムアウト検知時にページ更新をトリガー
-        // 完了済みでない場合のみリロード
-        if (remaining <= 0 && progress.status !== 'COMPLETED') {
-          window.location.reload();
-        }
       }
     };
 
@@ -228,82 +252,62 @@ export function ChapterPreview({ chapter, progress }: ChapterPreviewProps) {
     const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
-  }, [progress?.startedAt, progress?.status, progress?.completedAt, chapter.timeLimit]);
+  }, [displayState.showTimer]);
 
-  // 残りの時間表示の条件を修正
-  const renderTimeStatus = () => {
-    if (!progress) return null;  // progress が null/undefined の場合は早期リターン
-
-    // タイムアウト状態の判定を修正
-    const isTimedOut = progress.status === 'FAILED' || (remainingTime !== null && remainingTime <= 0);
-
-    // 完了済みの場合は時間表示しない
-    if (progress.status === 'COMPLETED' || progress.completedAt) {
-      return null;
-    }
+  // 時間表示コンポーネント
+  const TimeDisplay = () => {
+    if (!displayState.canShowPreview) return null;
 
     return (
       <p className={`text-sm ${
         theme === 'dark' ? 'text-red-400' : 'text-red-600'
       } mt-2`}>
-        {isTimedOut ? (
-          <span className="flex items-center">
-            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            制限時間を超過しました（点数が減少します）
-          </span>
-        ) : remainingTime && remainingTime > 0 ? (
-          `残り時間：${formatTime(remainingTime)}`
-        ) : null}
+        {displayState.message}
       </p>
     );
   };
-
   return (
     <div className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 mb-6`}>
-      <div className="flex space-x-4 mb-4">
-        {/* サムネイル部分 */}
-        <div className="w-48 h-32 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0 relative">
-        <ThumbnailImage
-          title={chapter.title}
-          isLocked={false}
-          chapter={chapter}
-        />
-      </div>
+      {displayState.canShowPreview && (
+        <>
+          <div className="flex space-x-4 mb-4">
+            {/* サムネイル部分 */}
+            <div className="w-48 h-32 bg-gray-600 rounded-lg overflow-hidden flex-shrink-0 relative">
+              <ThumbnailImage
+                title={chapter.title}
+                isLocked={!displayState.canShowPreview}
+                chapter={chapter}
+              />
+            </div>
 
-        
-        {/* チャプター詳細 */}
-        <div className="flex-1">
-          <h3 className={`font-bold text-lg mb-2 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Chapter {(chapter.orderIndex ?? 0) + 1}: {chapter.title}
-          </h3>
-          {chapter.subtitle && (
-            <p className={`text-sm ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              {chapter.subtitle}
-            </p>
-          )}
-          {renderTimeStatus()}
-        </div>
-      </div>
-
-      {/* コース受講者情報 */}
-      <div className={`border-t ${
-        theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
-      } pt-4`}>
-        <div className="flex flex-col space-y-2">
-          <div className={`text-sm ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-          }`}>
+            {/* チャプター詳細 */}
+            <div className="flex-1">
+              <h3 className={`font-bold text-lg mb-2 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
+                Chapter {(chapter.orderIndex ?? 0) + 1}: {chapter.title}
+              </h3>
+              {chapter.subtitle && (
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {chapter.subtitle}
+                </p>
+              )}
+              <TimeDisplay />
+            </div>
           </div>
-          <ActiveUsers courseId={chapter.courseId} maxDisplay={3} />
-        </div>
-      </div>
+
+          {/* コース受講者情報 */}
+          <div className={`border-t ${
+            theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+          } pt-4`}>
+            <div className="flex flex-col space-y-2">
+              <ActiveUsers courseId={chapter.courseId} maxDisplay={3} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

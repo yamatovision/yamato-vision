@@ -24,6 +24,23 @@ interface SubmissionResult {
   nextStep: string;
 }
 
+interface SubmissionResponse {
+  submission: {
+    id: string;
+    content: string;
+    points: number;
+    feedback: string;
+    nextStep: string;
+    submittedAt: string;
+    isNewBestScore: boolean;
+  };
+  progress: {
+    score: number;
+    bestFeedback: string;
+    bestNextStep: string;
+    bestEvaluatedAt: string;
+  };
+}
 
 type EvaluationStatus = 'evaluating' | 'completed' | 'error';
 
@@ -87,35 +104,37 @@ useEffect(() => {
     return;
   }
 
- // evaluation/page.tsx の該当部分を修正
-const evaluateSubmission = async () => {
-  try {
-    const response = await courseApi.submitTask(
-      params.courseId,
-      params.chapterId,
-      { submission: savedSubmission }
-    );
 
-    if (response.success && response.data) {
-      // 評価結果の構造に合わせて修正
+  const evaluateSubmission = async () => {
+    try {
+      const response = await courseApi.submitTask(
+        params.courseId,
+        params.chapterId,
+        { submission: savedSubmission }
+      ) as { success: boolean; data: SubmissionResponse | null };
+  
+      if (!response.success || !response.data) {
+        throw new Error('提出に失敗しました');
+      }
+  
       setResult({
-        score: response.data.evaluation.total_score,
-        feedback: response.data.evaluation.feedback,
-        nextStep: response.data.evaluation.next_step || ''
+        score: response.data.submission.points,
+        feedback: response.data.submission.feedback,
+        nextStep: response.data.submission.nextStep
       });
       setStatus('completed');
       
-      // 評価完了後にピア提出を取得
       handleRefreshPeerSubmissions();
+  
+    } catch (error) {
+      console.error('Evaluation error:', error);
+      setStatus('error');
+      setError('評価中にエラーが発生しました');
+      toast.error('評価中にエラーが発生しました');
+    } finally {
+      sessionStorage.removeItem(submissionKey);
     }
-  } catch (error) {
-    setStatus('error');
-    toast.error('評価中にエラーが発生しました');
-  } finally {
-    sessionStorage.removeItem(submissionKey);
-  }
-};
-
+  };
   evaluateSubmission();
 
   return () => {
@@ -177,9 +196,24 @@ const evaluateSubmission = async () => {
           </div>
         )}
 
-        {status === 'completed' && result && (
+{status === 'completed' && result && (
+        <>
           <ResultView result={result} />
-        )}
+          {/* ホームに戻るボタンを追加 */}
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => router.push('/user/home')}
+              className={`px-6 py-3 rounded-lg font-medium ${
+                theme === 'dark'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              ホームに戻る
+            </button>
+          </div>
+        </>
+      )}
 
         {/* ピア提出一覧 - 評価中でも表示 */}
         <div className="mt-8">

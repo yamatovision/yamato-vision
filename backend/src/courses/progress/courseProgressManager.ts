@@ -915,7 +915,6 @@ private emit<T extends keyof ProgressEventType>(
 ): void {
   this.eventEmitter.emit(event.type, event);
 }
-
 private async checkAccessibility(
   userId: string,
   courseId: string,
@@ -926,69 +925,89 @@ private async checkAccessibility(
   mode: 'normal' | 'perfect';
 }> {
   try {
-    // まず基本的な利用可能性をチェック
-    const availabilityStatus = await this.isChapterAvailable(
-      userId,
-      courseId,
-      chapterId
-    );
+    // トランザクションを開始
+    return await this.prisma.$transaction(async (tx) => {
+      // まず基本的な利用可能性をチェック
+      const availabilityStatus = await this.isChapterAvailable(
+        userId,
+        courseId,
+        chapterId
+      );
 
-    if (!availabilityStatus.isAvailable) {
-      return {
-        canAccess: false,
-        message: availabilityStatus.reason,
-        mode: 'normal'
-      };
-    }
-
-    // チャプターとコースの状態を取得
-    const [chapter, userCourse] = await Promise.all([
-      this.prisma.chapter.findUnique({
-        where: { id: chapterId }
-      }),
-      this.prisma.userCourse.findUnique({
-        where: {
-          userId_courseId: {
-            userId,
-            courseId
-          }
-        }
-      })
-    ]);
-
-    if (!chapter || !userCourse) {
-      return {
-        canAccess: false,
-        message: 'Chapter or course not found',
-        mode: 'normal'
-      };
-    }
-
-    // パーフェクトチャプターの判定
-    if (chapter.isPerfectOnly) {
-      if (userCourse.status === 'perfect') {
+      if (!availabilityStatus.isAvailable) {
         return {
-          canAccess: true,
-          mode: 'perfect'
+          canAccess: false,
+          message: availabilityStatus.reason,
+          mode: 'normal'
         };
       }
+
+      // チャプターとコースの状態を取得
+      const [chapter, userCourse] = await Promise.all([
+        tx.chapter.findUnique({
+          where: { id: chapterId }
+        }),
+        tx.userCourse.findUnique({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId
+            }
+          }
+        })
+      ]);
+
+      if (!chapter || !userCourse) {
+        return {
+          canAccess: false,
+          message: 'Chapter or course not found',
+          mode: 'normal'
+        };
+      }
+
+      // パーフェクトチャプターの判定
+      if (chapter.isPerfectOnly) {
+        if (userCourse.status === 'perfect') {
+          return {
+            canAccess: true,
+            mode: 'perfect'
+          };
+        }
+        return {
+          canAccess: false,
+          message: 'This content is only available in perfect mode',
+          mode: 'normal'
+        };
+      }
+
+      // リリースタイムのチェック
+      const releaseTimeValid = await this.checkReleaseTimeValidity(
+        tx,
+        userId,
+        courseId,
+        chapterId
+      );
+
+      if (!releaseTimeValid) {
+        return {
+          canAccess: false,
+          message: 'Content not yet released',
+          mode: 'normal'
+        };
+      }
+
+      // 通常チャプターの場合
       return {
-        canAccess: false,
-        message: 'This content is only available in perfect mode',
+        canAccess: true,
         mode: 'normal'
       };
-    }
-
-    // 通常チャプターの場合
-    return {
-      canAccess: true,
-      mode: 'normal'
-    };
+    });
 
   } catch (error) {
     console.error('Error in checkAccessibility:', error);
     throw error;
   }
+
 }
 
 
@@ -1253,7 +1272,30 @@ private calculateFinalStatus(
 private calculateTimeoutDate(startDate: Date, timeLimit: number): Date {
   return new Date(startDate.getTime() + timeLimit * this.MILLISECONDS_PER_HOUR); // 時間単位に変更
 }
+private async checkReleaseTimeValidity(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  courseId: string,
+  chapterId: string
+): Promise<boolean> {
+  const chapter = await tx.chapter.findUnique({
+    where: { id: chapterId },
+    select: { releaseTime: true }
+  });
 
+  const userCourse = await tx.userCourse.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+    select: { startedAt: true }
+  });
+
+  if (!chapter?.releaseTime || !userCourse?.startedAt) {
+    return true;
+  }
+
+  const releaseDate = new Date(userCourse.startedAt.getTime() + 
+    chapter.releaseTime * this.MILLISECONDS_PER_HOUR);
+  return new Date() >= releaseDate;
+}
 
 private async getPreviousChapterProgress(
   userId: string,
