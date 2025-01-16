@@ -245,9 +245,9 @@ export function AvatarGeneratorModal({ isOpen, onClose, onComplete }: AvatarGene
     setGenerationStatus('生成を開始中...');
     try {
       const response = await avatarApi.generateAvatar({
-        mode: 'quick',
+        mode: 'guided',
         modelId: "2067ae52-33fd-4a82-bb92-c2c55e7d2786",
-        styleUUID: "09d2b5b5-d7c5-4c02-905d-9f84051640f4",
+        styleUUID: "645e4195-f63d-4715-a3f2-3fb1e6eb8c70",
         prompt: "high quality CG character portrait, anime style, stylized 3D character, young adult male character, blue color scheme, detailed face modeling with perfect materials and textures, centered portrait, single character, professional 3D rendering"
       });
 
