@@ -40,3 +40,25 @@ export interface ProgressInfo {
   startedAt?: Date;
   completedAt?: Date;
 }
+
+
+// ユーザーの階級を定義
+export type UserRank = 
+  | 'お試し'
+  | '初伝'
+  | '中伝'
+  | '奥伝'
+  | '皆伝'
+  | '管理者'
+  | '退会者';
+
+// 階級の重み付けを定義
+export const USER_RANKS: Record<UserRank, number> = {
+  'お試し': 0,
+  '初伝': 1,
+  '中伝': 2,
+  '奥伝': 3,
+  '皆伝': 4,
+  '管理者': 5,
+  '退会者': -1
+} as const;

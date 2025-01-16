@@ -30,14 +30,12 @@ export interface CreateCourseDTO {
   title: string;
   description: string;
   thumbnail?: string;
-  credits?: number;  // 追加：単位数（1-4）
-  levelRequired?: number;
-  rankRequired?: string;
-  requirementType?: 'AND' | 'OR';
+  credits?: number;
+  rankRequired?: string;    // 第一関門：階級要件
+  levelRequired?: number;   // 第二関門：レベル要件
   timeLimit?: number;
   canEarnHigherStatus?: boolean;
 }
-
 export interface CreateChapterDTO {
   title: string;
   subtitle?: string;

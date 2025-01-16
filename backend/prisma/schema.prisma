@@ -172,7 +172,6 @@ model Course {
   gradeHistory    GradeHistory[]  // 追加
   timeLimit           Int?
   canEarnHigherStatus Boolean               @default(true)
-  requirementType     String                @default("OR")
   chapters            Chapter[]
   products            Product[]
   tasks               Task[]

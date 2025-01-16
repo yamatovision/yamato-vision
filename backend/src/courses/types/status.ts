@@ -89,3 +89,5 @@ export const USER_RANKS: Record<UserRank, number> = {
   '管理者': 5,
   '退会者': -1
 };
+
+

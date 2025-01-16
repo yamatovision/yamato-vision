@@ -2,13 +2,58 @@
 
 import { useTheme } from '@/contexts/theme';
 import { Course, CourseStatus } from '@/types/course';
+import { UserRank, USER_RANKS } from '@/types/status';  // 追加
 
 interface CourseCardProps {
   course: Course;
+  userRank: string;  // 追加
+  userLevel: number; // 追加
   onCardClick: (id: string, status: CourseStatus) => void;
 }
 
-const StatusRibbon = ({ status }: { status: CourseStatus }) => {
+const StatusRibbon = ({ status, course, userRank, userLevel }: { 
+  status: CourseStatus;
+  course: Course;
+  userRank: string;
+  userLevel: number;
+}) => {
+  // 階級制限チェック
+  if (course.rankRequired && USER_RANKS[userRank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
+    return (
+      <div className={`
+        absolute -right-12 top-6 
+        w-40 text-center
+        transform rotate-45
+        bg-gray-500/80
+        text-white text-sm font-medium
+        py-1 px-10
+        shadow-md
+        z-10
+      `}>
+        階級制限
+      </div>
+    );
+  }
+
+  // レベル制限チェック
+  if (course.levelRequired && userLevel < course.levelRequired) {
+    return (
+      <div className={`
+        absolute -right-12 top-6 
+        w-40 text-center
+        transform rotate-45
+        bg-gray-500/80
+        text-white text-sm font-medium
+        py-1 px-10
+        shadow-md
+        z-10
+      `}>
+        レベル制限
+      </div>
+    );
+  }
+
+  // 既存のステータス表示
   const statusConfig = {
     restricted: { color: 'bg-gray-500/80', text: '階級外' },
     blocked: { color: 'bg-red-500/80', text: 'ブロック中' },
@@ -35,7 +80,7 @@ const StatusRibbon = ({ status }: { status: CourseStatus }) => {
   );
 };
 
-export function CourseCard({ course, onCardClick }: CourseCardProps) {
+export function CourseCard({ course, userRank, userLevel, onCardClick }: CourseCardProps) {
   const { theme } = useTheme();
 
   const getGradientStyle = () => {
@@ -77,7 +122,12 @@ export function CourseCard({ course, onCardClick }: CourseCardProps) {
         ${course.isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
       `}
     >
-      <StatusRibbon status={course.status} />
+      <StatusRibbon 
+        status={course.status} 
+        course={course} 
+        userRank={userRank} 
+        userLevel={userLevel}
+      />
       {renderThumbnailOrGradient()}
 
       <div className="p-4">

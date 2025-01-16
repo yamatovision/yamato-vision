@@ -226,46 +226,33 @@ export class UserCourseService {
     await this.statusManager.formatCourse(userId, courseId);
   }
   
-  
   private determineInitialStatus(
     user: { level: number; rank: string } | null,
     course: { 
       levelRequired?: number | null, 
       rankRequired?: string | null,
-      requirementType?: string
     }
   ): string {
     if (!user) return 'restricted';
     
-    // レベル要件のチェック（null または undefined の場合は要件を満たしているとみなす）
-    const meetsLevel = !course.levelRequired || user.level >= course.levelRequired;
-    
-    // 階級要件のチェック（null または undefined の場合は要件を満たしているとみなす）
-    const meetsRank = !course.rankRequired || (
-      course.rankRequired === user.rank || 
-      USER_RANKS[user.rank as UserRank] >= USER_RANKS[course.rankRequired as UserRank]
-    );
-  
-    // デバッグログの追加
-    console.log('Status Check:', {
-      userLevel: user.level,
-      userRank: user.rank,
-      courseLevel: course.levelRequired,
-      courseRank: course.rankRequired,
-      requirementType: course.requirementType,
-      meetsLevel,
-      meetsRank
-    });
-  
-    // requirementType に基づいて判定
-    if (course.requirementType === 'OR') {
-      return (meetsLevel || meetsRank) ? 'available' : 'restricted';
+    // 第一関門：階級チェック
+    if (course.rankRequired) {
+      const userRankValue = USER_RANKS[user.rank as UserRank];
+      const requiredRankValue = USER_RANKS[course.rankRequired as UserRank];
+      
+      if (userRankValue < requiredRankValue) {
+        return 'restricted';
+      }
     }
     
-    // AND条件（デフォルト）
-    return (meetsLevel && meetsRank) ? 'available' : 'restricted';
+    // 第二関門：レベルチェック
+    if (course.levelRequired && user.level < course.levelRequired) {
+      return 'restricted';
+    }
+    
+    // 全ての要件を満たした
+    return 'available';
   }
-
 
 
 

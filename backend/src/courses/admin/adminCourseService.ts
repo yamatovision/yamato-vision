@@ -22,7 +22,6 @@ export class AdminCourseService {
           level: 1,
           levelRequired: data.levelRequired,
           rankRequired: data.rankRequired,
-          requirementType: data.requirementType || 'OR',
           canEarnHigherStatus: data.canEarnHigherStatus ?? true,
           isPublished: false,
           isArchived: false,
@@ -59,7 +58,6 @@ export class AdminCourseService {
           ...(data.description && { description: data.description }),
           ...(typeof data.levelRequired === 'number' && { levelRequired: data.levelRequired }),
           ...(data.rankRequired && { rankRequired: data.rankRequired }),
-          ...(data.requirementType && { requirementType: data.requirementType }),
           ...(typeof data.canEarnHigherStatus === 'boolean' && { 
             canEarnHigherStatus: data.canEarnHigherStatus 
           }),

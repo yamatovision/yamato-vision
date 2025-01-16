@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import api from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/app/user/shop/Modal';
+import { USER_RANKS, UserRank } from '@/types/status';
 
 
 interface UserDetails {
@@ -80,8 +81,15 @@ const statusModals = {
   },
   restricted: {
     title: '受講条件未達成',
-    message: (levelRequired?: number, rankRequired?: string) => 
-      `必要条件：${levelRequired ? `レベル ${levelRequired}` : ''} ${rankRequired ? `${rankRequired}階級` : ''}`,
+    message: (course: Course, userRank: string, userLevel: number) => {
+      if (course.rankRequired && USER_RANKS[userRank as UserRank] < USER_RANKS[course.rankRequired as UserRank]) {
+        return `必要条件：${course.rankRequired}階級以上`;
+      }
+      if (course.levelRequired && userLevel < course.levelRequired) {
+        return `必要条件：レベル${course.levelRequired}以上`;
+      }
+      return '受講条件を満たしていません';
+    },
     buttons: [{
       label: '閉じる',
       action: null,
@@ -283,17 +291,19 @@ export default function ShopPage() {
     </div>
         
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-        <CourseCard
-        key={course.id}
-        course={course}  // オブジェクトとして渡す
-        onCardClick={handleCardClick}
-      />
-    ))}
+          <CourseCard
+            key={course.id}
+            course={course}
+            userRank={userDetails?.rank || 'お試し'}
+            userLevel={userDetails?.level || 1}
+            onCardClick={handleCardClick}
+          />
+        ))}
       </div>
 
-      {showModal && selectedCourse && (
+      {showModal && selectedCourse && userDetails && (
         <Modal
           isOpen={showModal}
           onClose={() => {
@@ -303,7 +313,11 @@ export default function ShopPage() {
           title={statusModals[selectedCourse.status].title}
           content={
             selectedCourse.status === 'restricted'
-              ? statusModals.restricted.message(selectedCourse.levelRequired, selectedCourse.rankRequired)
+              ? statusModals.restricted.message(
+                  selectedCourse,
+                  userDetails.rank,
+                  userDetails.level
+                )
               : statusModals[selectedCourse.status].message
           }
           buttons={statusModals[selectedCourse.status].buttons}
@@ -313,3 +327,4 @@ export default function ShopPage() {
     </div>
   );
 }
+
