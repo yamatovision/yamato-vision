@@ -1,5 +1,11 @@
 {
   "pages": {
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
     "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -25,25 +31,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/layout.js"
     ],
-    "/admin/courses/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/page.js"
-    ],
     "/admin/courses/[courseId]/chapters/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/admin/courses/[courseId]/chapters/page.js"
     ],
-    "/admin/courses/[courseId]/page": [
+    "/admin/courses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/courses/[courseId]/page.js"
+      "static/chunks/app/admin/courses/page.js"
     ],
     "/user/courses/[courseId]/chapters/[chapterId]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/page.js"
+    ],
+    "/admin/courses/[courseId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/courses/[courseId]/page.js"
     ],
     "/user/courses/[courseId]/chapters/[chapterId]/examination/page": [
       "static/chunks/webpack.js",
@@ -65,17 +71,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/notices/page.js"
     ],
-    "/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/layout.css",
-      "static/chunks/app/layout.js"
-    ],
-    "/user/courses/[courseId]/ranking/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/user/courses/[courseId]/ranking/page.js"
-    ],
     "/user/courses/[courseId]/chapters/[chapterId]/examination/certificate/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -90,6 +85,11 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/user/courses/[courseId]/chapters/[chapterId]/evaluation/page.js"
+    ],
+    "/user/courses/[courseId]/ranking/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/user/courses/[courseId]/ranking/page.js"
     ],
     "/page": [
       "static/chunks/webpack.js",
