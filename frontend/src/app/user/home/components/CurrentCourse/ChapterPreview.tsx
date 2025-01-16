@@ -92,7 +92,7 @@ const ThumbnailImage = ({ title, isLocked, chapter }: {
 
     // 通常のビデオコンテンツ
     if (chapter.content?.type === 'video' && chapter.content.videoId) {
-      return `https://image.mux.com/${chapter.content.videoId}/thumbnail.jpg`;
+      return `https://image.mux.com/${chapter.content.videoId}/animated.gif?width=480&fit_mode=preserve`;
     }
 
     // 音声コンテンツ

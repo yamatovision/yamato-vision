@@ -23,6 +23,7 @@ export class ProfileService {
     level: true,
     experience: true,
     gems: true,
+    studentId: true,     // 追加：学籍番号フィールド
     message: true,
     snsLinks: true,
     isRankingVisible: true,
@@ -110,6 +111,7 @@ export class ProfileService {
       rank: user.rank,
       level: user.level,
       experience: user.experience,
+      studentId: user.studentId,     // 追加：学籍番号フィールド
       gems: user.gems,
       message: user.message,
       careerIdentity: user.careerIdentity, // この行を追加

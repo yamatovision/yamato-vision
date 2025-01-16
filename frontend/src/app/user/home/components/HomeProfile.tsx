@@ -147,36 +147,60 @@ export function HomeProfile() {
           </div>
 
           {/* 右カラム: ユーザー情報 */}
+  
           <div className="flex-grow pl-6">
-            <div className="flex items-start mb-4">
-              <div className="flex items-center w-full space-x-4">
-                <div className="min-w-0 flex-shrink">
-                  <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
-                    {userData?.nickname || userData?.name || '名無しさん'}
-                  </h1>
-                  {userData?.careerIdentity && (
-                    <div className={`
-                      mt-1 text-sm 
-                      ${rankStyle.tokenText}
-                      flex items-center gap-1
-                    `}>
-                      <svg 
-                        className="w-4 h-4" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M13 10V3L4 14h7v7l9-11h-7z"
-                        />
-                      </svg>
-                      <span>目標: {userData.careerIdentity}</span>
-                    </div>
-                  )}
-                </div>
+  <div className="flex items-start mb-4">
+    <div className="flex items-center w-full space-x-4">
+      <div className="min-w-0 flex-shrink">
+        <h1 className={`text-2xl font-bold ${rankStyle.nameText} truncate`}>
+          {userData?.nickname || userData?.name || '名無しさん'}
+        </h1>
+        {/* 学籍番号を表示 */}
+        {userData?.studentId && (
+        <div className={`
+          mt-1 text-sm 
+           ${theme === 'dark' ? 'text-white' : 'text-black'}
+          flex items-center gap-1
+        `}>
+              <svg 
+              className={`w-4 h-4 ${theme === 'dark' ? 'text-white' : 'text-black'}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            <span>学籍番号: {userData.studentId}</span>
+          </div>
+        )}
+        {userData?.careerIdentity && (
+          <div className={`
+            mt-1 text-sm 
+            ${rankStyle.tokenText}
+            flex items-center gap-1
+          `}>
+            <svg 
+              className="w-4 h-4" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            <span>目標: {userData.careerIdentity}</span>
+          </div>
+        )}
+      </div>
 
                 <div className="flex items-center space-x-2 flex-shrink-0">
                   <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">

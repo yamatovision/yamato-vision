@@ -2,7 +2,9 @@
 
 import { useState, useRef } from 'react';
 import { useTheme } from '@/contexts/theme';
-import { XMarkIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlusIcon,SparklesIcon } from '@heroicons/react/24/solid';
+import { AvatarGeneratorModal } from './HomeProfile/AvatarGenerator';
+
 
 interface SNSLink {
   type: string;
@@ -32,6 +34,8 @@ export function ProfileEditModal({
 }: ProfileEditModalProps) {
   const { theme } = useTheme();
   const [formData, setFormData] = useState(profileData);
+  const [isAvatarGeneratorOpen, setIsAvatarGeneratorOpen] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [snsLinks, setSnsLinks] = useState<SNSLink[]>(
     Object.entries(profileData.snsLinks || {}).map(([type, value]) => ({ type, value }))
@@ -43,6 +47,7 @@ export function ProfileEditModal({
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
+  
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,31 +172,47 @@ export function ProfileEditModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* アバター編集 */}
           <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div 
-                onClick={handleAvatarClick}
-                className="w-24 h-24 rounded-full overflow-hidden cursor-pointer group relative"
-              >
-                {formData.avatarUrl && (
-                  <img 
-                    src={formData.avatarUrl} 
-                    alt="アバター" 
-                    className="w-full h-full object-cover transition-opacity group-hover:opacity-70" 
-                  />
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <PlusIcon className="w-8 h-8 text-white" />
-                </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-          </div>
+    <div className="relative">
+      <div 
+        onClick={handleAvatarClick}
+        className="w-24 h-24 rounded-full overflow-hidden cursor-pointer group relative"
+      >
+        {formData.avatarUrl && (
+          <img 
+            src={formData.avatarUrl} 
+            alt="アバター" 
+            className="w-full h-full object-cover transition-opacity group-hover:opacity-70" 
+          />
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity">
+          <PlusIcon className="w-8 h-8 text-white" />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setIsAvatarGeneratorOpen(true)}
+        className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
+      >
+        <SparklesIcon className="w-4 h-4" />
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </div>
+  </div>
+  <AvatarGeneratorModal
+    isOpen={isAvatarGeneratorOpen}
+    onClose={() => setIsAvatarGeneratorOpen(false)}
+    onComplete={async (avatarUrl) => {
+      await onAvatarUpdate(avatarUrl);
+      setFormData(prev => ({ ...prev, avatarUrl }));
+      setIsAvatarGeneratorOpen(false);
+    }}
+  />
 
           {/* ニックネーム */}
           <div>

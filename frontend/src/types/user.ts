@@ -19,6 +19,7 @@ export interface User {
   level: number;
   experience: number;
   careerIdentity?: string;  // 追加
+  studentId?: string;  // 追加: 学籍番号
   gems: number;
   avatarUrl?: string;
   message?: string;

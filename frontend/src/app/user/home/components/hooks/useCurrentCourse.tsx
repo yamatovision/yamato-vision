@@ -121,7 +121,9 @@ export const useCurrentCourse = (): UseCurrentCourseReturn => {
       type: chapter.content.type,
       videoId: chapter.content.videoId,
       transcription: chapter.content.transcription,
-      thumbnailUrl: chapter.content.thumbnailUrl
+      thumbnailUrl: chapter.content.thumbnailUrl,
+      submission: chapter.submission,  // submission情報を追加
+      lessonWatchRate: chapter.lessonWatchRate
     };
   };
 const loadCurrentCourse = async () => {

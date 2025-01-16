@@ -1,11 +1,39 @@
 import { MongoClient, ChangeStream } from 'mongodb';
 import { PrismaClient } from '@prisma/client';
+import { studentIdService } from './studentIdService';
 
-import { 
-  UserMongoChangeEvent,
-  UserSyncResult,
-  UserChangeEventData 
-} from './userTypes';
+interface UserChangeEventData {
+  _id: any;  // ObjectId を any に変更
+  email: string;
+  password?: string;
+  name?: string;
+  userRank: string;
+  registrationDate: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  postgresSync?: {
+    status: string;
+    lastSyncAttempt: Date;
+    postgresId: string | null;
+  };
+}
+
+interface UserMongoChangeEvent {
+  operationType: 'insert' | 'update';
+  fullDocument: UserChangeEventData;
+  documentKey: {
+    _id: any;  // ObjectId を any に変更
+  };
+  clusterTime?: any;
+}
+
+interface UserSyncResult {
+  success: boolean;
+  mongoId: string;
+  postgresId?: string;
+  error?: string;
+}
+
 
 export class UserSyncService {
   private static readonly MAX_RETRY_ATTEMPTS = 3;
@@ -145,17 +173,23 @@ export class UserSyncService {
       // 新規ユーザー作成
       if (change.operationType === 'insert' && !existingUser) {
         try {
+          const registrationDate = new Date(userData.registrationDate || Date.now());
+          const enrollmentYear = studentIdService.determineEnrollmentYear(registrationDate);
+          const studentId = await studentIdService.generateStudentId(enrollmentYear);
+      
           const newUser = await this.prisma.user.create({
             data: {
               mongoId: userData._id.toString(),
               email: userData.email,
               name: userData.name || '',
               rank: userData.userRank,
-              password: userData.password || '',  // 空文字をデフォルト値として設定
+              password: userData.password || '',
+              studentId,
+              enrollmentYear,
               level: 1,
               experience: 0,
               gems: 0,
-              status: 'ACTIVE',
+              status: 'ACTIVE',  // Prismaスキーマでは大文字
               isRankingVisible: true,
               isProfileVisible: true,
               tokenTracking: {
@@ -166,10 +200,18 @@ export class UserSyncService {
                   unprocessedTokens: 0,
                   lastSyncedAt: new Date()
                 }
+              },
+              courses: {
+                create: {
+                  courseId: "cm53ltnv80002p8sioikiueqh",
+                  status: "active",  // 小文字に修正
+                  isCurrent: true,
+                  startedAt: new Date()
+                }
               }
             }
           });
-  
+        
           console.log('New user created:', {
             mongoId: userData._id,
             postgresId: newUser.id,

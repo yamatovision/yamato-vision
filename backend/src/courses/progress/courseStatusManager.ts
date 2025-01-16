@@ -10,7 +10,8 @@ import { TimeoutService } from '../timeouts/timeoutService';
 import { CourseProgressManager } from './courseProgressManager';
 import { EventEmitter } from 'events';
 import { UserChapterService } from '../user/userChapterService';
-
+import { ExperienceService } from '../../experience/experienceService';
+import { ExperienceGainEvent } from '../../experience/experienceTypes';
 
 
 interface CurrentCourseState {
@@ -53,6 +54,8 @@ export class CourseStatusManager {
   private progressManager: CourseProgressManager;
   private timeoutService: TimeoutService;
   private eventEmitter: EventEmitter;
+  private experienceService: ExperienceService;  // 追加
+
   private userChapterService: UserChapterService;
   private readonly COURSE_STATUSES = {
     RESTRICTED: 'restricted',
@@ -80,6 +83,7 @@ export class CourseStatusManager {
     this.timeoutService = new TimeoutService();
     this.eventEmitter = new EventEmitter();
     this.userChapterService = new UserChapterService();
+    this.experienceService = new ExperienceService();  // 追加
   }
   // CourseStatusManager.ts
 
@@ -526,87 +530,110 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
     }
     return { status: 'failed', grade: '不可', gradePoint: 0.0 };
   }
-
   async handleCourseCompletion(userId: string, courseId: string, finalScore: number): Promise<void> {
-    console.log('コース完了処理を開始:', {
-      userId,
-      courseId,
-      finalScore
-    });
-  
-    await this.prisma.$transaction(async (tx) => {
-      // コースの情報を取得
-      const course = await tx.course.findUnique({
-        where: { id: courseId },
-        select: { credits: true }
-      });
-  
-      if (!course) {
-        throw new Error('Course not found');
-      }
-  
-      // デフォルトの単位数を1とし、コースに設定がある場合はそちらを使用
-      const credits = course.credits ?? 1;
-  
-      // 1. 成績評価の計算
-      const { status, grade, gradePoint } = this.calculateGrade(finalScore);
-  
-      console.log('評価結果:', {
-        status,
-        grade,
-        gradePoint,
-        credits
-      });
-  
-      // 2. コース状態の更新
-      const updatedCourse = await tx.userCourse.update({
-        where: { 
-          userId_courseId: { userId, courseId } 
-        },
-        data: {
-          status,
-          completedAt: new Date(),
-          isCurrent: false
-        }
-      });
-  
-      // 3. 成績履歴の作成
-      await tx.gradeHistory.create({
-        data: {
-          userId,
-          courseId,
-          grade,
-          gradePoint,
-          credits,          // ← 固定値から動的な値に変更
-          completedAt: new Date()
-        }
-      });
-  
-      // 4. ユーザーの総取得単位数とGPAを更新
-      await this.updateUserGPA(tx, userId);
-  
-      // 5. ステータス変更イベントの発行
-      this.emitStatusChange({
-        type: 'COURSE_COMPLETED',
+    try {
+      console.log('コース完了処理を開始:', {
         userId,
         courseId,
-        oldStatus: 'active',
-        newStatus: status,
-        timestamp: new Date(),
-        data: {
-          grade,
-          gradePoint,
-          certificationEligibility: true
-        }
+        finalScore
       });
   
-      console.log('コース完了処理が完了:', {
-        新ステータス: updatedCourse.status,
-        評価: grade,
-        取得単位: credits,
-        完了日時: updatedCourse.completedAt
+      await this.prisma.$transaction(async (tx) => {
+        // コースの情報を取得
+        const course = await tx.course.findUnique({
+          where: { id: courseId },
+          select: { credits: true }
+        });
+  
+        if (!course) {
+          throw new Error('Course not found');
+        }
+  
+        const credits = course.credits ?? 1;
+  
+        // 1. 成績評価の計算
+        const { status, grade, gradePoint } = this.calculateGrade(finalScore);
+  
+        // 2. コース状態の更新
+        const updatedCourse = await tx.userCourse.update({
+          where: { 
+            userId_courseId: { userId, courseId } 
+          },
+          data: {
+            status,
+            completedAt: new Date(),
+            isCurrent: false
+          }
+        });
+  
+        // 3. 成績履歴の作成
+        await tx.gradeHistory.create({
+          data: {
+            userId,
+            courseId,
+            grade,
+            gradePoint,
+            credits,
+            completedAt: new Date()
+          }
+        });
+  
+        // 4. 経験値とレベルの更新（ここから追加）
+        const expEvent: ExperienceGainEvent = {
+          userId,
+          amount: credits * 1000, // 1単位 = 1000経験値
+          source: 'CREDITS_EARNED',
+          metadata: {
+            courseId,
+            credits,
+            grade
+          }
+        };
+  
+        const experienceResult = await this.experienceService.addExperience(expEvent);
+  
+        if (!experienceResult.success) {
+          console.error('経験値の更新に失敗:', experienceResult.error);
+          throw new Error('Failed to update experience: ' + experienceResult.error);
+        }
+  
+        console.log('経験値更新完了:', {
+          獲得経験値: credits * 1000,
+          レベルアップ: experienceResult.data?.isLevelUp,
+          新レベル: experienceResult.data?.newLevel
+        });
+        // 経験値処理追加ここまで
+  
+        // 5. ユーザーの総取得単位数とGPAを更新
+        await this.updateUserGPA(tx, userId);
+  
+        // 6. ステータス変更イベントの発行
+        this.emitStatusChange({
+          type: 'COURSE_COMPLETED',
+          userId,
+          courseId,
+          oldStatus: 'active',
+          newStatus: status,
+          timestamp: new Date(),
+          data: {
+            grade,
+            gradePoint,
+            certificationEligibility: true
+          }
+        });
+  
+        console.log('コース完了処理が完了:', {
+          新ステータス: updatedCourse.status,
+          評価: grade,
+          取得単位: credits,
+          完了日時: updatedCourse.completedAt,
+          経験値: experienceResult.data?.gainedExp // 追加
+        });
       });
-    });
+    } catch (error) {
+      console.error('コース完了処理でエラーが発生:', error);
+      throw error;
+    }
   }
 
   private async updateUserGPA(

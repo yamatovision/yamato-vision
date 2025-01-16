@@ -28,6 +28,7 @@ export interface ProfileResponse {
   gems: number;
   message: string | null;
   careerIdentity: string | null;  // 追加
+  studentId: string | null;  // 追加：学籍番号フィールド
   expGained?: number;
   levelUpData?: {
     oldLevel: number;

@@ -101,6 +101,22 @@ model FinalExamProgress {
 }
 
 
+model Notice {
+  id            String    @id @default(cuid())
+  title         String
+  content       String    @db.Text
+  startAt       DateTime
+  endAt         DateTime
+  type          String    // enumではなくStringに
+  isActive      Boolean   @default(true)
+  excludedRanks String[]
+  minLevel      Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive, startAt, endAt])
+}
+
 // 学籍番号管理
 model StudentIdCounter {
   id              String    @id @default(cuid())
@@ -178,6 +194,7 @@ model UserCourse {
   course                   Course    @relation(fields: [courseId], references: [id])
   user                     User      @relation(fields: [userId], references: [id])
   isCurrent Boolean @default(false)  // カレントコース管理用
+    currentChapterId        String?   // 現在のチャプターIDを直接保持
   @@unique([userId, courseId])
 }
 

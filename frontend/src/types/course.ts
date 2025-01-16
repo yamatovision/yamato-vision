@@ -195,10 +195,18 @@ export interface CourseData {
         score?: number;
         status?: string;
       };
+      score?: number;
+      status?: ChapterProgressStatus;
+      startedAt?: string;
+      isTimedOut?: boolean;
+      examSettings?: ExamSettings;
+      taskContent?: TaskContent;
+      userProgress?: Array<{  // 追加: オプショナルな新しいプロパティ
+        isCurrent?: boolean | null;  // 追加: オプショナルな新しいプロパティ
+      }>;
     }>;
   };
 }
-
 // 15. API DTO
 export interface CreateCourseDTO {
   title: string;

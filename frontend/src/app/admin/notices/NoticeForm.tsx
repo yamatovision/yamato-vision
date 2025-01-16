@@ -1,84 +1,153 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { noticeApi } from '@/lib/api/notices';
+import { 
+  CreateNoticeDto, 
+  NOTICE_TYPES, 
+  USER_RANKS, 
+  NoticeType, 
+  UserRank,
+  Notice 
+} from '@/types/notice';
+import { useToast } from '@/contexts/toast';
 
 interface NoticeFormProps {
   noticeId: string | null;
+  onClose: () => void;
 }
 
-interface Restrictions {
-  ranks: string[];
-  levelRange: {
-    min: string;
-    max: string;
-  };
-}
-
-export function NoticeForm({ noticeId }: NoticeFormProps) {
-  const [formData, setFormData] = useState({
+export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
+  const { showToast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [formData, setFormData] = useState<CreateNoticeDto>({
     title: '',
     content: '',
-    startAt: '',
-    endAt: '',
-    images: [] as string[],
-    restrictions: {
-      ranks: [] as string[],
-      levelRange: {
-        min: '',
-        max: ''
-      }
-    }
+    startAt: new Date().toISOString().slice(0, 16),
+    endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    type: NOTICE_TYPES.INFO,
+    excludedRanks: [],
+    minLevel: undefined
   });
 
-  const ranks = ['初級', '中級', '上級', '超級'];
+  useEffect(() => {
+    if (noticeId) {
+      fetchNotice();
+    }
+  }, [noticeId]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      // 画像アップロード処理
-      console.log('Upload file:', e.target.files[0]);
+  const fetchNotice = async () => {
+    try {
+      setIsLoading(true);
+      const response = await noticeApi.getAll();
+      const notice = response.data.data.find((n: Notice) => n.id === noticeId);
+      if (notice) {
+        setFormData({
+          title: notice.title,
+          content: notice.content,
+          startAt: notice.startAt.slice(0, 16),
+          endAt: notice.endAt.slice(0, 16),
+          type: notice.type,
+          excludedRanks: notice.excludedRanks,
+          minLevel: notice.minLevel
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch notice:', error);
+      showToast('お知らせの取得に失敗しました', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRankChange = (rank: string) => {
-    const newRanks = formData.restrictions.ranks.includes(rank)
-      ? formData.restrictions.ranks.filter(r => r !== rank)
-      : [...formData.restrictions.ranks, rank];
-    
-    setFormData({
-      ...formData,
-      restrictions: {
-        ...formData.restrictions,
-        ranks: newRanks
-      }
-    });
+  const handleRankToggle = (rank: UserRank) => {
+    setFormData(prev => ({
+      ...prev,
+      excludedRanks: prev.excludedRanks.includes(rank)
+        ? prev.excludedRanks.filter(r => r !== rank)
+        : [...prev.excludedRanks, rank]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submit:', formData);
+    
+    try {
+      setIsLoading(true);
+      
+      if (noticeId) {
+        await noticeApi.update(noticeId, formData);
+        showToast('お知らせを更新しました', 'success');
+      } else {
+        await noticeApi.create(formData);
+        showToast('お知らせを作成しました', 'success');
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Failed to save notice:', error);
+      showToast('お知らせの保存に失敗しました', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 基本情報 */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-medium text-[#2C3E50] mb-4">基本情報</h3>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900">
+          {noticeId ? 'お知らせ編集' : 'お知らせ新規作成'}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-500"
+        >
+          <span className="sr-only">閉じる</span>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-4">
+          {/* タイトル */}
           <div>
-            <label className="block text-sm font-medium text-[#2C3E50]">
+            <label className="block text-sm font-medium text-gray-700">
               タイトル
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
           </div>
 
+          {/* 種別 */}
           <div>
-            <label className="block text-sm font-medium text-[#2C3E50]">
+            <label className="block text-sm font-medium text-gray-700">
+              種別
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as NoticeType })}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {Object.entries(NOTICE_TYPES).map(([key, value]) => (
+                <option key={key} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 表示期間 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
               表示期間
             </label>
             <div className="grid grid-cols-2 gap-4">
@@ -86,148 +155,92 @@ export function NoticeForm({ noticeId }: NoticeFormProps) {
                 type="datetime-local"
                 value={formData.startAt}
                 onChange={(e) => setFormData({ ...formData, startAt: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
               <input
                 type="datetime-local"
                 value={formData.endAt}
                 onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
             </div>
           </div>
 
+          {/* 本文 */}
           <div>
-            <label className="block text-sm font-medium text-[#2C3E50]">
+            <label className="block text-sm font-medium text-gray-700">
               本文
             </label>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               rows={5}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
           </div>
-        </div>
-      </div>
 
-      {/* 画像アップロード */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-medium text-[#2C3E50] mb-4">画像アップロード</h3>
-        <div className="mt-2">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#4A90E2] file:text-white hover:file:bg-[#357ABD]"
-          />
-        </div>
-        {formData.images.length > 0 && (
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            {formData.images.map((image, index) => (
-              <div key={index} className="relative">
-                <img
-                  src={image}
-                  alt={`アップロード ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newImages = [...formData.images];
-                    newImages.splice(index, 1);
-                    setFormData({ ...formData, images: newImages });
-                  }}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 表示制限設定 */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-medium text-[#2C3E50] mb-4">表示制限設定</h3>
-        <div className="space-y-4">
+          {/* ランク除外設定 */}
           <div>
-            <label className="text-sm font-medium text-[#2C3E50]">階級制限</label>
+            <label className="block text-sm font-medium text-gray-700">
+              表示しないランク
+            </label>
             <div className="mt-2 space-x-4">
-              {ranks.map((rank) => (
+              {Object.values(USER_RANKS).map((rank) => (
                 <label key={rank} className="inline-flex items-center">
                   <input
                     type="checkbox"
-                    checked={formData.restrictions.ranks.includes(rank)}
-                    onChange={() => handleRankChange(rank)}
-                    className="rounded border-gray-300 text-[#4A90E2] focus:ring-[#4A90E2]"
+                    checked={formData.excludedRanks.includes(rank)}
+                    onChange={() => handleRankToggle(rank as UserRank)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-[#2C3E50]">{rank}</span>
+                  <span className="ml-2 text-sm text-gray-700">
+                    {rank}を除外
+                  </span>
                 </label>
               ))}
             </div>
           </div>
 
+          {/* レベル制限 */}
           <div>
-            <label className="text-sm font-medium text-[#2C3E50]">レベル制限</label>
-            <div className="mt-2 grid grid-cols-2 gap-4">
-              <input
-                type="number"
-                value={formData.restrictions.levelRange.min}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  restrictions: {
-                    ...formData.restrictions,
-                    levelRange: {
-                      ...formData.restrictions.levelRange,
-                      min: e.target.value
-                    }
-                  }
-                })}
-                placeholder="最小レベル"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
-              />
-              <input
-                type="number"
-                value={formData.restrictions.levelRange.max}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  restrictions: {
-                    ...formData.restrictions,
-                    levelRange: {
-                      ...formData.restrictions.levelRange,
-                      max: e.target.value
-                    }
-                  }
-                })}
-                placeholder="最大レベル"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#4A90E2] focus:outline-none focus:ring-1 focus:ring-[#4A90E2]"
-              />
-            </div>
+            <label className="block text-sm font-medium text-gray-700">
+              最小レベル制限（オプション）
+            </label>
+            <input
+              type="number"
+              value={formData.minLevel || ''}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                minLevel: e.target.value ? parseInt(e.target.value) : undefined 
+              })}
+              min="1"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
         </div>
-      </div>
 
-      {/* 送信ボタン */}
-      <div className="flex justify-end space-x-4">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="px-4 py-2 border border-gray-300 rounded-md text-[#2C3E50] hover:bg-gray-50"
-        >
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#4A90E2] text-white rounded-md hover:bg-[#357ABD]"
-        >
-          保存する
-        </button>
-      </div>
-    </form>
+        {/* 送信ボタン */}
+        <div className="flex justify-end space-x-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            disabled={isLoading}
+          >
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? '保存中...' : (noticeId ? '更新する' : '作成する')}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

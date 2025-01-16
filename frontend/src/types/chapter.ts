@@ -305,6 +305,7 @@ export interface UserChapterProgress {
   bestFeedback?: string;
   bestNextStep?: string;
   bestEvaluatedAt?: Date;
+  isCurren?: boolean | null;  // 追加
 }
 export interface ChapterProgressInfo {
   status: 'not_started' | 'in_progress' | 'completed' | 'timeout';

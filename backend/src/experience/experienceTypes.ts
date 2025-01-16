@@ -1,6 +1,6 @@
 import { User } from '@prisma/client';
 
-export type ExperienceSource = 'TOKEN' | 'TASK' | 'ACHIEVEMENT';
+export type ExperienceSource = 'TOKEN' | 'TASK' | 'ACHIEVEMENT' | 'CREDITS_EARNED';
 
 export interface ExperienceGainEvent {
   userId: string;
@@ -10,6 +10,10 @@ export interface ExperienceGainEvent {
     tokenAmount?: number;
     taskId?: string;
     score?: number;
+    // 単位取得用に追加
+    courseId?: string;
+    credits?: number;
+    grade?: string;
   };
 }
 

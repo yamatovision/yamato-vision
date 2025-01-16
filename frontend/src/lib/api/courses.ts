@@ -1,6 +1,6 @@
 import api from './auth';
 import { ExamSectionResponse } from '@/types/examination';
-
+import { CourseRankingResponse, } from '@/types/ranking';
 import { APIResponse } from '@/types/api';
 import { handleApiError } from './errorHandler';
 import { 
@@ -37,6 +37,7 @@ interface CreateExamChapterDTO {
   isVisible?: boolean;
   isFinalExam: boolean;  // 常にtrue
 }
+
 
 // 試験チャプター更新用DTO
 interface UpdateExamChapterDTO {
@@ -382,6 +383,7 @@ export const courseApi = {
   },
 
 
+  
 // 最終試験チャプター作成
 createExamChapter: async (courseId: string, data: FinalExamChapterDTO): Promise<APIResponse<Chapter>> => {
   try {
@@ -993,6 +995,12 @@ getSubmission: async (courseId: string, chapterId: string): Promise<APIResponse<
     };
   }
 },
+
+setCurrentChapter: (courseId: string, chapterId: string): Promise<APIResponse<any>> => {
+  return fetch(`/api/courses/${courseId}/chapters/${chapterId}/current`, {
+    method: 'PUT'
+  }).then(res => res.json());
+},
   // コース開始
   startCourse: async (courseId: string): Promise<APIResponse<{ success: boolean; data: any }>> => {
     try {
@@ -1037,10 +1045,55 @@ getSubmission: async (courseId: string, chapterId: string): Promise<APIResponse<
     return { success: true, data: data };
   },
 
+  // lib/api/courses.ts
 
-  // チャプター関連のAPI
-  // src/lib/api/courses.ts の getChapter メソッドを修正
-// frontend/src/lib/api/courses.ts 内の getChapter メソッドを修正
+getCourseRanking: async (courseId: string): Promise<APIResponse<CourseRankingResponse>> => {
+  try {
+    console.log('【ランキング取得開始】courseId:', courseId);  // リクエスト開始ログ
+
+    const response = await fetch(
+      `${FRONTEND_API_BASE}/ranking/courses/${courseId}`,
+      {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch course ranking');
+    }
+
+    const responseData = await response.json();
+    
+    console.log('【API応答データ確認】', {
+      '生データ': responseData,
+      'success': responseData.success,
+      'データ構造': responseData.data
+    });
+
+    // データ構造を確実に整形
+    const formattedData = {
+      activeUsers: responseData.data.activeUsers || [],
+      historicalUsers: responseData.data.historicalUsers || [],
+      activeUserCount: responseData.data.activeUserCount || 0
+    };
+
+    console.log('【整形後のデータ】', formattedData);  // 整形後のデータを確認
+
+    return {
+      success: true,
+      data: formattedData
+    };
+
+  } catch (error) {
+    console.error('Error fetching course ranking:', error);
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+},
 
 getChapter: async (courseId: string, chapterId: string): Promise<APIResponse<Chapter>> => {
   try {
@@ -1099,6 +1152,7 @@ getChapter: async (courseId: string, chapterId: string): Promise<APIResponse<Cha
     }
   },
 
+  
  // courses.ts
 getCurrentUserCourse: async (courseId?: string) => {
   try {

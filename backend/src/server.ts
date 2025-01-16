@@ -19,6 +19,12 @@ import { TokenSyncService } from './sync/token/tokenSyncService';
 import { UserSyncService } from './sync/user/userSyncService';
 import { submissionRoutes } from './courses/submissions/submissionRoutes';
 import { examinationRoutes } from './courses/examinations/examinationRoutes';
+import noticeRoutes from './notice/noticeRoutes';
+import rankingRoutes from './courses/ranking/rankingRoutes';
+import avatarRoutes from './users/profile/avatarRoutes';
+
+
+
 
 
 dotenv.config();
@@ -80,6 +86,13 @@ app.use('/api/badges', badgeRoutes);
 app.use('/api/level-messages', levelMessageRoutes);
 app.use('/api/experience', experienceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/notices', noticeRoutes);  // 追加
+app.use('/api/ranking', rankingRoutes);
+app.use('/api/avatar', avatarRoutes);
+
+
+
+
 
 // コース関連のルート
 app.use('/api/admin', adminRoutes);          // 管理者用エンドポイント

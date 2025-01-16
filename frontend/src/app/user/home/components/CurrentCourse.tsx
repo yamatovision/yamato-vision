@@ -8,6 +8,7 @@ import { ChapterPreview } from './CurrentCourse/ChapterPreview';
 import { useState } from 'react';
 import { CourseOverviewModal } from './CurrentCourse/CourseOverviewModal';
 
+
 // LoadingStateコンポーネント
 const LoadingState = ({ theme }: { theme: string }) => (
   <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-6`}>
@@ -70,15 +71,24 @@ export function CurrentCourse() {
         courseData={courseData} 
         onOverviewClick={() => setIsOverviewModalOpen(true)}
       />
+      
+      {currentChapter && parsedChapter && (
+      <>
+        {/* デバッグログを先に配置 */}
+        {console.log('【スコア情報 Debug】', {
+          currentChapterScore: currentChapter?.submission?.score,
+          status: determineChapterProgress(currentChapter),
+          rawChapter: currentChapter
+        })}
 
-{currentChapter && parsedChapter && (
-  <ProgressStages
-    lessonWatchRate={parsedChapter.lessonWatchRate || 0}
-    status={determineChapterProgress(currentChapter)}
-    score={parsedChapter.submission?.score}  // .scoreを.submission.scoreに変更
-  />
-)}
-
+        {/* その後にコンポーネントを配置 */}
+        <ProgressStages
+          lessonWatchRate={currentChapter.lessonWatchRate || 0}
+          status={determineChapterProgress(currentChapter)}
+          score={currentChapter.score} // ここを修正
+        />
+      </>
+    )}
 
       {/* チャプタープレビュー */}
       {currentChapter && parsedChapter && (
@@ -107,25 +117,39 @@ export function CurrentCourse() {
       : 'bg-blue-400 hover:bg-blue-500'
   } text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg`}
 >
-  このコースを学習する
+  このチャプターを学習する
 </button>
 
 {/* 次のチャプターボタン */}
 {(() => {
-  const currentChapter = courseData.course.chapters[0];
-  const nextChapter = courseData.course.chapters.find(
-    chapter => chapter.orderIndex === currentChapter.orderIndex + 1
-  );
+  // 現在のチャプター情報を取得
+  const currentIndex = courseData.course.chapters.findIndex(ch => ch.id === currentChapter?.id);
+  const nextChapter = currentIndex !== -1 ? courseData.course.chapters[currentIndex + 1] : null;
 
+  // デバッグログ
+  console.log('【次のチャプターボタン判定】', {
+    現在のチャプター: currentChapter?.id,
+    現在のインデックス: currentIndex,
+    次のチャプター: nextChapter?.id,
+    リリース時間: nextChapter?.releaseTime,
+    開始日: courseData.startedAt,
+    ステータス: nextChapter ? determineChapterProgress(nextChapter) : null
+  });
+
+  // 次のチャプターが存在し、アンロックされており、未開始の場合のみボタンを表示
   if (nextChapter && 
       (!nextChapter.releaseTime || isReleaseTimeValid(nextChapter.releaseTime, courseData.startedAt)) && 
       determineChapterProgress(nextChapter) === 'NOT_STARTED') {
     return (
       <button 
-        onClick={(e) => handleContinueLearning(nextChapter.id)}  // イベントパラメータを追加
-        className="w-full mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg"
+        onClick={() => handleContinueLearning(nextChapter.id)}
+        className={`w-full mt-2 ${
+          theme === 'dark' 
+            ? 'bg-yellow-600 hover:bg-yellow-700' 
+            : 'bg-yellow-500 hover:bg-yellow-600'
+        } text-white py-4 rounded-lg text-lg font-bold transition-colors shadow-lg`}
       >
-        次のチャプターに進む
+        次のチャプター「{nextChapter.title}」に進む
       </button>
     );
   }
