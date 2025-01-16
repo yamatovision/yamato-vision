@@ -273,7 +273,7 @@ export function HomeProfile() {
                   <div className="flex flex-col">
                     <span className={`text-sm ${rankStyle.tokenText}`}>取得単位</span>
                     <span className={`text-xl font-bold ${rankStyle.nameText}`}>
-                      {userData?.totalCredits || 2} <span className="text-sm">単位</span>
+                      {userData?.totalCredits || 0} <span className="text-sm">単位</span>
                     </span>
                   </div>
                 </div>

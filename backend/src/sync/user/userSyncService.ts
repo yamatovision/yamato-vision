@@ -153,6 +153,18 @@ export class UserSyncService {
     }
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
   private async handleUserUpdate(change: UserMongoChangeEvent): Promise<UserSyncResult> {
     const startTime = Date.now();
     try {
@@ -161,61 +173,94 @@ export class UserSyncService {
         throw new Error('No user document data available');
       }
   
+      // パスワード処理の準備
+      const passwordData = userData.password ? {
+        password: userData.password
+      } : {};
+  
       const existingUser = await this.prisma.user.findFirst({
         where: { mongoId: userData._id.toString() }
       });
   
-      // パスワード処理の準備
-      const passwordData = userData.password ? {
-        password: userData.password  // MongoDBから渡されるハッシュ済みパスワード
-      } : {};
-  
-      // 新規ユーザー作成
+      // 新規ユーザー作成の場合
       if (change.operationType === 'insert' && !existingUser) {
         try {
-          const registrationDate = new Date(userData.registrationDate || Date.now());
+          // 登録日時を確実に取得
+          const registrationDate = new Date(userData.registrationDate || userData.createdAt || Date.now());
+          console.log('Registration date for new user:', {
+            email: userData.email,
+            registrationDate,
+            originalDate: userData.registrationDate,
+            createdAt: userData.createdAt
+          });
+  
           const enrollmentYear = studentIdService.determineEnrollmentYear(registrationDate);
+          console.log('Generating student ID:', {
+            email: userData.email,
+            enrollmentYear,
+            timestamp: new Date().toISOString()
+          });
+  
           const studentId = await studentIdService.generateStudentId(enrollmentYear);
-      
-          const newUser = await this.prisma.user.create({
-            data: {
-              mongoId: userData._id.toString(),
-              email: userData.email,
-              name: userData.name || '',
-              rank: userData.userRank,
-              password: userData.password || '',
-              studentId,
-              enrollmentYear,
-              level: 1,
-              experience: 0,
-              gems: 0,
-              status: 'ACTIVE',  // Prismaスキーマでは大文字
-              isRankingVisible: true,
-              isProfileVisible: true,
-              tokenTracking: {
-                create: {
-                  weeklyTokens: 0,
-                  weeklyLimit: 0,
-                  purchasedTokens: 0,
-                  unprocessedTokens: 0,
-                  lastSyncedAt: new Date()
-                }
-              },
-              courses: {
-                create: {
-                  courseId: "cm53ltnv80002p8sioikiueqh",
-                  status: "active",  // 小文字に修正
-                  isCurrent: true,
-                  startedAt: new Date()
-                }
+          console.log('Generated student ID:', {
+            email: userData.email,
+            studentId,
+            enrollmentYear
+          });
+  
+          // トランザクションで新規ユーザーとトークン追跡を作成
+          const newUser = await this.prisma.$transaction(async (tx) => {
+            // ユーザーの作成
+            const user = await tx.user.create({
+              data: {
+                mongoId: userData._id.toString(),
+                email: userData.email,
+                name: userData.name || '',
+                rank: userData.userRank,
+                password: userData.password || 'aikakumei', // パスワードは必須なので、デフォルト値を設定
+                studentId,
+                enrollmentYear,
+                level: 1,
+                experience: 0,
+                gems: 0,
+                status: 'ACTIVE',
+                isRankingVisible: true,
+                isProfileVisible: true,
               }
+            });
+            // TokenTrackingの作成
+            await tx.tokenTracking.create({
+              data: {
+                userId: user.id,
+                weeklyTokens: 0,
+                weeklyLimit: 0,
+                purchasedTokens: 0,
+                unprocessedTokens: 0,
+                lastSyncedAt: new Date()
+              }
+            });
+  
+            return user;
+          });
+  
+          // 初期コースの登録（別トランザクション）
+          await this.prisma.userCourse.create({
+            data: {
+              userId: newUser.id,
+              courseId: "cm53ltnv80002p8sioikiueqh",
+              status: "available",
+              isCurrent: true,
+              startedAt: new Date(),
+              certificationEligibility: true
             }
           });
-        
-          console.log('New user created:', {
+  
+          console.log('New user created with initial course:', {
             mongoId: userData._id,
             postgresId: newUser.id,
             rank: newUser.rank,
+            studentId: newUser.studentId,
+            enrollmentYear,
             duration: Date.now() - startTime
           });
   
@@ -225,14 +270,17 @@ export class UserSyncService {
             postgresId: newUser.id 
           };
         } catch (error) {
-          console.error('Failed to create new user:', error);
+          console.error('Failed to create new user:', {
+            error: error.message,
+            stack: error.stack,
+            email: userData.email,
+            timestamp: new Date().toISOString()
+          });
           throw error;
         }
-  
-      // 既存ユーザーの更新
       } else if (existingUser) {
+        // 既存ユーザーの更新
         try {
-          // 現在のユーザー情報を取得して変更を検出
           const currentRank = existingUser.rank;
           const newRank = userData.userRank;
           const isRankChanged = currentRank !== newRank;
@@ -244,12 +292,10 @@ export class UserSyncService {
               name: userData.name || existingUser.name,
               rank: userData.userRank,
               ...passwordData,
-              // 最終更新日時を更新
               updatedAt: new Date()
             }
           });
   
-          // ランク変更のログ記録
           if (isRankChanged) {
             console.log('User rank changed:', {
               userId: existingUser.id,
@@ -259,26 +305,6 @@ export class UserSyncService {
               timestamp: new Date()
             });
           }
-  
-          // パスワード変更の検出とログ記録
-          if (passwordData.password) {
-            console.log('User password updated:', {
-              userId: existingUser.id,
-              mongoId: userData._id,
-              timestamp: new Date()
-            });
-          }
-  
-          console.log('User updated:', {
-            mongoId: userData._id,
-            postgresId: updatedUser.id,
-            rank: updatedUser.rank,
-            duration: Date.now() - startTime,
-            changes: {
-              rankChanged: isRankChanged,
-              passwordChanged: !!passwordData.password
-            }
-          });
   
           return { 
             success: true, 
@@ -309,6 +335,20 @@ export class UserSyncService {
       };
     }
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   private async healthCheck() {
     try {

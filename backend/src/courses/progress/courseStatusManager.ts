@@ -200,8 +200,9 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
       });
     });
   }
-
   async activateCourse(userId: string, courseId: string): Promise<void> {
+    console.log('Starting course activation:', { userId, courseId });
+    
     return await this.prisma.$transaction(async (tx) => {
       // アクティブコースの存在チェック
       const existingActive = await tx.userCourse.findFirst({
@@ -210,11 +211,59 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
           status: this.COURSE_STATUSES.ACTIVE
         }
       });
-
+  
+      console.log('Existing active course check:', { existingActive });
+  
       if (existingActive) {
         throw new Error('Another course is already active');
       }
-
+  
+      // まずコース自体の要件チェック
+      const course = await tx.course.findUnique({
+        where: { id: courseId }
+      });
+  
+      if (!course) {
+        throw new Error('Course not found');
+      }
+  
+      // ユーザーの要件チェック
+      const user = await tx.user.findUnique({
+        where: { id: userId }
+      });
+  
+      if (!user) {
+        throw new Error('User not found');
+      }
+  
+      // 要件チェック
+      if (course.rankRequired && course.rankRequired !== user.rank) {
+        throw new Error('Rank requirement not met');
+      }
+  
+      if (course.levelRequired && user.level < course.levelRequired) {
+        throw new Error('Level requirement not met');
+      }
+  
+      // UserCourseレコードの取得または作成
+      let userCourse = await tx.userCourse.findUnique({
+        where: { userId_courseId: { userId, courseId } }
+      });
+  
+      if (!userCourse) {
+        // レコードが存在しない場合は新規作成
+        userCourse = await tx.userCourse.create({
+          data: {
+            userId,
+            courseId,
+            status: this.COURSE_STATUSES.AVAILABLE,
+            progress: 0,
+            certificationEligibility: true,
+            startedAt: new Date()
+          }
+        });
+      }
+  
       // 他のavailableコースをblockedに変更
       await tx.userCourse.updateMany({
         where: {
@@ -224,7 +273,7 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
         },
         data: { status: this.COURSE_STATUSES.BLOCKED }
       });
-
+  
       // 対象コースをアクティブに
       await tx.userCourse.update({
         where: { userId_courseId: { userId, courseId } },
@@ -233,6 +282,33 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
           isCurrent: true
         }
       });
+    });
+  }
+
+
+  async initializeUserCourses(userId: string): Promise<void> {
+    return await this.prisma.$transaction(async (tx) => {
+      // ユーザーの既存コースをチェック
+      const existingCourse = await tx.userCourse.findFirst({
+        where: { userId }
+      });
+  
+      if (!existingCourse) {
+        console.log(`Initializing courses for new user: ${userId}`);
+        
+        // 初期コースの登録
+        await tx.userCourse.create({
+          data: {
+            userId,
+            courseId: "cm53ltnv80002p8sioikiueqh",  // 大和ViSiONへようこそ
+            status: "available",
+            isCurrent: true,
+            startedAt: new Date()
+          }
+        });
+  
+        console.log(`Initial course registered for user: ${userId}`);
+      }
     });
   }
 

@@ -1,0 +1,4 @@
+{
+  "/login/page": "app/login/page.js",
+  "/user/home/page": "app/user/home/page.js"
+}
