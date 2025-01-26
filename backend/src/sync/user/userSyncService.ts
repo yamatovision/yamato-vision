@@ -179,8 +179,12 @@ export class UserSyncService {
       } : {};
   
       const existingUser = await this.prisma.user.findFirst({
-        where: { mongoId: userData._id.toString() }
+        where: { email: userData.email }
       });
+
+
+
+
   
       // 新規ユーザー作成の場合
       if (change.operationType === 'insert' && !existingUser) {
@@ -288,6 +292,7 @@ export class UserSyncService {
           const updatedUser = await this.prisma.user.update({
             where: { id: existingUser.id },
             data: {
+              mongoId: userData._id.toString(),  // ここを追加
               email: userData.email,
               name: userData.name || existingUser.name,
               rank: userData.userRank,
@@ -335,6 +340,10 @@ export class UserSyncService {
       };
     }
   }
+
+
+
+
 
 
 
