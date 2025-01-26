@@ -12,14 +12,11 @@ export const NOTICE_TYPES = {
   INFO: 'info',
   MAINTENANCE: 'maintenance',
   SUCCESS: 'success',
+  GROUP_CONSUL: 'group_consul',
+  PARTY: 'party',
+  STUDY: 'study',
+  CAMP: 'camp',
 } as const;
-
-
-
-// 必要に応じて簡単に追加可能
-// IMPORTANT: 'important',
-// EVENT: 'event',
-// UPDATE: 'update',
 
 export type UserRank = keyof typeof USER_RANKS;
 export type NoticeType = typeof NOTICE_TYPES[keyof typeof NOTICE_TYPES];
@@ -28,18 +25,38 @@ export type NoticeType = typeof NOTICE_TYPES[keyof typeof NOTICE_TYPES];
 export const NOTICE_TYPE_CONFIG = {
   [NOTICE_TYPES.INFO]: {
     label: 'お知らせ',
-    borderColor: 'border-blue-500',
-    icon: 'info'
+    bgColor: 'bg-blue-500',
+    darkBgColor: 'bg-blue-600',
   },
   [NOTICE_TYPES.MAINTENANCE]: {
     label: 'メンテナンス',
-    borderColor: 'border-yellow-500',
-    icon: 'maintenance'
+    bgColor: 'bg-yellow-500',
+    darkBgColor: 'bg-yellow-600',
   },
   [NOTICE_TYPES.SUCCESS]: {
     label: '完了',
-    borderColor: 'border-green-500',
-    icon: 'success'
+    bgColor: 'bg-green-500',
+    darkBgColor: 'bg-green-600',
+  },
+  [NOTICE_TYPES.GROUP_CONSUL]: {
+    label: 'グループコンサル',
+    bgColor: 'bg-indigo-500',
+    darkBgColor: 'bg-indigo-600',
+  },
+  [NOTICE_TYPES.PARTY]: {
+    label: '食事会',
+    bgColor: 'bg-orange-500',
+    darkBgColor: 'bg-orange-600',
+  },
+  [NOTICE_TYPES.STUDY]: {
+    label: '勉強会',
+    bgColor: 'bg-blue-500',
+    darkBgColor: 'bg-blue-600',
+  },
+  [NOTICE_TYPES.CAMP]: {
+    label: '合宿',
+    bgColor: 'bg-purple-500',
+    darkBgColor: 'bg-purple-600',
   },
 } as const;
 
@@ -47,6 +64,7 @@ export interface Notice {
   id: string;
   title: string;
   content: string;
+  menuContent?: string;
   startAt: Date;
   endAt: Date;
   type: NoticeType;
@@ -55,16 +73,21 @@ export interface Notice {
   minLevel?: number;
   createdAt: Date;
   updatedAt: Date;
+  buttonUrl?: string;
+  buttonText?: string;
 }
 
 export interface CreateNoticeDto {
   title: string;
   content: string;
+  menuContent?: string;
   startAt: Date;
   endAt: Date;
   type: NoticeType;
   excludedRanks: UserRank[];
   minLevel?: number;
+  buttonUrl?: string;
+  buttonText?: string;
 }
 
 export interface UpdateNoticeDto extends Partial<CreateNoticeDto> {

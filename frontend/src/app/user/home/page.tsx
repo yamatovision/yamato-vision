@@ -4,7 +4,6 @@ import { HomeProfile } from './components/HomeProfile';
 import { CurrentCourse } from './components/CurrentCourse';
 import { WeeklyRanking } from './components/WeeklyRanking';
 import { Notifications } from './components/Notifications';
-
 export default function HomePage() {
   return (
     <div className="space-y-6">
@@ -17,8 +16,9 @@ export default function HomePage() {
         </div>
 
         <div className="lg:col-span-4 lg:order-2 space-y-6">
+        <Notifications />
           <WeeklyRanking />
-          <Notifications />
+          
         </div>
       </div>
     </div>

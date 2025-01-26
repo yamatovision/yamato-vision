@@ -2,15 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { noticeApi } from '@/lib/api/notices';
-import { 
-  CreateNoticeDto, 
-  NOTICE_TYPES, 
-  USER_RANKS, 
-  NoticeType, 
-  UserRank,
-  Notice 
-} from '@/types/notice';
+import { CreateNoticeDto, NOTICE_TYPES, USER_RANKS, NoticeType, UserRank, Notice, NOTICE_TYPE_CONFIG } from '@/types/notice';
 import { useToast } from '@/contexts/toast';
+import { useTheme } from '@/contexts/theme';
 
 interface NoticeFormProps {
   noticeId: string | null;
@@ -19,15 +13,19 @@ interface NoticeFormProps {
 
 export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
   const { showToast } = useToast();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState<CreateNoticeDto>({
     title: '',
     content: '',
+    menuContent: '',
     startAt: new Date().toISOString().slice(0, 16),
     endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     type: NOTICE_TYPES.INFO,
     excludedRanks: [],
+    buttonUrl: '',
+    buttonText: '',
     minLevel: undefined
   });
 
@@ -44,13 +42,9 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
       const notice = response.data.data.find((n: Notice) => n.id === noticeId);
       if (notice) {
         setFormData({
-          title: notice.title,
-          content: notice.content,
+          ...notice,
           startAt: notice.startAt.slice(0, 16),
           endAt: notice.endAt.slice(0, 16),
-          type: notice.type,
-          excludedRanks: notice.excludedRanks,
-          minLevel: notice.minLevel
         });
       }
     } catch (error) {
@@ -94,15 +88,17 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
   };
 
   return (
-    <div>
+    <div className={theme === 'dark' ? 'text-white' : 'text-gray-800'}>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold">
           {noticeId ? 'お知らせ編集' : 'お知らせ新規作成'}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-500"
+          className={`text-gray-400 hover:text-gray-500 ${
+            theme === 'dark' ? 'hover:text-gray-300' : 'hover:text-gray-600'
+          }`}
         >
           <span className="sr-only">閉じる</span>
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -115,31 +111,39 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
         <div className="space-y-4">
           {/* タイトル */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               タイトル
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'border-gray-300 text-gray-900'
+              }`}
               required
             />
           </div>
 
           {/* 種別 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               種別
             </label>
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as NoticeType })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'border-gray-300 text-gray-900'
+              }`}
             >
               {Object.entries(NOTICE_TYPES).map(([key, value]) => (
                 <option key={key} value={value}>
-                  {value}
+                  {NOTICE_TYPE_CONFIG[value].label}
                 </option>
               ))}
             </select>
@@ -147,7 +151,7 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
 
           {/* 表示期間 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               表示期間
             </label>
             <div className="grid grid-cols-2 gap-4">
@@ -155,36 +159,107 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
                 type="datetime-local"
                 value={formData.startAt}
                 onChange={(e) => setFormData({ ...formData, startAt: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'border-gray-300 text-gray-900'
+                }`}
                 required
               />
               <input
                 type="datetime-local"
                 value={formData.endAt}
                 onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'border-gray-300 text-gray-900'
+                }`}
                 required
               />
             </div>
           </div>
 
-          {/* 本文 */}
+          {/* メニュー用説明文 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              本文
+            <label className="block text-sm font-medium">
+              メニュー用説明文（40文字以内）
             </label>
             <textarea
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              rows={5}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
+              value={formData.menuContent}
+              onChange={(e) => {
+                const text = e.target.value;
+                if (text.length <= 40) {
+                  setFormData({ ...formData, menuContent: text });
+                }
+              }}
+              rows={2}
+              className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'border-gray-300 text-gray-900'
+              }`}
+              placeholder="メニューに表示される短い説明文を入力してください"
             />
+            <p className={`mt-1 text-sm ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}>
+              {formData.menuContent?.length || 0}/40文字
+            </p>
+          </div>
+
+         {/* 詳細内容 */}
+<div>
+  <label className="block text-sm font-medium">
+    詳細内容（オプション）
+  </label>
+  <textarea
+    value={formData.content}
+    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+    rows={5}
+    className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+      theme === 'dark' 
+        ? 'bg-gray-700 border-gray-600 text-white'
+        : 'border-gray-300 text-gray-900'
+    }`}
+    placeholder="詳細な説明が必要な場合に入力してください"
+  />
+</div>
+
+          {/* ボタン設定 */}
+          <div>
+            <label className="block text-sm font-medium">
+              ボタン設定（オプション）
+            </label>
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={formData.buttonUrl || ''}
+                onChange={(e) => setFormData({ ...formData, buttonUrl: e.target.value })}
+                className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'border-gray-300 text-gray-900'
+                }`}
+                placeholder="リンク先URL"
+              />
+              <input
+                type="text"
+                value={formData.buttonText || ''}
+                onChange={(e) => setFormData({ ...formData, buttonText: e.target.value })}
+                className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'border-gray-300 text-gray-900'
+                }`}
+                placeholder="ボタンのテキスト（例：詳細を見る）"
+              />
+            </div>
           </div>
 
           {/* ランク除外設定 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               表示しないランク
             </label>
             <div className="mt-2 space-x-4">
@@ -194,9 +269,13 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
                     type="checkbox"
                     checked={formData.excludedRanks.includes(rank)}
                     onChange={() => handleRankToggle(rank as UserRank)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className={`rounded border-gray-300 ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600'
+                        : 'bg-white'
+                    }`}
                   />
-                  <span className="ml-2 text-sm text-gray-700">
+                  <span className="ml-2 text-sm">
                     {rank}を除外
                   </span>
                 </label>
@@ -206,7 +285,7 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
 
           {/* レベル制限 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium">
               最小レベル制限（オプション）
             </label>
             <input
@@ -217,7 +296,11 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
                 minLevel: e.target.value ? parseInt(e.target.value) : undefined 
               })}
               min="1"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`mt-1 block w-full rounded-md px-3 py-2 text-sm ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white'
+                  : 'border-gray-300 text-gray-900'
+              }`}
             />
           </div>
         </div>
@@ -227,14 +310,22 @@ export function NoticeForm({ noticeId, onClose }: NoticeFormProps) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className={`px-4 py-2 rounded-md ${
+              theme === 'dark'
+                ? 'bg-gray-600 hover:bg-gray-500 text-white'
+                : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
             disabled={isLoading}
           >
             キャンセル
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className={`px-4 py-2 rounded-md ${
+              theme === 'dark'
+                ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
             disabled={isLoading}
           >
             {isLoading ? '保存中...' : (noticeId ? '更新する' : '作成する')}

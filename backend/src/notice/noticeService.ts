@@ -15,23 +15,12 @@ export class NoticeService {
     this.prisma = new PrismaClient();
   }
 
-  // isValidNoticeTypeをクラスメソッドとして正しく定義
   private isValidNoticeType(type: string): type is NoticeType {
-    // NOTICEの型チェック
     const validTypes = Object.values(NOTICE_TYPES);
-    // デバッグ用のログ追加
-    console.log('Checking notice type:', {
-      type,
-      validTypes,
-      isValid: validTypes.includes(type as NoticeType)
-    });
     return validTypes.includes(type as NoticeType);
   }
 
   private mapPrismaNoticeToNotice(prismaNotice: any): Notice {
-    // デバッグ用のログ追加
-    console.log('Mapping prisma notice:', prismaNotice);
-
     if (!prismaNotice) {
       throw new Error('Notice data is undefined');
     }
@@ -44,27 +33,39 @@ export class NoticeService {
       id: prismaNotice.id,
       title: prismaNotice.title,
       content: prismaNotice.content,
-      startAt: prismaNotice.startAt.toISOString(),
-      endAt: prismaNotice.endAt.toISOString(),
+      menuContent: prismaNotice.menuContent || undefined,
+      startAt: prismaNotice.startAt instanceof Date ? prismaNotice.startAt : new Date(prismaNotice.startAt),
+      endAt: prismaNotice.endAt instanceof Date ? prismaNotice.endAt : new Date(prismaNotice.endAt),
       type: prismaNotice.type,
       isActive: prismaNotice.isActive,
       excludedRanks: prismaNotice.excludedRanks,
       minLevel: prismaNotice.minLevel,
-      createdAt: prismaNotice.createdAt.toISOString(),
-      updatedAt: prismaNotice.updatedAt.toISOString()
+      createdAt: prismaNotice.createdAt instanceof Date ? prismaNotice.createdAt : new Date(prismaNotice.createdAt),
+      updatedAt: prismaNotice.updatedAt instanceof Date ? prismaNotice.updatedAt : new Date(prismaNotice.updatedAt),
+      buttonUrl: prismaNotice.buttonUrl || undefined,
+      buttonText: prismaNotice.buttonText || undefined,
     };
   }
 
   async createNotice(data: CreateNoticeDto): Promise<Notice> {
     try {
+      const createData = {
+        title: data.title,
+        content: data.content,
+        menuContent: data.menuContent,
+        startAt: new Date(data.startAt),
+        endAt: new Date(data.endAt),
+        type: data.type,
+        excludedRanks: data.excludedRanks,
+        minLevel: data.minLevel,
+        buttonUrl: data.buttonUrl,
+        buttonText: data.buttonText,
+      };
+
       const prismaNotice = await this.prisma.notice.create({
-        data: {
-          ...data,
-          startAt: new Date(data.startAt),
-          endAt: new Date(data.endAt),
-          excludedRanks: data.excludedRanks,
-        },
+        data: createData,
       });
+
       return this.mapPrismaNoticeToNotice(prismaNotice);
     } catch (error) {
       console.error('Error creating notice:', error);
@@ -79,8 +80,6 @@ export class NoticeService {
           createdAt: 'desc',
         },
       });
-      // デバッグ用のログ追加
-      console.log('Retrieved notices from database:', notices);
       return notices.map(notice => this.mapPrismaNoticeToNotice(notice));
     } catch (error) {
       console.error('Error getting all notices:', error);
@@ -90,49 +89,69 @@ export class NoticeService {
 
   async getActiveNotices(userRank: string, userLevel: number): Promise<Notice[]> {
     const now = new Date();
-    const notices = await this.prisma.notice.findMany({
-      where: {
-        isActive: true,
-        startAt: { lte: now },
-        endAt: { gte: now },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    try {
+      const notices = await this.prisma.notice.findMany({
+        where: {
+          isActive: true,
+          startAt: { lte: now },
+          endAt: { gte: now },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
 
-    return notices
-      .filter(notice => {
-        if (notice.excludedRanks.includes(userRank)) {
-          return false;
-        }
-        if (notice.minLevel && userLevel < notice.minLevel) {
-          return false;
-        }
-        return true;
-      })
-      .map(this.mapPrismaNoticeToNotice.bind(this));  // bindを追加
+      return notices
+        .filter(notice => {
+          if (notice.excludedRanks.includes(userRank)) {
+            return false;
+          }
+          if (notice.minLevel && userLevel < notice.minLevel) {
+            return false;
+          }
+          return true;
+        })
+        .map(notice => this.mapPrismaNoticeToNotice(notice));
+    } catch (error) {
+      console.error('Error getting active notices:', error);
+      throw error;
+    }
   }
 
   async updateNotice(id: string, data: UpdateNoticeDto): Promise<Notice> {
-    const existingNotice = await this.prisma.notice.findUnique({
-      where: { id },
-    });
+    try {
+      const existingNotice = await this.prisma.notice.findUnique({
+        where: { id },
+      });
 
-    if (!existingNotice) {
-      throw new Error('Notice not found');
+      if (!existingNotice) {
+        throw new Error('Notice not found');
+      }
+
+      const updateData: any = {};
+
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.content !== undefined) updateData.content = data.content;
+      if (data.menuContent !== undefined) updateData.menuContent = data.menuContent;
+      if (data.startAt !== undefined) updateData.startAt = new Date(data.startAt);
+      if (data.endAt !== undefined) updateData.endAt = new Date(data.endAt);
+      if (data.type !== undefined) updateData.type = data.type;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      if (data.excludedRanks !== undefined) updateData.excludedRanks = data.excludedRanks;
+      if (data.minLevel !== undefined) updateData.minLevel = data.minLevel;
+      if (data.buttonUrl !== undefined) updateData.buttonUrl = data.buttonUrl;
+      if (data.buttonText !== undefined) updateData.buttonText = data.buttonText;
+
+      const prismaNotice = await this.prisma.notice.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return this.mapPrismaNoticeToNotice(prismaNotice);
+    } catch (error) {
+      console.error('Error updating notice:', error);
+      throw error;
     }
-
-    const prismaNotice = await this.prisma.notice.update({
-      where: { id },
-      data: {
-        ...data,
-        startAt: data.startAt ? new Date(data.startAt) : undefined,
-        endAt: data.endAt ? new Date(data.endAt) : undefined,
-      },
-    });
-
-    return this.mapPrismaNoticeToNotice(prismaNotice);
   }
 
   async getNotice(id: string): Promise<Notice | null> {
@@ -152,10 +171,14 @@ export class NoticeService {
     }
   }
 
-
   async deleteNotice(id: string): Promise<void> {
-    await this.prisma.notice.delete({
-      where: { id },
-    });
+    try {
+      await this.prisma.notice.delete({
+        where: { id },
+      });
+    } catch (error) {
+      console.error('Error deleting notice:', error);
+      throw error;
+    }
   }
 }

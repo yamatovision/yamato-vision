@@ -12,6 +12,10 @@ export const NOTICE_TYPES = {
   INFO: 'info',
   MAINTENANCE: 'maintenance',
   SUCCESS: 'success',
+  GROUP_CONSUL: 'group_consul',
+  PARTY: 'party',
+  STUDY: 'study',
+  CAMP: 'camp',
 } as const;
 
 export type UserRank = keyof typeof USER_RANKS;
@@ -20,25 +24,29 @@ export type NoticeType = typeof NOTICE_TYPES[keyof typeof NOTICE_TYPES];
 export interface Notice {
   id: string;
   title: string;
-  content: string;
-  startAt: string;  // Date型からstring型に変更
-  endAt: string;    // Date型からstring型に変更
+  content: string;        // モーダルでの詳細表示用
+  menuContent?: string;   // メニュー用の短い説明（40文字まで）
+  startAt: string;
+  endAt: string;
   type: NoticeType;
   isActive: boolean;
   excludedRanks: UserRank[];
   minLevel?: number;
-  createdAt: string;  // Date型からstring型に変更
-  updatedAt: string;  // Date型からstring型に変更
+  buttonUrl?: string;     // リンク先
+  buttonText?: string;    // ボタンのテキスト
 }
 
 export interface CreateNoticeDto {
   title: string;
   content: string;
-  startAt: string;   // Date型からstring型に変更
-  endAt: string;     // Date型からstring型に変更
+  menuContent?: string;
+  startAt: string;
+  endAt: string;
   type: NoticeType;
   excludedRanks: UserRank[];
   minLevel?: number;
+  buttonUrl?: string;
+  buttonText?: string;
 }
 
 export interface UpdateNoticeDto extends Partial<CreateNoticeDto> {
@@ -48,14 +56,37 @@ export interface UpdateNoticeDto extends Partial<CreateNoticeDto> {
 export const NOTICE_TYPE_CONFIG = {
   [NOTICE_TYPES.INFO]: {
     label: 'お知らせ',
-    borderColor: 'border-blue-500',
+    bgColor: 'bg-blue-500',
+    darkBgColor: 'bg-blue-600',
   },
   [NOTICE_TYPES.MAINTENANCE]: {
     label: 'メンテナンス',
-    borderColor: 'border-yellow-500',
+    bgColor: 'bg-yellow-500',
+    darkBgColor: 'bg-yellow-600',
   },
   [NOTICE_TYPES.SUCCESS]: {
     label: '完了',
-    borderColor: 'border-green-500',
+    bgColor: 'bg-green-500',
+    darkBgColor: 'bg-green-600',
+  },
+  [NOTICE_TYPES.GROUP_CONSUL]: {
+    label: 'グルコン',
+    bgColor: 'bg-indigo-500',
+    darkBgColor: 'bg-indigo-600',
+  },
+  [NOTICE_TYPES.PARTY]: {
+    label: '食事会',
+    bgColor: 'bg-orange-500',
+    darkBgColor: 'bg-orange-600',
+  },
+  [NOTICE_TYPES.STUDY]: {
+    label: '勉強会',
+    bgColor: 'bg-blue-500',
+    darkBgColor: 'bg-blue-600',
+  },
+  [NOTICE_TYPES.CAMP]: {
+    label: '合宿',
+    bgColor: 'bg-purple-500',
+    darkBgColor: 'bg-purple-600',
   },
 } as const;

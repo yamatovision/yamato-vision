@@ -21,17 +21,17 @@ model User {
   mongoId          String?                    @unique
   nickname         String?
   snsLinks         Json?
- careerIdentity   String?  @db.VarChar(50)  // 追加
+  careerIdentity   String?                    @db.VarChar(50) // 追加
   isRankingVisible Boolean                    @default(true)
   isProfileVisible Boolean                    @default(true)
   message          String?
   avatarUrl        String?
   rank             String                     @default("お試し")
-    studentId        String?    @unique  // 学籍番号
-  enrollmentYear   Int?       // 入学年度
-  totalCredits     Int        @default(0)  // 取得単位数
-  gpa             Float?     // GPA
-    gradeHistory    GradeHistory[]  // 追加
+  studentId        String?                    @unique // 学籍番号
+  enrollmentYear   Int? // 入学年度
+  totalCredits     Int                        @default(0) // 取得単位数
+  gpa              Float? // GPA
+  gradeHistory     GradeHistory[] // 追加
   comments         Comment[]
   experienceLogs   ExperienceLog[]
   forumPosts       ForumPost[]
@@ -43,86 +43,90 @@ model User {
   chapterProgress  UserChapterProgress[]
   courses          UserCourse[]
 }
+
 // 成績評価履歴
 model GradeHistory {
-  id              String    @id @default(cuid())
-  userId          String
-  courseId        String
-  grade           String    // 秀、優、良、可、不可
-  gradePoint      Float     // 4.0, 3.0, 2.0, 1.0, 0.0
-  credits         Int       // 単位数
-  completedAt     DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  user            User      @relation(fields: [userId], references: [id])
-  course          Course    @relation(fields: [courseId], references: [id])
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  grade       String // 秀、優、良、可、不可
+  gradePoint  Float // 4.0, 3.0, 2.0, 1.0, 0.0
+  credits     Int // 単位数
+  completedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
 
   @@index([userId])
   @@index([courseId])
 }
+
 model FinalExamProgress {
   id              String    @id @default(cuid())
   progressId      String    @unique
   examStartedAt   DateTime
   examCompletedAt DateTime?
-  
+
   // セクション情報
-  currentSection  Int       @default(1)
-  
+  currentSection Int @default(1)
+
   // セクション1
-  section1Title   String
-  section1Score   Int?
-  section1Feedback String?
+  section1Title       String
+  section1Score       Int?
+  section1Feedback    String?
   section1SubmittedAt DateTime?
-  section1Content String?
-  
+  section1Content     String?
+
   // セクション2
-  section2Title   String
-  section2Score   Int?
-  section2Feedback String?
+  section2Title       String
+  section2Score       Int?
+  section2Feedback    String?
   section2SubmittedAt DateTime?
-  section2Content String?
-  
+  section2Content     String?
+
   // セクション3
-  section3Title   String
-  section3Score   Int?
-  section3Feedback String?
+  section3Title       String
+  section3Score       Int?
+  section3Feedback    String?
   section3SubmittedAt DateTime?
-  section3Content String?
-  
+  section3Content     String?
+
   // 合計スコア
-  totalScore      Int?
-  
+  totalScore Int?
+
   // リレーションを双方向に設定
-  progress        UserChapterProgress @relation(fields: [progressId], references: [id])
+  progress UserChapterProgress @relation(fields: [progressId], references: [id])
 
   @@index([progressId])
 }
 
-
 model Notice {
-  id            String    @id @default(cuid())
-  title         String
-  content       String    @db.Text
-  startAt       DateTime
-  endAt         DateTime
-  type          String    // enumではなくStringに
-  isActive      Boolean   @default(true)
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  menuContent String?   @db.Text
+  startAt     DateTime
+  endAt       DateTime
+  type        String    // enumではなくString
+  isActive    Boolean   @default(true)
   excludedRanks String[]
-  minLevel      Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  minLevel    Int?
+  buttonUrl   String?
+  buttonText  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([isActive, startAt, endAt])
 }
 
 // 学籍番号管理
 model StudentIdCounter {
-  id              String    @id @default(cuid())
-  year            Int       // 年度
-  currentCount    Int       @default(0)
-  updatedAt       DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  year         Int // 年度
+  currentCount Int      @default(0)
+  updatedAt    DateTime @updatedAt
 
   @@unique([year])
 }
@@ -133,7 +137,7 @@ model Chapter {
   title            String
   subtitle         String?
   orderIndex       Int
-  timeLimit        Int?     // コメントを更新: 制限時間（時間単位）
+  timeLimit        Int? // コメントを更新: 制限時間（時間単位）
   isVisible        Boolean                    @default(true)
   isFinalExam      Boolean                    @default(false)
   createdAt        DateTime                   @default(now())
@@ -141,15 +145,15 @@ model Chapter {
   taskId           String?                    @unique
   releaseTime      Int?
   content          Json
-  taskContent      Json?     // 公開用の説明（リッチテキスト）
-  referenceFiles   Json?     // 配列形式で複数の参考資料を管理
+  taskContent      Json? // 公開用の説明（リッチテキスト）
+  referenceFiles   Json? // 配列形式で複数の参考資料を管理
   isPerfectOnly    Boolean                    @default(false)
   experienceWeight Int                        @default(100)
   course           Course                     @relation(fields: [courseId], references: [id])
   task             Task?                      @relation("ChapterTask", fields: [taskId], references: [id])
   mediaProgress    UserChapterMediaProgress[]
   userProgress     UserChapterProgress[]
-  examSettings     Json?     // 追加: 試験設定用
+  examSettings     Json? // 追加: 試験設定用
 
   @@unique([courseId, orderIndex])
 }
@@ -168,8 +172,8 @@ model Course {
   isPublished         Boolean               @default(false)
   publishedAt         DateTime?
   thumbnail           String?
-　 credits    　       Int?        @default(1)  // 単位数（1-4）
-  gradeHistory    GradeHistory[]  // 追加
+  credits             Int?                  @default(1) // 単位数（1-4）
+  gradeHistory        GradeHistory[] // 追加
   timeLimit           Int?
   canEarnHigherStatus Boolean               @default(true)
   chapters            Chapter[]
@@ -192,43 +196,43 @@ model UserCourse {
   certificationEligibility Boolean   @default(true)
   course                   Course    @relation(fields: [courseId], references: [id])
   user                     User      @relation(fields: [userId], references: [id])
-  isCurrent Boolean @default(false)  // カレントコース管理用
-    currentChapterId        String?   // 現在のチャプターIDを直接保持
+  isCurrent                Boolean   @default(false) // カレントコース管理用
+  currentChapterId         String? // 現在のチャプターIDを直接保持
+
   @@unique([userId, courseId])
 }
 
 model Task {
-  id                String       @id @default(cuid())
-  courseId          String
-  title             String?
-  maxPoints         Int          @default(100)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  materials         String?      // optional
-  task              String?       // これは必須（課題内容）
-  evaluationCriteria String?     // optional
-  systemMessage     String?       // XMLフォーマット済みの評価用データ
-  chapter           Chapter?     @relation("ChapterTask")
-  submissions       Submission[]
-  course            Course       @relation(fields: [courseId], references: [id])
+  id                 String       @id @default(cuid())
+  courseId           String
+  title              String?
+  maxPoints          Int          @default(100)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  materials          String? // optional
+  task               String? // これは必須（課題内容）
+  evaluationCriteria String? // optional
+  systemMessage      String? // XMLフォーマット済みの評価用データ
+  chapter            Chapter?     @relation("ChapterTask")
+  submissions        Submission[]
+  course             Course       @relation(fields: [courseId], references: [id])
 }
 
-
-
 model Submission {
-  id              String    @id @default(cuid())
+  id              String                @id @default(cuid())
   userId          String
   taskId          String
   content         String
-  points          Int       
-  feedback        String    
-  nextStep        String?   
-  submittedAt     DateTime  @default(now())
-  evaluatedAt     DateTime  @default(now())
+  points          Int
+  feedback        String
+  nextStep        String?
+  submittedAt     DateTime              @default(now())
+  evaluatedAt     DateTime              @default(now())
   bestForProgress UserChapterProgress[] @relation("BestSubmission")
-  task            Task      @relation(fields: [taskId], references: [id])
-  user            User      @relation(fields: [userId], references: [id])
+  task            Task                  @relation(fields: [taskId], references: [id])
+  user            User                  @relation(fields: [userId], references: [id])
 }
+
 model ForumPost {
   id        String    @id @default(cuid())
   userId    String
@@ -255,12 +259,12 @@ model Comment {
 }
 
 model ChapterStateHistory {
-  id          String    @id @default(cuid())
-  userId      String
-  courseId    String
-  chapterId   String
-  status      String    // ChapterProgressStatus
-  createdAt   DateTime  @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  chapterId String
+  status    String // ChapterProgressStatus
+  createdAt DateTime @default(now())
 
   @@index([userId, courseId, chapterId])
 }
@@ -417,30 +421,29 @@ model LevelMessage {
 }
 
 model UserChapterProgress {
-  id              String    @id @default(cuid())
-  userId          String
-  courseId        String
-  chapterId       String
-  status          String    @default("NOT_STARTED")
-  startedAt       DateTime?
-  completedAt     DateTime?
-  score           Int?      // 既存のscoreカラムを維持
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  chapterId   String
+  status      String    @default("NOT_STARTED")
+  startedAt   DateTime?
+  completedAt DateTime?
+  score       Int? // 既存のscoreカラムを維持
 
-  finalExam        FinalExamProgress?
+  finalExam FinalExamProgress?
 
-  currentSection  Int?        // 追加: 現在のセクション管理用
-  sectionScores   Json?       // 追加: セクションごとのスコア保存用
-  timeRemaining   Int?        // 追加: 残り時間管理用
-  sectionStartedAt DateTime?  // 追加: セクション開始時間管理用
-
+  currentSection   Int? // 追加: 現在のセクション管理用
+  sectionScores    Json? // 追加: セクションごとのスコア保存用
+  timeRemaining    Int? // 追加: 残り時間管理用
+  sectionStartedAt DateTime? // 追加: セクション開始時間管理用
 
   // ベストスコアデータのみ保持
-  bestTaskContent String?   // これを追加（ユーザーの実際の提出内容）
-  bestFeedback    String?
-  bestNextStep    String?
-  bestEvaluatedAt DateTime?
+  bestTaskContent  String? // これを追加（ユーザーの実際の提出内容）
+  bestFeedback     String?
+  bestNextStep     String?
+  bestEvaluatedAt  DateTime?
   bestSubmissionId String?
-  bestSubmission  Submission? @relation("BestSubmission", fields: [bestSubmissionId], references: [id])
+  bestSubmission   Submission? @relation("BestSubmission", fields: [bestSubmissionId], references: [id])
 
   isTimedOut      Boolean   @default(false)
   timeOutAt       DateTime?
@@ -448,9 +451,9 @@ model UserChapterProgress {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  chapter         Chapter   @relation(fields: [chapterId], references: [id])
-  course          Course    @relation(fields: [courseId], references: [id])
-  user            User      @relation(fields: [userId], references: [id])
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+  course  Course  @relation(fields: [courseId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
   @@unique([userId, courseId, chapterId])
   @@index([userId, courseId])
