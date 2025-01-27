@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { studentIdService } from './studentIdService';
 
 interface UserChangeEventData {
-  _id: any;  // ObjectId を any に変更
+  _id: any;
   email: string;
   password?: string;
   name?: string;
@@ -22,7 +22,7 @@ interface UserMongoChangeEvent {
   operationType: 'insert' | 'update';
   fullDocument: UserChangeEventData;
   documentKey: {
-    _id: any;  // ObjectId を any に変更
+    _id: any;
   };
   clusterTime?: any;
 }
@@ -33,7 +33,6 @@ interface UserSyncResult {
   postgresId?: string;
   error?: string;
 }
-
 
 export class UserSyncService {
   private static readonly MAX_RETRY_ATTEMPTS = 3;
@@ -46,16 +45,21 @@ export class UserSyncService {
   private processingUpdates: Set<string> = new Set();
 
   constructor() {
+    console.log('UserSyncServiceのインスタンスを作成中...');
     this.mongoClient = new MongoClient(process.env.MONGODB_URI!);
     this.prisma = new PrismaClient();
   }
 
+  // 接続状態を取得するメソッド
   async getConnectionStatus() {
+    console.log('接続状態を確認中...');
     let mongodbConnected = false;
     try {
       await this.mongoClient.db().admin().ping();
       mongodbConnected = true;
+      console.log('MongoDB接続確認: 成功');
     } catch (error) {
+      console.error('MongoDB接続確認: 失敗', error);
       mongodbConnected = false;
     }
 
@@ -66,52 +70,70 @@ export class UserSyncService {
     };
   }
 
+  // 初期化処理
   async initialize() {
+    console.log('UserSyncServiceの初期化を開始...');
     try {
       await this.mongoClient.connect();
-      const collection = this.mongoClient.db().collection('users');
+      console.log('MongoDBに正常に接続しました');
       
+      const collection = this.mongoClient.db().collection('users');
+      console.log('ユーザーコレクションへの接続確立');
+      
+      // ChangeStreamの設定
       this.changeStream = collection.watch(
         [{ $match: { operationType: { $in: ['insert', 'update'] } } }],
         { fullDocument: 'updateLookup' }
       );
+      console.log('ChangeStreamを正常に作成しました');
 
+      // 変更検知のイベントリスナー
       this.changeStream.on('change', async (change: UserMongoChangeEvent) => {
         const documentId = change.documentKey._id.toString();
+        console.log('変更を検知:', {
+          操作タイプ: change.operationType,
+          ドキュメントID: documentId,
+          メールアドレス: change.fullDocument?.email,
+          タイムスタンプ: new Date().toISOString()
+        });
         
         if (this.processingUpdates.has(documentId)) {
-          console.log(`Skip processing for document ${documentId} - already in progress`);
+          console.log(`ドキュメント ${documentId} は既に処理中のため、スキップします`);
           return;
         }
 
         await this.processChangeWithRetry(change);
       });
 
+      // エラー検知のイベントリスナー
       this.changeStream.on('error', async (error: Error) => {
-        console.error('ChangeStream error:', error);
+        console.error('ChangeStreamエラー発生:', error);
         this.isConnected = false;
         await this.reconnect();
       });
 
       this.isConnected = true;
-      console.log('User ChangeStream initialized successfully');
+      console.log('UserSyncServiceの初期化が完了しました');
 
+      // ヘルスチェックの開始
       setInterval(() => this.healthCheck(), 60000);
       
     } catch (error) {
-      console.error('Failed to initialize User ChangeStream:', error);
+      console.error('UserSyncServiceの初期化に失敗:', error);
       this.isConnected = false;
       throw error;
     }
   }
 
+  // 変更処理の再試行
   private async processChangeWithRetry(change: UserMongoChangeEvent) {
     const documentId = change.documentKey._id.toString();
     this.processingUpdates.add(documentId);
+    console.log(`ドキュメント ${documentId} の処理を開始`);
 
     const processingTimeout = setTimeout(() => {
       if (this.processingUpdates.has(documentId)) {
-        console.error(`Processing timeout for document ${documentId}`);
+        console.error(`ドキュメント ${documentId} の処理がタイムアウトしました`);
         this.processingUpdates.delete(documentId);
       }
     }, UserSyncService.PROCESSING_TIMEOUT);
@@ -121,20 +143,22 @@ export class UserSyncService {
       
       for (let attempt = 1; attempt <= UserSyncService.MAX_RETRY_ATTEMPTS; attempt++) {
         try {
-          console.log(`Processing attempt ${attempt} for user document ${documentId}`);
+          console.log(`ドキュメント ${documentId} の処理を試行中 (${attempt}回目)`);
           
           const result = await this.handleUserUpdate(change);
           if (result.success) {
-            console.log(`Successfully processed user document ${documentId} on attempt ${attempt}`);
+            console.log(`ドキュメント ${documentId} の処理が成功しました (${attempt}回目)`);
             break;
           } else {
             lastError = new Error(result.error);
+            console.error(`処理に失敗、再試行準備中:`, result.error);
             if (attempt < UserSyncService.MAX_RETRY_ATTEMPTS) {
               await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             }
           }
         } catch (error) {
           lastError = error as Error;
+          console.error(`処理中にエラー発生 (${attempt}回目):`, error);
           if (attempt < UserSyncService.MAX_RETRY_ATTEMPTS) {
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           }
@@ -146,34 +170,32 @@ export class UserSyncService {
       }
 
     } catch (error) {
-      console.error(`Failed to process user document ${documentId} after ${UserSyncService.MAX_RETRY_ATTEMPTS} attempts:`, error);
+      console.error(`ドキュメント ${documentId} の処理が ${UserSyncService.MAX_RETRY_ATTEMPTS} 回の試行後も失敗:`, error);
     } finally {
       clearTimeout(processingTimeout);
       this.processingUpdates.delete(documentId);
+      console.log(`ドキュメント ${documentId} の処理を完了`);
     }
   }
 
 
+  
 
-
-
-
-
-
-
-
-
-
-
+  // ユーザー更新の処理
   private async handleUserUpdate(change: UserMongoChangeEvent): Promise<UserSyncResult> {
     const startTime = Date.now();
+    console.log('ユーザー更新処理を開始:', {
+      操作タイプ: change.operationType,
+      MongoID: change.documentKey._id.toString(),
+      メールアドレス: change.fullDocument?.email
+    });
+
     try {
       const userData = change.fullDocument;
       if (!userData) {
-        throw new Error('No user document data available');
+        throw new Error('ユーザードキュメントのデータが存在しません');
       }
   
-      // パスワード処理の準備
       const passwordData = userData.password ? {
         password: userData.password
       } : {};
@@ -182,46 +204,40 @@ export class UserSyncService {
         where: { email: userData.email }
       });
 
-
-
-
-  
-      // 新規ユーザー作成の場合
+      // 新規ユーザー作成の処理
       if (change.operationType === 'insert' && !existingUser) {
         try {
-          // 登録日時を確実に取得
           const registrationDate = new Date(userData.registrationDate || userData.createdAt || Date.now());
-          console.log('Registration date for new user:', {
-            email: userData.email,
-            registrationDate,
-            originalDate: userData.registrationDate,
-            createdAt: userData.createdAt
+          console.log('新規ユーザーの登録日:', {
+            メールアドレス: userData.email,
+            登録日: registrationDate,
+            元の日付: userData.registrationDate,
+            作成日: userData.createdAt
           });
   
           const enrollmentYear = studentIdService.determineEnrollmentYear(registrationDate);
-          console.log('Generating student ID:', {
-            email: userData.email,
-            enrollmentYear,
-            timestamp: new Date().toISOString()
+          console.log('学生ID生成準備:', {
+            メールアドレス: userData.email,
+            入学年度: enrollmentYear,
+            タイムスタンプ: new Date().toISOString()
           });
   
           const studentId = await studentIdService.generateStudentId(enrollmentYear);
-          console.log('Generated student ID:', {
-            email: userData.email,
-            studentId,
-            enrollmentYear
+          console.log('学生ID生成完了:', {
+            メールアドレス: userData.email,
+            学生ID: studentId,
+            入学年度: enrollmentYear
           });
   
-          // トランザクションで新規ユーザーとトークン追跡を作成
+          // トランザクションでの新規ユーザー作成
           const newUser = await this.prisma.$transaction(async (tx) => {
-            // ユーザーの作成
             const user = await tx.user.create({
               data: {
                 mongoId: userData._id.toString(),
                 email: userData.email,
                 name: userData.name || '',
                 rank: userData.userRank,
-                password: userData.password || 'aikakumei', // パスワードは必須なので、デフォルト値を設定
+                password: userData.password || 'aikakumei',
                 studentId,
                 enrollmentYear,
                 level: 1,
@@ -232,7 +248,7 @@ export class UserSyncService {
                 isProfileVisible: true,
               }
             });
-            // TokenTrackingの作成
+
             await tx.tokenTracking.create({
               data: {
                 userId: user.id,
@@ -247,7 +263,7 @@ export class UserSyncService {
             return user;
           });
   
-          // 初期コースの登録（別トランザクション）
+          // 初期コースの登録
           await this.prisma.userCourse.create({
             data: {
               userId: newUser.id,
@@ -259,13 +275,13 @@ export class UserSyncService {
             }
           });
   
-          console.log('New user created with initial course:', {
-            mongoId: userData._id,
-            postgresId: newUser.id,
-            rank: newUser.rank,
-            studentId: newUser.studentId,
-            enrollmentYear,
-            duration: Date.now() - startTime
+          console.log('新規ユーザーとコースの作成完了:', {
+            MongoID: userData._id,
+            PostgresID: newUser.id,
+            ランク: newUser.rank,
+            学生ID: newUser.studentId,
+            入学年度: enrollmentYear,
+            処理時間: Date.now() - startTime
           });
   
           return { 
@@ -274,16 +290,16 @@ export class UserSyncService {
             postgresId: newUser.id 
           };
         } catch (error) {
-          console.error('Failed to create new user:', {
-            error: error.message,
-            stack: error.stack,
-            email: userData.email,
-            timestamp: new Date().toISOString()
+          console.error('新規ユーザー作成失敗:', {
+            エラー: error.message,
+            スタック: error.stack,
+            メールアドレス: userData.email,
+            タイムスタンプ: new Date().toISOString()
           });
           throw error;
         }
       } else if (existingUser) {
-        // 既存ユーザーの更新
+        // 既存ユーザーの更新処理
         try {
           const currentRank = existingUser.rank;
           const newRank = userData.userRank;
@@ -292,7 +308,7 @@ export class UserSyncService {
           const updatedUser = await this.prisma.user.update({
             where: { id: existingUser.id },
             data: {
-              mongoId: userData._id.toString(),  // ここを追加
+              mongoId: userData._id.toString(),
               email: userData.email,
               name: userData.name || existingUser.name,
               rank: userData.userRank,
@@ -302,12 +318,12 @@ export class UserSyncService {
           });
   
           if (isRankChanged) {
-            console.log('User rank changed:', {
-              userId: existingUser.id,
-              mongoId: userData._id,
-              oldRank: currentRank,
-              newRank: newRank,
-              timestamp: new Date()
+            console.log('ユーザーランクが変更されました:', {
+              ユーザーID: existingUser.id,
+              MongoID: userData._id,
+              旧ランク: currentRank,
+              新ランク: newRank,
+              タイムスタンプ: new Date()
             });
           }
   
@@ -317,20 +333,20 @@ export class UserSyncService {
             postgresId: updatedUser.id 
           };
         } catch (error) {
-          console.error('Failed to update user:', error);
+          console.error('ユーザー更新失敗:', error);
           throw error;
         }
       }
   
-      throw new Error(`Unexpected state for user ${userData._id}`);
+      throw new Error(`予期しないユーザー状態: ${userData._id}`);
   
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('User sync failed:', {
-        error: errorMessage,
-        duration: Date.now() - startTime,
-        documentId: change.documentKey._id,
-        operationType: change.operationType
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      console.error('ユーザー同期失敗:', {
+        エラー: errorMessage,
+        処理時間: Date.now() - startTime,
+        ドキュメントID: change.documentKey._id,
+        操作タイプ: change.operationType
       });
       
       return {
@@ -341,43 +357,29 @@ export class UserSyncService {
     }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // ヘルスチェック
   private async healthCheck() {
     try {
       await this.mongoClient.db().admin().ping();
+      console.log('ヘルスチェック: OK');
     } catch (error) {
-      console.error('Health check failed:', error);
+      console.error('ヘルスチェック失敗:', error);
       await this.reconnect();
     }
   }
 
+  // 再接続処理
   private async reconnect() {
     try {
-      console.log('Attempting to reconnect user sync service...');
+      console.log('UserSyncServiceの再接続を試みます...');
       await this.cleanup();
       await this.initialize();
     } catch (error) {
-      console.error('User sync service reconnection failed:', error);
+      console.error('UserSyncServiceの再接続に失敗:', error);
     }
   }
 
+  // クリーンアップ処理
   async cleanup() {
     if (this.changeStream) {
       await this.changeStream.close();
@@ -386,6 +388,6 @@ export class UserSyncService {
     await this.prisma.$disconnect();
     this.isConnected = false;
     this.processingUpdates.clear();
-    console.log('User sync service cleaned up successfully');
+    console.log('UserSyncServiceのクリーンアップが完了しました');
   }
 }
