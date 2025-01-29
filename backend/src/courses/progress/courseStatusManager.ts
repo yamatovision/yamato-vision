@@ -12,6 +12,7 @@ import { EventEmitter } from 'events';
 import { UserChapterService } from '../user/userChapterService';
 import { ExperienceService } from '../../experience/experienceService';
 import { ExperienceGainEvent } from '../../experience/experienceTypes';
+import { UserRank, USER_RANKS } from '../types/status';
 
 
 interface CurrentCourseState {
@@ -237,10 +238,14 @@ async getCurrentCourseState(userId: string): Promise<CurrentCourseState | null> 
       }
   
       // 要件チェック
-      if (course.rankRequired && course.rankRequired !== user.rank) {
-        throw new Error('Rank requirement not met');
+      if (course.rankRequired) {
+        const userRankValue = USER_RANKS[user.rank as UserRank];
+        const requiredRankValue = USER_RANKS[course.rankRequired as UserRank];
+        
+        if (userRankValue < requiredRankValue) {
+          throw new Error('Rank requirement not met');
+        }
       }
-  
       if (course.levelRequired && user.level < course.levelRequired) {
         throw new Error('Level requirement not met');
       }
