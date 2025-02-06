@@ -205,41 +205,48 @@ export function AvatarGeneratorModal({ isOpen, onClose, onComplete }: AvatarGene
   
     return `high quality CG character portrait, anime style, stylized 3D character, ${selectedPrompts.join(', ')}, ${colorPrompt}, detailed face modeling with perfect materials and textures, centered portrait, single character, professional 3D rendering`;
   };
+// AvatarGeneratorModal.tsx
 
-  const handleAvatarComplete = async (imageUrl: string) => {
-    try {
-      setGenerationStatus('画像を処理中...');
-      // URLから画像をフェッチ
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      
-      return new Promise<void>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          try {
-            const base64Image = reader.result as string;
-            await onComplete(base64Image);
-            setGeneratedAvatar(imageUrl); // UI表示用にはURLを使用
-            resolve();
-          } catch (error) {
-            console.error('Failed to process avatar:', error);
-            reject(error);
-          }
-        };
-        reader.onerror = () => {
-          console.error('Failed to convert image to base64');
-          reject(new Error('Failed to convert image to base64'));
-        };
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error('Failed to process avatar:', error);
-      toast.error('アバターの処理に失敗しました');
-      throw error;
-    } finally {
-      setGenerationStatus('');
+const handleAvatarComplete = async (imageUrl: string) => {
+  try {
+    setGenerationStatus('画像を処理中...');
+    
+    // プロキシエンドポイントを使用して画像を取得
+    const response = await fetch(`/api/proxy/image?url=${encodeURIComponent(imageUrl)}`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch image through proxy');
     }
-  };
+    
+    const blob = await response.blob();
+    
+    return new Promise<void>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64Image = reader.result as string;
+          await onComplete(base64Image);
+          setGeneratedAvatar(imageUrl);
+          resolve();
+        } catch (error) {
+          console.error('Failed to process avatar:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = () => {
+        console.error('Failed to convert image to base64');
+        reject(new Error('Failed to convert image to base64'));
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Failed to process avatar:', error);
+    toast.error('アバターの処理に失敗しました');
+    throw error;
+  } finally {
+    setGenerationStatus('');
+  }
+};
   const handleQuickGenerate = async () => {
     setIsGenerating(true);
     setGenerationStatus('生成を開始中...');

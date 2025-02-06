@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")    // 追加
 }
 
 model User {
@@ -499,4 +500,14 @@ enum BadgeCondition {
   POST_COUNT
   COMMENT_COUNT
   CUSTOM
+}
+
+model MasterAccessLog {
+  id          String   @id @default(cuid())
+  adminEmail  String   
+  targetEmail String   
+  accessedAt  DateTime @default(now())
+
+  @@index([adminEmail])
+  @@index([accessedAt])
 }

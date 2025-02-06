@@ -1,4 +1,4 @@
-// File: /Users/tatsuyashiraishi/Desktop/yamato-vision/frontend/src/app/user/home/page.tsx
+// File: /Users/shiraishiami/Desktop/Tatsuya/yamato-vision/frontend/src/app/user/home/page.tsx
 import * as entry from '../../../../../src/app/user/home/page.js'
 import type { ResolvingMetadata } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

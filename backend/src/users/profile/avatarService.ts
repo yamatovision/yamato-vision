@@ -23,7 +23,7 @@ export class AvatarService {
     if (!apiKey) {
       throw new Error('LEONARDO_API_KEY is not set in environment variables');
     }
-    this.apiKey = apiKey.replace('LEONARDO_API_KEY=', '');
+    this.apiKey = apiKey;  // remove the replace() call
   }
 
   async generateAvatar(options: GenerateAvatarOptions): Promise<GenerateAvatarResponse> {

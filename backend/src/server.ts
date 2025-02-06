@@ -1,8 +1,11 @@
 // backend/src/server.ts
 
+import dotenv from 'dotenv';
+
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+
 import { CronJob } from 'cron';
 import authRoutes from './auth/authRoutes';
 import userRoutes from './users/userRoutes';
@@ -27,7 +30,6 @@ import avatarRoutes from './users/profile/avatarRoutes';
 
 
 
-dotenv.config();
 export const prisma = new PrismaClient();
 
 const tokenSyncService = new TokenSyncService();
